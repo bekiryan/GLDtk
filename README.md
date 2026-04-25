@@ -33,7 +33,7 @@ GLDtk is split into four layers:
 
 Input options:
 - Existing tile map -> `symbolic.extract_graph`
-- Text prompt -> `llm.LLMController.generate` (Anthropic API)
+- Text prompt -> `llm.LLMController.generate` (Anthropic, OpenAI, DeepSeek, or Ollama)
 
 Core flow:
 1. Build or generate `AbstractLevelGraph`
@@ -49,7 +49,8 @@ Output:
 
 - Python 3.11+
 - macOS/Linux shell instructions below use `bash` or `zsh`
-- Anthropic API key only if using the LLM generation layer
+- API key only if using a hosted provider (Anthropic, OpenAI, DeepSeek)
+- For local inference with Ollama: a running Ollama server and an installed model
 
 ## Installation
 
@@ -194,7 +195,15 @@ python example_run.py
 
 ## LLM Generation Mode (Optional)
 
-If you want prompt-driven graph generation:
+You can select provider and model without changing validation/layout logic.
+
+Supported providers:
+- `anthropic`
+- `openai`
+- `deepseek` (OpenAI-compatible endpoint)
+- `ollama` (local `http://localhost:11434` by default)
+
+### Anthropic
 
 ```bash
 export ANTHROPIC_API_KEY="your_api_key_here"
@@ -203,11 +212,82 @@ export ANTHROPIC_API_KEY="your_api_key_here"
 ```python
 from llm import LLMController
 
-controller = LLMController(max_retries=3)
+controller = LLMController(
+    provider="anthropic",
+    model="claude-sonnet-4-6",
+    max_retries=3,
+)
 graph = controller.generate("A short forest level with one hazard pit and one exit")
 ```
 
-The LLM output is validated and repaired using deterministic symbolic checks before acceptance.
+### OpenAI
+
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+```
+
+```python
+from llm import LLMController
+
+controller = LLMController(
+    provider="openai",
+    model="gpt-4o-mini",
+)
+graph = controller.generate("A compact dungeon with one optional risk route")
+```
+
+### DeepSeek
+
+```bash
+export DEEPSEEK_API_KEY="your_api_key_here"
+```
+
+```python
+from llm import LLMController
+
+controller = LLMController(
+    provider="deepseek",
+    model="deepseek-chat",
+)
+graph = controller.generate("A sky level with two jump chains and one checkpoint")
+```
+
+### Ollama (Local)
+
+Start Ollama and ensure a model exists:
+
+```bash
+ollama serve
+ollama pull llama3.1:8b
+```
+
+```python
+from llm import LLMController
+
+controller = LLMController(
+    provider="ollama",
+    model="llama3.1:8b",
+)
+graph = controller.generate("A cave level with one hazard pit and a high exit")
+```
+
+### ProviderConfig Convenience
+
+```python
+from llm import LLMController, LLMProviderConfig
+
+cfg = LLMProviderConfig(
+    provider="openai",
+    model="gpt-4o-mini",
+    api_key=None,  # falls back to OPENAI_API_KEY
+    timeout_seconds=90.0,
+)
+
+controller = LLMController(provider_config=cfg)
+graph = controller.generate("A medium forest level with a hidden branch")
+```
+
+The generated graph is still validated and repaired using deterministic symbolic checks before acceptance.
 
 ## Coordinates and Determinism Notes
 
@@ -227,8 +307,9 @@ See `plan.md` for implementation coverage and roadmap tracking.
    - Run from repository root with `.venv` activated
 
 2. LLM controller fails
-   - Check `ANTHROPIC_API_KEY`
+    - Check provider-specific key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `DEEPSEEK_API_KEY`
    - Verify network/API access
+    - For `ollama`, verify `ollama serve` is running and the model is installed
 
 3. LDtk tileset not visible
    - Ensure `tileset_rel_path` points to an existing image path used by your LDtk project

@@ -1,5 +1,7 @@
 from .validator import (
     LLMController,
+    LLMProvider,
+    LLMProviderConfig,
     MaxRetriesExceeded,
     PhysicsParams,
     ValidationError,
@@ -12,6 +14,8 @@ from .prompt import SYSTEM_PROMPT, build_generate_messages, build_repair_message
 
 __all__ = [
     "LLMController",
+    "LLMProvider",
+    "LLMProviderConfig",
     "MaxRetriesExceeded",
     "PhysicsParams",
     "ValidationError",

@@ -15,9 +15,12 @@ Oracle and the prompt always agree.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import anthropic
 
@@ -42,6 +45,126 @@ class PhysicsParams:
     gravity: float = 980.0
     jump_v:  float = 600.0
     max_horizontal_speed: Optional[float] = None   # None = unconstrained
+
+
+LLMProvider = Literal["anthropic", "openai", "deepseek", "ollama"]
+
+
+@dataclass
+class LLMProviderConfig:
+    """Provider settings for calling remote/local LLM APIs.
+
+    Supported providers:
+    - anthropic
+    - openai
+    - deepseek (OpenAI-compatible endpoint)
+    - ollama (local /api/chat endpoint)
+    """
+
+    provider: LLMProvider = "anthropic"
+    model: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    timeout_seconds: float = 60.0
+
+
+_DEFAULT_PROVIDER_MODELS: Dict[str, str] = {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o-mini",
+    "deepseek": "deepseek-chat",
+    "ollama": "llama3.1:8b",
+}
+
+_OPENAI_COMPAT_BASE_URLS: Dict[str, str] = {
+    "openai": "https://api.openai.com/v1",
+    "deepseek": "https://api.deepseek.com/v1",
+}
+
+_DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
+
+
+def _resolve_provider(provider: str) -> str:
+    p = provider.strip().lower()
+    if p not in {"anthropic", "openai", "deepseek", "ollama"}:
+        raise ValueError(
+            "Unsupported provider: "
+            f"{provider!r}. Expected one of anthropic|openai|deepseek|ollama."
+        )
+    return p
+
+
+def _resolve_model(provider: str, explicit_model: Optional[str]) -> str:
+    if explicit_model:
+        return explicit_model
+    return _DEFAULT_PROVIDER_MODELS[provider]
+
+
+def _resolve_api_key(provider: str, explicit_api_key: Optional[str]) -> Optional[str]:
+    if explicit_api_key:
+        return explicit_api_key
+
+    if provider == "anthropic":
+        return os.getenv("ANTHROPIC_API_KEY")
+    if provider == "openai":
+        return os.getenv("OPENAI_API_KEY")
+    if provider == "deepseek":
+        return os.getenv("DEEPSEEK_API_KEY")
+    return None
+
+
+def _resolve_base_url(provider: str, explicit_base_url: Optional[str]) -> Optional[str]:
+    if explicit_base_url:
+        return explicit_base_url.rstrip("/")
+
+    if provider in _OPENAI_COMPAT_BASE_URLS:
+        return _OPENAI_COMPAT_BASE_URLS[provider]
+    if provider == "ollama":
+        return _DEFAULT_OLLAMA_BASE_URL
+    return None
+
+
+def _http_json_post(
+    url: str,
+    headers: Dict[str, str],
+    payload: Dict[str, Any],
+    timeout_seconds: float,
+) -> Dict[str, Any]:
+    body = json.dumps(payload).encode("utf-8")
+    request = Request(url=url, data=body, headers=headers, method="POST")
+
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw)
+    except HTTPError as err:
+        err_body = ""
+        try:
+            err_body = err.read().decode("utf-8")
+        except Exception:
+            err_body = "<unreadable error body>"
+        raise RuntimeError(
+            f"LLM API HTTP error {err.code} when calling {url}: {err_body}"
+        ) from err
+    except URLError as err:
+        raise RuntimeError(f"LLM API connection error when calling {url}: {err}") from err
+
+
+def _extract_openai_message_text(content: Any) -> str:
+    """Normalize OpenAI-compatible content payloads to a plain string."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts: List[str] = []
+        for part in content:
+            if isinstance(part, dict):
+                if isinstance(part.get("text"), str):
+                    parts.append(part["text"])
+                elif isinstance(part.get("content"), str):
+                    parts.append(part["content"])
+        return "\n".join(parts).strip()
+
+    return str(content).strip()
 
 
 @dataclass
@@ -303,14 +426,38 @@ class LLMController:
     def __init__(
         self,
         physics: Optional[PhysicsParams] = None,
-        model: str = "claude-sonnet-4-6",
+        model: Optional[str] = None,
         max_retries: int = 3,
         api_key: Optional[str] = None,
+        provider: LLMProvider = "anthropic",
+        base_url: Optional[str] = None,
+        timeout_seconds: float = 60.0,
+        provider_config: Optional[LLMProviderConfig] = None,
     ) -> None:
-        self._physics    = physics or PhysicsParams()
-        self._model      = model
+        self._physics = physics or PhysicsParams()
         self._max_retries = max_retries
-        self._client     = anthropic.Anthropic(api_key=api_key)
+
+        if provider_config is not None:
+            provider = provider_config.provider
+            model = provider_config.model
+            api_key = provider_config.api_key
+            base_url = provider_config.base_url
+            timeout_seconds = provider_config.timeout_seconds
+
+        self._provider = _resolve_provider(provider)
+        self._model = _resolve_model(self._provider, model)
+        self._api_key = _resolve_api_key(self._provider, api_key)
+        self._base_url = _resolve_base_url(self._provider, base_url)
+        self._timeout_seconds = timeout_seconds
+
+        if self._provider == "anthropic":
+            self._client = (
+                anthropic.Anthropic(api_key=self._api_key)
+                if self._api_key
+                else None
+            )
+        else:
+            self._client = None
 
         # Import here to avoid circular imports at module load time
         from .patcher import SymbolicPatcher
@@ -364,7 +511,25 @@ class LLMController:
     # ------------------------------------------------------------------
 
     def _call_llm(self, messages: List[Dict[str, Any]]) -> str:
-        """Call the Anthropic API with prompt-cached system prompt."""
+        """Call the configured LLM provider."""
+        if self._provider == "anthropic":
+            return self._call_anthropic(messages)
+        if self._provider in {"openai", "deepseek"}:
+            return self._call_openai_compatible(messages)
+        if self._provider == "ollama":
+            return self._call_ollama(messages)
+
+        raise RuntimeError(f"Unsupported provider state: {self._provider!r}")
+
+    def _call_anthropic(self, messages: List[Dict[str, Any]]) -> str:
+        if not self._api_key:
+            raise RuntimeError(
+                "Anthropic provider requires an API key. "
+                "Pass api_key=... or set ANTHROPIC_API_KEY."
+            )
+        if self._client is None:
+            self._client = anthropic.Anthropic(api_key=self._api_key)
+
         response = self._client.messages.create(
             model=self._model,
             max_tokens=2048,
@@ -380,3 +545,74 @@ class LLMController:
             messages=messages,
         )
         return response.content[0].text
+
+    def _call_openai_compatible(self, messages: List[Dict[str, Any]]) -> str:
+        if self._base_url is None or self._api_key is None:
+            raise RuntimeError(
+                "OpenAI-compatible provider requires both base_url and api_key."
+            )
+
+        url = f"{self._base_url}/chat/completions"
+        payload: Dict[str, Any] = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                *messages,
+            ],
+            "max_tokens": 2048,
+            "temperature": 0,
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+
+        response = _http_json_post(
+            url=url,
+            headers=headers,
+            payload=payload,
+            timeout_seconds=self._timeout_seconds,
+        )
+
+        try:
+            raw_content = response["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(
+                "OpenAI-compatible response missing choices[0].message.content"
+            ) from exc
+
+        text = _extract_openai_message_text(raw_content)
+        if not text:
+            raise RuntimeError("OpenAI-compatible response contained empty text.")
+        return text
+
+    def _call_ollama(self, messages: List[Dict[str, Any]]) -> str:
+        if self._base_url is None:
+            raise RuntimeError("Ollama provider requires a base_url.")
+
+        url = f"{self._base_url}/api/chat"
+        payload: Dict[str, Any] = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                *messages,
+            ],
+            "stream": False,
+        }
+        headers = {"Content-Type": "application/json"}
+
+        response = _http_json_post(
+            url=url,
+            headers=headers,
+            payload=payload,
+            timeout_seconds=self._timeout_seconds,
+        )
+
+        try:
+            text = response["message"]["content"]
+        except (KeyError, TypeError) as exc:
+            raise RuntimeError("Ollama response missing message.content") from exc
+
+        if not isinstance(text, str) or not text.strip():
+            raise RuntimeError("Ollama response contained empty text.")
+        return text
