@@ -139,8 +139,10 @@ def _make_layer_def_intgrid(cfg: LDtkConfig) -> Dict[str, Any]:
         ],
         "intGridValuesGroups": [],
         "autoTilesetDefUid": None,
+        "autoSourceLayerDefUid": None,
         "autoRuleGroups": [],
         "overrideTilesetUid": None,
+        "tilesetDefUid": None,
         "tilePivotX": 0,
         "tilePivotY": 0,
     }
@@ -170,6 +172,8 @@ def _make_layer_def_entities(cfg: LDtkConfig) -> Dict[str, Any]:
         "parallaxScaling": True,
         "requiredTags": [],
         "excludedTags": [],
+        "tilesetDefUid": None,
+        "autoSourceLayerDefUid": None,
     }
 
 
@@ -198,6 +202,7 @@ def _make_layer_def_tiles(cfg: LDtkConfig, tileset_uid: int) -> Dict[str, Any]:
         "requiredTags": [],
         "excludedTags": [],
         "tilesetDefUid": tileset_uid,
+        "autoSourceLayerDefUid": None,
         "tilePivotX": 0,
         "tilePivotY": 0,
     }
@@ -392,31 +397,58 @@ def _make_entity_instance(
     }
 
 
+def _layer_instance_base(
+    identifier: str,
+    layer_type: str,
+    c_wid: int,
+    c_hei: int,
+    grid_size: int,
+    layer_def_uid: int,
+    level_uid: int,
+    *,
+    tileset_def_uid: Optional[int] = None,
+    tileset_rel_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Common fields shared by all layer instance types."""
+    return {
+        "__identifier": identifier,
+        "__type": layer_type,
+        "__cWid": c_wid,
+        "__cHei": c_hei,
+        "__gridSize": grid_size,
+        "__opacity": 1,
+        "__pxTotalOffsetX": 0,
+        "__pxTotalOffsetY": 0,
+        "__tilesetDefUid": tileset_def_uid,
+        "__tilesetRelPath": tileset_rel_path,
+        "iid": _new_iid(),
+        "layerDefUid": layer_def_uid,
+        "levelId": level_uid,
+        "pxOffsetX": 0,
+        "pxOffsetY": 0,
+        "visible": True,
+        "optionalRules": [],
+        "seed": 0,
+        "overrideTilesetUid": None,
+        "autoLayerTiles": [],
+        "intGridCsv": [],
+        "gridTiles": [],
+        "entityInstances": [],
+    }
+
+
 def _make_layer_instance_entities(
     ir: IRLevel,
     level_uid: int,
     cfg: LDtkConfig,
 ) -> Dict[str, Any]:
-    instances = [_make_entity_instance(e, ir.tile_size, cfg) for e in ir.entities]
-    return {
-        "__identifier": "Entities",
-        "__type": "Entities",
-        "__cWid": ir.width_tiles,
-        "__cHei": ir.height_tiles,
-        "__gridSize": ir.tile_size,
-        "autoLayerTiles": [],
-        "entityInstances": instances,
-        "gridTiles": [],
-        "iid": _new_iid(),
-        "intGridCsv": [],
-        "layerDefUid": cfg.entities_layer_uid,
-        "levelId": level_uid,
-        "overrideTilesetUid": None,
-        "pxOffsetX": 0,
-        "pxOffsetY": 0,
-        "seed": 0,
-        "visible": True,
-    }
+    base = _layer_instance_base(
+        "Entities", "Entities",
+        ir.width_tiles, ir.height_tiles, ir.tile_size,
+        cfg.entities_layer_uid, level_uid,
+    )
+    base["entityInstances"] = [_make_entity_instance(e, ir.tile_size, cfg) for e in ir.entities]
+    return base
 
 
 def _make_layer_instance_intgrid(
@@ -424,25 +456,13 @@ def _make_layer_instance_intgrid(
     level_uid: int,
     cfg: LDtkConfig,
 ) -> Dict[str, Any]:
-    return {
-        "__identifier": "Collisions",
-        "__type": "IntGrid",
-        "__cWid": ir.width_tiles,
-        "__cHei": ir.height_tiles,
-        "__gridSize": ir.tile_size,
-        "autoLayerTiles": [],
-        "entityInstances": [],
-        "gridTiles": [],
-        "iid": _new_iid(),
-        "intGridCsv": ir.to_int_grid_csv(),
-        "layerDefUid": cfg.collisions_layer_uid,
-        "levelId": level_uid,
-        "overrideTilesetUid": None,
-        "pxOffsetX": 0,
-        "pxOffsetY": 0,
-        "seed": 0,
-        "visible": True,
-    }
+    base = _layer_instance_base(
+        "Collisions", "IntGrid",
+        ir.width_tiles, ir.height_tiles, ir.tile_size,
+        cfg.collisions_layer_uid, level_uid,
+    )
+    base["intGridCsv"] = ir.to_int_grid_csv()
+    return base
 
 
 def _make_layer_instance_tiles(
@@ -455,11 +475,11 @@ def _make_layer_instance_tiles(
     tiles_per_row = aesthetic.tileset_px_width // ir.tile_size
     grid_tiles = []
     for te in tile_entries:
-        px_x     = te.col * ir.tile_size
-        px_y     = te.row * ir.tile_size
-        tile_id  = (te.src_y // ir.tile_size) * tiles_per_row + (te.src_x // ir.tile_size)
-        flip     = (1 if te.flip_x else 0) | (2 if te.flip_y else 0)
-        d_idx    = te.row * ir.width_tiles + te.col
+        px_x    = te.col * ir.tile_size
+        px_y    = te.row * ir.tile_size
+        tile_id = (te.src_y // ir.tile_size) * tiles_per_row + (te.src_x // ir.tile_size)
+        flip    = (1 if te.flip_x else 0) | (2 if te.flip_y else 0)
+        d_idx   = te.row * ir.width_tiles + te.col
         grid_tiles.append({
             "px":  [px_x, px_y],
             "src": [te.src_x, te.src_y],
@@ -469,25 +489,16 @@ def _make_layer_instance_tiles(
             "d":   [d_idx],
         })
 
-    return {
-        "__identifier": "Tiles",
-        "__type": "Tiles",
-        "__cWid": ir.width_tiles,
-        "__cHei": ir.height_tiles,
-        "__gridSize": ir.tile_size,
-        "autoLayerTiles": [],
-        "entityInstances": [],
-        "gridTiles": grid_tiles,
-        "iid": _new_iid(),
-        "intGridCsv": [],
-        "layerDefUid": cfg.tiles_layer_uid,
-        "levelId": level_uid,
-        "overrideTilesetUid": aesthetic.tileset_uid,
-        "pxOffsetX": 0,
-        "pxOffsetY": 0,
-        "seed": 0,
-        "visible": True,
-    }
+    base = _layer_instance_base(
+        "Tiles", "Tiles",
+        ir.width_tiles, ir.height_tiles, ir.tile_size,
+        cfg.tiles_layer_uid, level_uid,
+        tileset_def_uid=aesthetic.tileset_uid,
+        tileset_rel_path=aesthetic.tileset_rel_path,
+    )
+    base["gridTiles"] = grid_tiles
+    base["overrideTilesetUid"] = aesthetic.tileset_uid
+    return base
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -524,11 +535,17 @@ def _make_level(
         "pxWid": ir.px_width,
         "pxHei": ir.px_height,
         "__neighbours": [],
+        "__bgColor": bg_color,
+        "__smartColor": bg_color,
+        "__bgPos": None,
         "bgRelPath": None,
-        "externalRelPath": None,
-        "fieldInstances": [],
         "bgPos": None,
         "bgColor": bg_color,
+        "bgPivotX": 0,
+        "bgPivotY": 0,
+        "useAutoIdentifier": True,
+        "externalRelPath": None,
+        "fieldInstances": [],
         "layerInstances": layer_instances,
     }
 
@@ -568,6 +585,8 @@ def to_ldtk_dict(
         all_uids.append(aesthetic.tileset_uid)
     next_uid = max(all_uids) + 1
 
+    bg = aesthetic.bg_color if aesthetic else cfg.background_color
+
     return {
         "__header__": {
             "fileType": "LDtk Project JSON",
@@ -581,10 +600,34 @@ def to_ldtk_dict(
         "jsonVersion": cfg.json_version,
         "appBuildId": 0,
         "nextUid": next_uid,
-        "exportPng": False,
+        "bgColor": bg,
+        "defaultLevelBgColor": bg,
+        "defaultGridSize": 16,
+        "defaultEntityWidth": 16,
+        "defaultEntityHeight": 16,
+        "defaultPivotX": 0.0,
+        "defaultPivotY": 1.0,
+        "defaultLevelWidth": 256,
+        "defaultLevelHeight": 256,
+        "worldLayout": "Free",
+        "worldGridWidth": 256,
+        "worldGridHeight": 256,
+        "dummyWorldIid": _new_iid(),
+        "flags": [],
+        "toc": [],
+        "minifyJson": False,
         "exportTiled": False,
         "simplifiedExport": False,
         "imageExportMode": "None",
+        "exportLevelBg": True,
+        "pngFilePattern": None,
+        "backupOnSave": False,
+        "backupLimit": 10,
+        "backupRelPath": None,
+        "levelNamePattern": None,
+        "identifierStyle": "Capitalize",
+        "tutorialDesc": None,
+        "customCommands": [],
         "externalLevels": False,
         "defs": _make_defs(cfg, aesthetic),
         "levels": [_make_level(ir_level, level_uid, world_x, world_y, cfg, aesthetic)],

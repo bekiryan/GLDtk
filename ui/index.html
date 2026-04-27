@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLDtk — Level Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0f0f17;
+    --surface: #1a1a2e;
+    --border:  #2e2e4a;
+    --accent:  #6c63ff;
+    --accent2: #00cc88;
+    --text:    #d4d4e8;
+    --muted:   #6b6b8a;
+    --danger:  #ff4455;
+    --mono:    'Courier New', Courier, monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; }
+
+  /* ── layout ──────────────────────────────────────────────── */
+  .app { display: grid; grid-template-rows: 48px 1fr 44px auto; height: 100vh; }
+
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 15px; font-weight: 700; letter-spacing: .5px; color: var(--accent); }
+  header span { color: var(--muted); font-size: 12px; }
+
+  .path-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .path-row label { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .path-row input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); padding: 4px 8px; font-size: 12px; font-family: var(--mono);
+  }
+
+  .body { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+
+  /* ── chat panel ──────────────────────────────────────────── */
+  .chat-panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+  .chat-history {
+    flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { max-width: 92%; padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-radius: 8px 8px 2px 8px; }
+  .msg.ai   { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 8px 8px 8px 2px; }
+  .msg.err  { align-self: flex-start; background: #2a0a10; border: 1px solid var(--danger); color: var(--danger); }
+  .msg .tag { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .msg .reload-hint { margin-top: 8px; padding: 6px 8px; background: var(--bg); border-radius: 4px; font-size: 11px; color: var(--accent2); }
+
+  /* ── preview panel ───────────────────────────────────────── */
+  .preview-panel { display: flex; flex-direction: column; overflow: hidden; }
+  .preview-header { padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .preview-ascii  {
+    flex: 1; overflow: auto; padding: 12px 14px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.3;
+    white-space: pre; color: var(--accent2);
+    background: var(--bg);
+  }
+  .stats-bar {
+    padding: 8px 14px; background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; gap: 16px; font-size: 12px; flex-wrap: wrap;
+  }
+  .stat { display: flex; flex-direction: column; }
+  .stat .k { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat .v { color: var(--text); font-weight: 600; }
+
+  /* ── controls bar ────────────────────────────────────────── */
+  .controls-bar {
+    grid-column: 1 / -1;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .controls-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  select, input[type=text], input[type=number], textarea {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); padding: 5px 8px; font-size: 13px; outline: none;
+    font-family: inherit;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+
+  .ctrl-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  .difficulty-btns { display: flex; gap: 0; }
+  .difficulty-btns button {
+    padding: 5px 10px; font-size: 12px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--muted); cursor: pointer;
+  }
+  .difficulty-btns button:first-child { border-radius: 4px 0 0 4px; }
+  .difficulty-btns button:last-child  { border-radius: 0 4px 4px 0; }
+  .difficulty-btns button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .prompt-row { display: flex; gap: 8px; align-items: flex-end; }
+  .prompt-row textarea {
+    flex: 1; height: 52px; resize: none; line-height: 1.4;
+    font-size: 13px;
+  }
+
+  button.generate {
+    padding: 8px 20px; background: var(--accent); color: #fff; border: none;
+    border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+    white-space: nowrap; height: 52px;
+  }
+  button.generate:disabled { opacity: .5; cursor: not-allowed; }
+  button.generate:hover:not(:disabled) { background: #7c74ff; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>GLDtk</h1>
+    <span>LDtk Level Generator</span>
+  </header>
+
+  <div class="path-row">
+    <label>Output .ldtk path</label>
+    <input type="text" id="outputPath" placeholder="level.ldtk" value="level.ldtk">
+  </div>
+
+  <div class="body">
+
+    <!-- Chat panel -->
+    <div class="chat-panel">
+      <div class="chat-history" id="chatHistory">
+        <div class="msg ai">
+          <div class="tag">GLDtk</div>
+          Describe the level you want to generate. Use the controls below to set theme, enemies, and difficulty.
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview panel -->
+    <div class="preview-panel">
+      <div class="preview-header">Level preview</div>
+      <div class="preview-ascii" id="previewAscii">No level generated yet.</div>
+      <div class="stats-bar" id="statsBar" style="display:none"></div>
+    </div>
+
+  </div>
+
+  <!-- Controls + prompt -->
+  <div class="controls-bar">
+    <div class="controls-row">
+      <span class="ctrl-label">Theme</span>
+      <select id="themeSelect">
+        <option value="">Auto-detect</option>
+        <option value="dungeon">Dungeon</option>
+        <option value="forest">Forest</option>
+        <option value="sky">Sky</option>
+      </select>
+
+      <span class="ctrl-label">Enemies</span>
+      <input type="text" id="enemyTypes" placeholder="Goblin, Slime, Spider" style="width:180px">
+
+      <span class="ctrl-label">Platforms</span>
+      <input type="number" id="platformCount" placeholder="6" min="2" max="20" style="width:64px">
+
+      <span class="ctrl-label">Difficulty</span>
+      <div class="difficulty-btns">
+        <button onclick="setDiff('easy')"   id="dEasy">Easy</button>
+        <button onclick="setDiff('medium')" id="dMedium" class="active">Medium</button>
+        <button onclick="setDiff('hard')"   id="dHard">Hard</button>
+      </div>
+
+      <span class="ctrl-label">Model</span>
+      <select id="providerSelect">
+        <option value="ollama" selected>Ollama (local)</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="openai">OpenAI</option>
+        <option value="deepseek">DeepSeek</option>
+      </select>
+      <input type="text" id="modelName" value="llama3.1" style="width:140px" placeholder="model name">
+    </div>
+
+    <div class="prompt-row">
+      <textarea id="prompt" placeholder="A dark cave with spike pits and crumbling bridges…"></textarea>
+      <button class="generate" id="generateBtn" onclick="generate()">▶ Generate</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentDifficulty = 'medium';
+
+  // Restore output path from localStorage
+  const savedPath = localStorage.getItem('gldtk_output_path');
+  if (savedPath) document.getElementById('outputPath').value = savedPath;
+  document.getElementById('outputPath').addEventListener('change', e => {
+    localStorage.setItem('gldtk_output_path', e.target.value);
+  });
+
+  function setDiff(d) {
+    currentDifficulty = d;
+    ['easy','medium','hard'].forEach(x => {
+      document.getElementById('d' + x.charAt(0).toUpperCase() + x.slice(1))
+        .classList.toggle('active', x === d);
+    });
+  }
+
+  function parseEnemies(raw) {
+    if (!raw.trim()) return null;
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  function appendMsg(cls, html) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + cls;
+    el.innerHTML = html;
+    const hist = document.getElementById('chatHistory');
+    hist.appendChild(el);
+    hist.scrollTop = hist.scrollHeight;
+    return el;
+  }
+
+  function renderStats(stats) {
+    const bar = document.getElementById('statsBar');
+    bar.style.display = 'flex';
+    const entityStr = Object.entries(stats.entities)
+      .map(([k,v]) => `${v}×${k}`).join(' · ') || '—';
+    bar.innerHTML = `
+      <div class="stat"><span class="k">Theme</span><span class="v">${stats.theme}</span></div>
+      <div class="stat"><span class="k">Nodes</span><span class="v">${stats.nodes}</span></div>
+      <div class="stat"><span class="k">Edges</span><span class="v">${stats.edges}</span></div>
+      <div class="stat"><span class="k">Entities</span><span class="v">${entityStr}</span></div>
+    `;
+  }
+
+  async function generate() {
+    const description = document.getElementById('prompt').value.trim();
+    if (!description) return;
+
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Generating…';
+
+    const theme     = document.getElementById('themeSelect').value || null;
+    const enemies   = parseEnemies(document.getElementById('enemyTypes').value);
+    const platforms = parseInt(document.getElementById('platformCount').value) || null;
+    const outPath   = document.getElementById('outputPath').value || 'level.ldtk';
+    const provider  = document.getElementById('providerSelect').value;
+    const model     = document.getElementById('modelName').value.trim() || null;
+
+    // Show user message
+    const constraintParts = [];
+    if (theme) constraintParts.push(`theme: ${theme}`);
+    if (enemies) constraintParts.push(`enemies: ${enemies.join(', ')}`);
+    if (platforms) constraintParts.push(`platforms: ${platforms}`);
+    constraintParts.push(`difficulty: ${currentDifficulty}`);
+    const meta = constraintParts.join(' · ');
+
+    appendMsg('user', `<div class="tag">${meta}</div>${description}`);
+
+    try {
+      const resp = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description,
+          theme,
+          enemy_types: enemies,
+          platform_count: platforms,
+          difficulty: currentDifficulty,
+          output_path: outPath,
+          provider,
+          model,
+          seed: Math.floor(Math.random() * 100000),
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (!data.success) {
+        appendMsg('err', `<div class="tag">Error</div>${data.error || 'Unknown error'}`);
+      } else {
+        document.getElementById('previewAscii').textContent = data.preview_ascii || '';
+        renderStats(data.stats);
+
+        const entityLines = Object.entries(data.stats.entities)
+          .map(([k,v]) => `${v}× ${k}`).join(', ') || 'none';
+        appendMsg('ai',
+          `<div class="tag">Generated · ${data.stats.theme}</div>` +
+          `<b>${data.stats.nodes}</b> platforms · <b>${data.stats.edges}</b> edges<br>` +
+          `Entities: ${entityLines}` +
+          `<div class="reload-hint">✓ Wrote <code>${data.output_path}</code><br>` +
+          `In LDtk: <b>File → Reload</b> (or press <kbd>Ctrl+R</kbd>)</div>`
+        );
+      }
+    } catch (err) {
+      appendMsg('err', `<div class="tag">Network error</div>${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '▶ Generate';
+    }
+  }
+
+  // Submit on Ctrl+Enter in the textarea
+  document.getElementById('prompt').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+  });
+</script>
+</body>
+</html>

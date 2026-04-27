@@ -11,6 +11,12 @@ dependencies = [
     "anthropic>=0.40",
 ]
 
+[project.optional-dependencies]
+server = [
+    "fastapi[standard]>=0.111",
+    "uvicorn[standard]>=0.29",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["symbolic*", "layout*", "llm*", "aesthetic*"]
+include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*"]

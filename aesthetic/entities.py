@@ -114,22 +114,26 @@ def place_entities(
     theme: Theme,
     density: float = 1.0,
     seed: int = 42,
+    custom_enemy_types: Optional[List[str]] = None,
 ) -> List[IREntity]:
     """Generate all aesthetic entity placements for a level.
 
     Parameters
     ----------
-    graph        : validated AbstractLevelGraph.
-    node_layouts : {node_id: NodeLayout} mapping from ``sugiyama_layout``.
-    theme        : active theme (supplies enemy archetype and enemy rate).
-    density      : global multiplier for entity counts (0 = none, 1 = normal).
-    seed         : RNG seed for deterministic output.
+    graph              : validated AbstractLevelGraph.
+    node_layouts       : {node_id: NodeLayout} mapping from ``sugiyama_layout``.
+    theme              : active theme (supplies enemy archetype and enemy rate).
+    density            : global multiplier for entity counts (0 = none, 1 = normal).
+    seed               : RNG seed for deterministic output.
+    custom_enemy_types : if provided, enemies are selected from this list
+                         (cycling with RNG) instead of ``theme.enemy_type``.
 
     Returns
     -------
     List[IREntity] to be appended to ``IRLevel.entities`` before serialisation.
     """
     rng = random.Random(seed)
+    _enemy_pool: List[str] = custom_enemy_types if custom_enemy_types else [theme.enemy_type]
     golden_path = _find_golden_path(graph)
     if not golden_path:
         return []
@@ -200,7 +204,7 @@ def place_entities(
                     metadata={
                         "difficulty": round(diff, 2),
                         "patrol": True,
-                        "archetype": theme.enemy_type,
+                        "archetype": rng.choice(_enemy_pool),
                     },
                 ))
 

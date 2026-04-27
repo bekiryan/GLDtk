@@ -72,7 +72,7 @@ _DEFAULT_PROVIDER_MODELS: Dict[str, str] = {
     "anthropic": "claude-sonnet-4-6",
     "openai": "gpt-4o-mini",
     "deepseek": "deepseek-chat",
-    "ollama": "llama3.1:8b",
+    "ollama": "llama3.1",
 }
 
 _OPENAI_COMPAT_BASE_URLS: Dict[str, str] = {
@@ -467,15 +467,25 @@ class LLMController:
     # Public API
     # ------------------------------------------------------------------
 
-    def generate(self, description: str) -> AbstractLevelGraph:
+    def generate(
+        self,
+        description: str,
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> AbstractLevelGraph:
         """Generate a valid, physics-verified level graph from *description*.
+
+        Parameters
+        ----------
+        description : natural-language level description.
+        constraints : optional structured overrides (theme, enemy_types,
+                      platform_count, difficulty) injected into the prompt.
 
         Raises
         ------
         MaxRetriesExceeded
             If no valid graph could be produced within *max_retries* attempts.
         """
-        messages = build_generate_messages(description)
+        messages = build_generate_messages(description, constraints)
         last_raw = ""
 
         for attempt in range(self._max_retries):

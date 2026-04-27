@@ -1,0 +1,2737 @@
+{
+  "__header__": {
+    "fileType": "LDtk Project JSON",
+    "app": "LDtk",
+    "schema": "https://ldtk.io/files/JSON_SCHEMA.json",
+    "appAuthor": "Deepnight Games",
+    "appVersion": "1.5.3",
+    "url": "https://ldtk.io"
+  },
+  "iid": "3ec81a0b-c83a-400a-9efa-c41ed602322b",
+  "jsonVersion": "1.5.3",
+  "appBuildId": 0,
+  "nextUid": 101,
+  "exportPng": false,
+  "exportTiled": false,
+  "simplifiedExport": false,
+  "imageExportMode": "None",
+  "externalLevels": false,
+  "defs": {
+    "layers": [
+      {
+        "__type": "Entities",
+        "identifier": "Entities",
+        "type": "Entities",
+        "uid": 2,
+        "doc": null,
+        "uiColor": null,
+        "gridSize": 16,
+        "guideGridWid": 0,
+        "guideGridHei": 0,
+        "displayOpacity": 1.0,
+        "inactiveOpacity": 0.6,
+        "hideInList": false,
+        "hideFieldsWhenInactive": true,
+        "canSelectWhenInactive": true,
+        "renderInWorldView": true,
+        "pxOffsetX": 0,
+        "pxOffsetY": 0,
+        "parallaxFactorX": 0.0,
+        "parallaxFactorY": 0.0,
+        "parallaxScaling": true,
+        "requiredTags": [],
+        "excludedTags": []
+      },
+      {
+        "__type": "IntGrid",
+        "identifier": "Collisions",
+        "type": "IntGrid",
+        "uid": 1,
+        "doc": null,
+        "uiColor": null,
+        "gridSize": 16,
+        "guideGridWid": 0,
+        "guideGridHei": 0,
+        "displayOpacity": 1.0,
+        "inactiveOpacity": 0.6,
+        "hideInList": false,
+        "hideFieldsWhenInactive": true,
+        "canSelectWhenInactive": true,
+        "renderInWorldView": true,
+        "pxOffsetX": 0,
+        "pxOffsetY": 0,
+        "parallaxFactorX": 0.0,
+        "parallaxFactorY": 0.0,
+        "parallaxScaling": true,
+        "requiredTags": [],
+        "excludedTags": [],
+        "intGridValues": [
+          {
+            "value": 1,
+            "identifier": "Solid",
+            "color": "#8b8b8b",
+            "tile": null,
+            "groupUid": 0
+          },
+          {
+            "value": 2,
+            "identifier": "Hazard",
+            "color": "#ff4422",
+            "tile": null,
+            "groupUid": 0
+          }
+        ],
+        "intGridValuesGroups": [],
+        "autoTilesetDefUid": null,
+        "autoRuleGroups": [],
+        "overrideTilesetUid": null,
+        "tilePivotX": 0,
+        "tilePivotY": 0
+      },
+      {
+        "__type": "Tiles",
+        "identifier": "Tiles",
+        "type": "Tiles",
+        "uid": 3,
+        "doc": null,
+        "uiColor": null,
+        "gridSize": 16,
+        "guideGridWid": 0,
+        "guideGridHei": 0,
+        "displayOpacity": 1.0,
+        "inactiveOpacity": 0.6,
+        "hideInList": false,
+        "hideFieldsWhenInactive": true,
+        "canSelectWhenInactive": true,
+        "renderInWorldView": true,
+        "pxOffsetX": 0,
+        "pxOffsetY": 0,
+        "parallaxFactorX": 0.0,
+        "parallaxFactorY": 0.0,
+        "parallaxScaling": true,
+        "requiredTags": [],
+        "excludedTags": [],
+        "tilesetDefUid": 100,
+        "tilePivotX": 0,
+        "tilePivotY": 0
+      }
+    ],
+    "entities": [
+      {
+        "identifier": "Start",
+        "uid": 10,
+        "tags": [],
+        "doc": null,
+        "exportToToc": false,
+        "allowOutOfBounds": false,
+        "color": "#00cc44",
+        "renderMode": "Cross",
+        "showName": true,
+        "tilesetId": null,
+        "tileRenderMode": "FitInside",
+        "tilePivotX": 0,
+        "tilePivotY": 0,
+        "hollow": false,
+        "fieldDefs": [],
+        "maxCount": 1,
+        "limitScope": "PerLevel",
+        "limitBehavior": "MoveLastOne",
+        "width": 16,
+        "height": 16,
+        "resizableX": false,
+        "resizableY": false,
+        "keepAspectRatio": false,
+        "pivotX": 0.5,
+        "pivotY": 1.0,
+        "nineSliceBorders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uiTileRect": null
+      },
+      {
+        "identifier": "Exit",
+        "uid": 11,
+        "tags": [],
+        "doc": null,
+        "exportToToc": false,
+        "allowOutOfBounds": false,
+        "color": "#ffcc00",
+        "renderMode": "Cross",
+        "showName": true,
+        "tilesetId": null,
+        "tileRenderMode": "FitInside",
+        "tilePivotX": 0,
+        "tilePivotY": 0,
+        "hollow": false,
+        "fieldDefs": [],
+        "maxCount": 1,
+        "limitScope": "PerLevel",
+        "limitBehavior": "MoveLastOne",
+        "width": 16,
+        "height": 16,
+        "resizableX": false,
+        "resizableY": false,
+        "keepAspectRatio": false,
+        "pivotX": 0.5,
+        "pivotY": 1.0,
+        "nineSliceBorders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uiTileRect": null
+      },
+      {
+        "identifier": "Coin",
+        "uid": 20,
+        "tags": [],
+        "doc": null,
+        "exportToToc": false,
+        "allowOutOfBounds": false,
+        "color": "#ffd700",
+        "renderMode": "Cross",
+        "showName": true,
+        "tilesetId": null,
+        "tileRenderMode": "FitInside",
+        "tilePivotX": 0,
+        "tilePivotY": 0,
+        "hollow": false,
+        "fieldDefs": [],
+        "maxCount": 0,
+        "limitScope": "PerLevel",
+        "limitBehavior": "MoveLastOne",
+        "width": 16,
+        "height": 16,
+        "resizableX": false,
+        "resizableY": false,
+        "keepAspectRatio": false,
+        "pivotX": 0.5,
+        "pivotY": 1.0,
+        "nineSliceBorders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uiTileRect": null
+      },
+      {
+        "identifier": "Key",
+        "uid": 21,
+        "tags": [],
+        "doc": null,
+        "exportToToc": false,
+        "allowOutOfBounds": false,
+        "color": "#cc44ff",
+        "renderMode": "Cross",
+        "showName": true,
+        "tilesetId": null,
+        "tileRenderMode": "FitInside",
+        "tilePivotX": 0,
+        "tilePivotY": 0,
+        "hollow": false,
+        "fieldDefs": [],
+        "maxCount": 1,
+        "limitScope": "PerLevel",
+        "limitBehavior": "MoveLastOne",
+        "width": 16,
+        "height": 16,
+        "resizableX": false,
+        "resizableY": false,
+        "keepAspectRatio": false,
+        "pivotX": 0.5,
+        "pivotY": 1.0,
+        "nineSliceBorders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uiTileRect": null
+      },
+      {
+        "identifier": "Enemy",
+        "uid": 22,
+        "tags": [],
+        "doc": null,
+        "exportToToc": false,
+        "allowOutOfBounds": false,
+        "color": "#ff2244",
+        "renderMode": "Cross",
+        "showName": true,
+        "tilesetId": null,
+        "tileRenderMode": "FitInside",
+        "tilePivotX": 0,
+        "tilePivotY": 0,
+        "hollow": false,
+        "fieldDefs": [],
+        "maxCount": 0,
+        "limitScope": "PerLevel",
+        "limitBehavior": "MoveLastOne",
+        "width": 16,
+        "height": 16,
+        "resizableX": false,
+        "resizableY": false,
+        "keepAspectRatio": false,
+        "pivotX": 0.5,
+        "pivotY": 1.0,
+        "nineSliceBorders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uiTileRect": null
+      },
+      {
+        "identifier": "Checkpoint",
+        "uid": 23,
+        "tags": [],
+        "doc": null,
+        "exportToToc": false,
+        "allowOutOfBounds": false,
+        "color": "#44aaff",
+        "renderMode": "Cross",
+        "showName": true,
+        "tilesetId": null,
+        "tileRenderMode": "FitInside",
+        "tilePivotX": 0,
+        "tilePivotY": 0,
+        "hollow": false,
+        "fieldDefs": [],
+        "maxCount": 1,
+        "limitScope": "PerLevel",
+        "limitBehavior": "MoveLastOne",
+        "width": 16,
+        "height": 16,
+        "resizableX": false,
+        "resizableY": false,
+        "keepAspectRatio": false,
+        "pivotX": 0.5,
+        "pivotY": 1.0,
+        "nineSliceBorders": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uiTileRect": null
+      }
+    ],
+    "tilesets": [
+      {
+        "identifier": "Tileset",
+        "uid": 100,
+        "relPath": "tilesets/dungeon.png",
+        "pxWid": 256,
+        "pxHei": 256,
+        "tileGridSize": 16,
+        "spacing": 0,
+        "padding": 0,
+        "cachedPixelData": null,
+        "customData": [],
+        "enumTags": [],
+        "tagsSourceEnumUid": null,
+        "savedSelections": []
+      }
+    ],
+    "enums": [],
+    "externalEnums": [],
+    "levelFields": []
+  },
+  "levels": [
+    {
+      "identifier": "Level_0",
+      "iid": "9909fb1a-d346-4858-8ced-ba404a9e9cca",
+      "uid": 0,
+      "worldX": 0,
+      "worldY": 0,
+      "worldDepth": 0,
+      "pxWid": 960,
+      "pxHei": 320,
+      "__neighbours": [],
+      "bgRelPath": null,
+      "externalRelPath": null,
+      "fieldInstances": [],
+      "bgPos": null,
+      "bgColor": "#0d0d1a",
+      "layerInstances": [
+        {
+          "__identifier": "Entities",
+          "__type": "Entities",
+          "__cWid": 60,
+          "__cHei": 20,
+          "__gridSize": 16,
+          "autoLayerTiles": [],
+          "entityInstances": [
+            {
+              "__identifier": "Start",
+              "__grid": [
+                2,
+                15
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 40,
+              "__worldY": 256,
+              "__worldZ": 0,
+              "__smartColor": "#00cc44",
+              "iid": "dadf5627-b4a8-4965-b9fb-e3cf43cafe29",
+              "width": 16,
+              "height": 16,
+              "defUid": 10,
+              "px": [
+                40,
+                256
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Exit",
+              "__grid": [
+                52,
+                10
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 840,
+              "__worldY": 176,
+              "__worldZ": 0,
+              "__smartColor": "#ffcc00",
+              "iid": "63f87ce8-5ee6-403e-befa-2f5cff505419",
+              "width": 16,
+              "height": 16,
+              "defUid": 11,
+              "px": [
+                840,
+                176
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                1,
+                14
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 24,
+              "__worldY": 240,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "b43aaf8d-000e-47aa-8f3f-b7167e37635b",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                24,
+                240
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                2,
+                14
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 40,
+              "__worldY": 240,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "1232c939-d81a-499f-97a2-55cfb955f030",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                40,
+                240
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                11,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 184,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "c2abfb03-60e5-491e-8155-047047648d39",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                184,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                12,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 200,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "e99a29ea-c5dc-4e79-be88-435f2938c781",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                200,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                21,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 344,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "7aa05bbb-af9f-4658-8387-5296e94d6c16",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                344,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                22,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 360,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "9b470859-7a5b-40b8-b1ba-5709c641b1de",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                360,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Key",
+              "__grid": [
+                22,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 360,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#cc44ff",
+              "iid": "03bd1901-0df8-4abf-b460-75fc46b921b9",
+              "width": 16,
+              "height": 16,
+              "defUid": 21,
+              "px": [
+                360,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                31,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 504,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "35a5d5ac-3913-47fe-bb12-a3562f1f2fd9",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                504,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                32,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 520,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "1724acdb-8338-46dc-8867-fe940604e217",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                520,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Enemy",
+              "__grid": [
+                32,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 520,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#ff2244",
+              "iid": "984f4b55-d0bb-455c-9058-79ddf62522e6",
+              "width": 16,
+              "height": 16,
+              "defUid": 22,
+              "px": [
+                520,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Checkpoint",
+              "__grid": [
+                32,
+                17
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 520,
+              "__worldY": 288,
+              "__worldZ": 0,
+              "__smartColor": "#44aaff",
+              "iid": "d3f03130-ee5d-41f4-8d8f-f0ba5adb9dd3",
+              "width": 16,
+              "height": 16,
+              "defUid": 23,
+              "px": [
+                520,
+                288
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                41,
+                13
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 664,
+              "__worldY": 224,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "c00d3d75-ed23-447a-8842-3eabd323a8b6",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                664,
+                224
+              ],
+              "fieldInstances": []
+            },
+            {
+              "__identifier": "Coin",
+              "__grid": [
+                42,
+                13
+              ],
+              "__pivot": [
+                0.5,
+                1.0
+              ],
+              "__tags": [],
+              "__tile": null,
+              "__worldX": 680,
+              "__worldY": 224,
+              "__worldZ": 0,
+              "__smartColor": "#ffd700",
+              "iid": "3f722a32-ae82-4581-a707-df5822eabb4b",
+              "width": 16,
+              "height": 16,
+              "defUid": 20,
+              "px": [
+                680,
+                224
+              ],
+              "fieldInstances": []
+            }
+          ],
+          "gridTiles": [],
+          "iid": "9e6b9bbf-c3c5-4505-89d8-4cc5ef2edff4",
+          "intGridCsv": [],
+          "layerDefUid": 2,
+          "levelId": 0,
+          "overrideTilesetUid": null,
+          "pxOffsetX": 0,
+          "pxOffsetY": 0,
+          "seed": 0,
+          "visible": true
+        },
+        {
+          "__identifier": "Tiles",
+          "__type": "Tiles",
+          "__cWid": 60,
+          "__cHei": 20,
+          "__gridSize": 16,
+          "autoLayerTiles": [],
+          "entityInstances": [],
+          "gridTiles": [
+            {
+              "px": [
+                0,
+                16
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                60
+              ]
+            },
+            {
+              "px": [
+                16,
+                16
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                61
+              ]
+            },
+            {
+              "px": [
+                32,
+                16
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                62
+              ]
+            },
+            {
+              "px": [
+                48,
+                16
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                63
+              ]
+            },
+            {
+              "px": [
+                64,
+                16
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                64
+              ]
+            },
+            {
+              "px": [
+                0,
+                112
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                420
+              ]
+            },
+            {
+              "px": [
+                16,
+                112
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                421
+              ]
+            },
+            {
+              "px": [
+                32,
+                112
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                422
+              ]
+            },
+            {
+              "px": [
+                48,
+                112
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                423
+              ]
+            },
+            {
+              "px": [
+                64,
+                112
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                424
+              ]
+            },
+            {
+              "px": [
+                800,
+                160
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                650
+              ]
+            },
+            {
+              "px": [
+                816,
+                160
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                651
+              ]
+            },
+            {
+              "px": [
+                832,
+                160
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                652
+              ]
+            },
+            {
+              "px": [
+                848,
+                160
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                653
+              ]
+            },
+            {
+              "px": [
+                864,
+                160
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                654
+              ]
+            },
+            {
+              "px": [
+                640,
+                224
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                880
+              ]
+            },
+            {
+              "px": [
+                656,
+                224
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                881
+              ]
+            },
+            {
+              "px": [
+                672,
+                224
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                882
+              ]
+            },
+            {
+              "px": [
+                688,
+                224
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                883
+              ]
+            },
+            {
+              "px": [
+                704,
+                224
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                884
+              ]
+            },
+            {
+              "px": [
+                0,
+                240
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                900
+              ]
+            },
+            {
+              "px": [
+                16,
+                240
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                901
+              ]
+            },
+            {
+              "px": [
+                32,
+                240
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                902
+              ]
+            },
+            {
+              "px": [
+                48,
+                240
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                903
+              ]
+            },
+            {
+              "px": [
+                64,
+                240
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                904
+              ]
+            },
+            {
+              "px": [
+                0,
+                288
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                1080
+              ]
+            },
+            {
+              "px": [
+                16,
+                288
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                1081
+              ]
+            },
+            {
+              "px": [
+                32,
+                288
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                1082
+              ]
+            },
+            {
+              "px": [
+                48,
+                288
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                1083
+              ]
+            },
+            {
+              "px": [
+                64,
+                288
+              ],
+              "src": [
+                48,
+                32
+              ],
+              "f": 0,
+              "t": 35,
+              "a": 1.0,
+              "d": [
+                1084
+              ]
+            },
+            {
+              "px": [
+                160,
+                288
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                1090
+              ]
+            },
+            {
+              "px": [
+                176,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1091
+              ]
+            },
+            {
+              "px": [
+                192,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1092
+              ]
+            },
+            {
+              "px": [
+                208,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1093
+              ]
+            },
+            {
+              "px": [
+                224,
+                288
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                1094
+              ]
+            },
+            {
+              "px": [
+                320,
+                288
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                1100
+              ]
+            },
+            {
+              "px": [
+                336,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1101
+              ]
+            },
+            {
+              "px": [
+                352,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1102
+              ]
+            },
+            {
+              "px": [
+                368,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1103
+              ]
+            },
+            {
+              "px": [
+                384,
+                288
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                1104
+              ]
+            },
+            {
+              "px": [
+                480,
+                288
+              ],
+              "src": [
+                48,
+                0
+              ],
+              "f": 0,
+              "t": 3,
+              "a": 1.0,
+              "d": [
+                1110
+              ]
+            },
+            {
+              "px": [
+                496,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1111
+              ]
+            },
+            {
+              "px": [
+                512,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1112
+              ]
+            },
+            {
+              "px": [
+                528,
+                288
+              ],
+              "src": [
+                48,
+                16
+              ],
+              "f": 0,
+              "t": 19,
+              "a": 1.0,
+              "d": [
+                1113
+              ]
+            },
+            {
+              "px": [
+                544,
+                288
+              ],
+              "src": [
+                64,
+                0
+              ],
+              "f": 0,
+              "t": 4,
+              "a": 1.0,
+              "d": [
+                1114
+              ]
+            }
+          ],
+          "iid": "530e3f75-0a73-40f1-bcc2-bf05f286586e",
+          "intGridCsv": [],
+          "layerDefUid": 3,
+          "levelId": 0,
+          "overrideTilesetUid": 100,
+          "pxOffsetX": 0,
+          "pxOffsetY": 0,
+          "seed": 0,
+          "visible": true
+        },
+        {
+          "__identifier": "Collisions",
+          "__type": "IntGrid",
+          "__cWid": 60,
+          "__cHei": 20,
+          "__gridSize": 16,
+          "autoLayerTiles": [],
+          "entityInstances": [],
+          "gridTiles": [],
+          "iid": "8bdc54d6-9ee2-49ab-9c29-ba16a7ea7835",
+          "intGridCsv": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            2,
+            2,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            2,
+            2,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "layerDefUid": 1,
+          "levelId": 0,
+          "overrideTilesetUid": null,
+          "pxOffsetX": 0,
+          "pxOffsetY": 0,
+          "seed": 0,
+          "visible": true
+        }
+      ]
+    }
+  ],
+  "worlds": []
+}

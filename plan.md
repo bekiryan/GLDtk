@@ -1,140 +1,62 @@
-# GLDtk Implementation Plan and Status (April 26, 2026)
+# GLDtk × LDtk Native Integration
 
-## Scope
-This file maps the requested roadmap (Parts 1-4) to the current repository state,
-including what is fully implemented and what still remains.
+## Goal
 
-## Part 1: Symbolic Foundation
+Embed GLDtk as a panel **inside** the LDtk Electron window — no separate browser
+tab. When the designer generates a level the project file is written and LDtk
+reloads it automatically, all without leaving the editor.
 
-### 1.1 Graph Schema
-Status: DONE
+## Architecture
 
-Implemented:
-- Class-based typed schema in symbolic/schema.py
-- Node types: Start, Exit, Platform, Hazard
-- Edge types: Walk, Jump, Fall
-- Edge stores dx, dy, launch velocity (vx, vy)
-- NetworkX-backed graph wrapper with solvability queries
+```
+┌──────────────────────────────────────────────────────────────┐
+│  LDtk Electron window                                        │
+│                                                              │
+│  ┌─────────────────────────────┐  ┌───────────────────────┐ │
+│  │  LDtk canvas (unchanged)    │  │  GLDtk panel (injected)│ │
+│  │                             │  │  [chat history]       │ │
+│  │  levels / tilesets / layers │  │  [Theme] [Enemies]    │ │
+│  │                             │  │  [Difficulty] [Count] │ │
+│  │  ← auto-reloads via IPC     │  │  [Prompt textarea]    │ │
+│  │    when generation finishes │  │  [▶ Generate]         │ │
+│  └─────────────────────────────┘  └───────────────────────┘ │
+└─────────────────────────┬────────────────────────────────────┘
+                          │ IPC reload + fetch POST /generate
+                ┌─────────▼──────────┐
+                │ GLDtk Python server │
+                │ localhost:8765      │
+                └────────────────────┘
+```
 
-### 1.2 Jump Reachability Oracle
-Status: DONE
+## How the injection works
 
-Implemented:
-- Deterministic jump feasibility check in symbolic/physics.py
-- Kinematic validation with gravity/jump_v constraints
-- Optional horizontal speed cap support
-- Required launch velocity solver and fall-time utility
+LDtk ships with `nodeIntegration: true, contextIsolation: false` — its renderer
+has full Node.js access. We do **not** touch any Haxe source. Instead:
 
-### 1.3 Level-to-Graph Extractor
-Status: DONE
+1. `patch.sh` clones LDtk, runs `npm install`, then makes two small edits:
+   - Appends `<script src="gldtk-panel.js"></script>` to `app/assets/app.html`
+   - Appends our IPC snippet to `app/assets/main.js`
+2. `gldtk-panel.js` is copied into `app/assets/` — it creates the right-side panel.
+3. On "Generate", the panel POSTs to the Python server, which writes the `.ldtk` file.
+4. The panel sends `ipcRenderer.send('gldtk-reload')` → main process calls
+   `mainWindow.webContents.reloadIgnoringCache()` → LDtk reloads and shows the
+   new level (chat history survives via `localStorage`).
 
-Implemented:
-- Tile-grid to abstract graph conversion in symbolic/extractor.py
-- Surface span detection and node construction
-- Deterministic edge classification (walk/jump/fall) using physics oracle
-- Hazard/source constraints applied during edge generation
+## Task list
 
-## Part 2: Structural Engine
+- [x] 1. `ldtk-integration/patch.sh` — clone LDtk, inject files, launch
+- [x] 2. `ldtk-integration/gldtk-panel.js` — full chat panel with generation + reload
+- [x] 3. `ldtk-integration/gldtk-panel.css` — panel styles
+- [x] 4. `ldtk-integration/reload-bridge.js` — IPC snippet appended to LDtk main.js
+- [ ] 5. End-to-end test + README section
 
-### 2.1 IRLevel (Internal Representation)
-Status: DONE
+## Files created / modified
 
-Implemented:
-- Version-independent IR model in layout/ir.py
-- Tile grid, entities, metadata, bounds-safe accessors
-- Serialization helpers and debug ASCII rendering
-
-### 2.2 Sugiyama Layout Engine
-Status: DONE
-
-Implemented:
-- Four-phase layered layout in layout/sugiyama.py
-- Golden path extraction (Start -> Exit shortest path)
-- Layer assignment, barycenter ordering, row assignment by edge type
-- Rasterization into IRLevel
-
-### 2.3 LDtk Adapter
-Status: DONE
-
-Implemented:
-- LDtk v1.5.3 project dict serializer in layout/ldtk_adapter.py
-- Stable UID mapping, layer definitions, entity definitions
-- IntGrid and Entities layer instances
-- Optional aesthetic Tiles layer support via AestheticData
-
-## Part 3: Neural Integration
-
-### 3.1 Prompt Engineering
-Status: DONE
-
-Implemented:
-- Strict JSON system prompt with hard constraints in llm/prompt.py
-- Embedded few-shot examples
-- Message builders for initial generation and repair turns
-
-### 3.2 Validator Loop
-Status: DONE
-
-Implemented:
-- Parse + structural + physics validation in llm/validator.py
-- Controller loop: generate -> validate -> patch -> repair
-- Structured validation error messages for targeted re-prompts
-
-### 3.3 Symbolic Patcher
-Status: DONE
-
-Implemented:
-- Deterministic patch strategies in llm/patcher.py
-- Edge reclassification, velocity recompute, stepping-stone insertion
-- Missing terminal node defaults
-
-## Part 4: Aesthetic Layer
-
-### 4.1 Auto-tiling Rules
-Status: DONE
-
-Implemented:
-- NSEW bitmask auto-tiling in aesthetic/autotile.py
-- Corner/edge/fill/cap/single role mapping
-- Hazard-specific tile role handling
-
-### 4.2 Entity Placement
-Status: DONE
-
-Implemented:
-- Golden-path weighted placement in aesthetic/entities.py
-- Coins/Key/Enemy/Checkpoint placement with deterministic RNG seed
-- Enemy archetype recorded in metadata while using canonical Enemy entity type
-
-### 4.3 Theme Mapping
-Status: DONE
-
-Implemented:
-- Keyword-driven theme detection in aesthetic/themes.py
-- Theme registry for Dungeon/Forest/Sky + default fallback
-- Tileset/background/enemy profile mapping
-
-### 4.x Integration completion done in this pass
-Status: DONE
-
-Implemented now:
-- Added aesthetic integration pipeline in aesthetic/pipeline.py
-  - Theme detection + autotile + entity placement + AestheticData build
-  - Optional entity attachment into IRLevel in one call
-- Added aesthetic package exports in aesthetic/__init__.py
-- Fixed LDtk entity identifier mapping for themed enemy aliases
-- Updated package discovery in pyproject.toml to include llm* and aesthetic*
-
-## Remaining Work
-
-Roadmap-critical remaining items: NONE.
-
-Recommended engineering follow-ups:
-- Add unit tests for:
-  - jump oracle edge cases
-  - extractor edge typing
-  - validator + patch loop behavior
-  - aesthetic pipeline deterministic output snapshots
-- Add one end-to-end demo script that runs:
-  prompt -> graph -> layout -> aesthetic -> LDtk JSON file output
-- Add README usage docs for API entry points and expected coordinate system
+| File | Action |
+|------|--------|
+| `ldtk-integration/patch.sh` | NEW — setup & launch script |
+| `ldtk-integration/gldtk-panel.js` | NEW — panel logic |
+| `ldtk-integration/gldtk-panel.css` | NEW — panel styles |
+| `ldtk-integration/reload-bridge.js` | NEW — IPC bridge |
+| `plan.md` | UPDATED (this file) |
+| `README.md` | TODO — add LDtk integration section |

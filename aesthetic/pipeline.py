@@ -10,7 +10,7 @@ Builds all Part 4 outputs in one deterministic pass:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from layout.ir import IREntity, IRLevel
 from layout.ldtk_adapter import AestheticData
@@ -28,7 +28,7 @@ class AestheticBuildResult:
 
     theme: Theme
     aesthetic: AestheticData
-    placed_entities: list[IREntity]
+    placed_entities: List[IREntity]
 
 
 def build_aesthetic_layer(
@@ -40,19 +40,22 @@ def build_aesthetic_layer(
     density: float = 1.0,
     seed: int = 42,
     attach_entities: bool = True,
+    custom_enemy_types: Optional[List[str]] = None,
 ) -> AestheticBuildResult:
     """Build and optionally attach all Part 4 outputs to an IR level.
 
     Parameters
     ----------
-    description : free-text level description used for keyword theme detection.
-    graph : abstract graph used for golden-path driven placements.
-    node_layouts : mapping from ``sugiyama_layout``.
-    ir_level : rasterized level to auto-tile and enrich with entities.
-    theme_override : explicit theme identifier (e.g. "dungeon", "forest").
-    density : global multiplier for collectible/enemy density.
-    seed : deterministic RNG seed for placement decisions.
-    attach_entities : append generated entities to ``ir_level.entities``.
+    description        : free-text level description for keyword theme detection.
+    graph              : abstract graph used for golden-path driven placements.
+    node_layouts       : mapping from ``sugiyama_layout``.
+    ir_level           : rasterized level to auto-tile and enrich with entities.
+    theme_override     : explicit theme identifier (e.g. "dungeon", "forest").
+    density            : global multiplier for collectible/enemy density.
+    seed               : deterministic RNG seed for placement decisions.
+    attach_entities    : append generated entities to ``ir_level.entities``.
+    custom_enemy_types : if provided, enemies are drawn from this list instead
+                         of the theme's default enemy archetype.
 
     Returns
     -------
@@ -67,6 +70,7 @@ def build_aesthetic_layer(
         theme=theme,
         density=density,
         seed=seed,
+        custom_enemy_types=custom_enemy_types,
     )
 
     if attach_entities:

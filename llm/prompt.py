@@ -28,7 +28,7 @@ need to compute those fields.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Static system prompt  (kept constant so Anthropic's prompt cache never busts)
@@ -124,9 +124,42 @@ OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
 # Message builders
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_generate_messages(description: str) -> List[Dict[str, Any]]:
-    """First-turn message list for a fresh generation request."""
-    return [{"role": "user", "content": description.strip()}]
+def build_generate_messages(
+    description: str,
+    constraints: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """First-turn message list for a fresh generation request.
+
+    Parameters
+    ----------
+    description  : natural-language level description.
+    constraints  : optional structured designer overrides injected as a
+                   CONSTRAINTS block appended to the user message.
+                   Recognised keys: theme, enemy_types, platform_count,
+                   difficulty.
+    """
+    content = description.strip()
+    if constraints:
+        lines = []
+        if constraints.get("theme"):
+            lines.append(f"- Theme: {constraints['theme']}")
+        if constraints.get("enemy_types"):
+            types = ", ".join(constraints["enemy_types"])
+            lines.append(f"- Enemy types: {types} (use only these, no substitution)")
+        if constraints.get("platform_count"):
+            n = constraints["platform_count"]
+            lines.append(f"- Target platform count: {n} (aim for this many Platform nodes)")
+        if constraints.get("difficulty"):
+            d = constraints["difficulty"]
+            notes = {
+                "easy":   "few jumps, many coins, rare enemies",
+                "medium": "balanced jumps, coins, and enemies",
+                "hard":   "many jumps, fewer coins, frequent enemies",
+            }
+            lines.append(f"- Difficulty: {d} ({notes.get(d, d)})")
+        if lines:
+            content += "\n\nCONSTRAINTS (follow exactly):\n" + "\n".join(lines)
+    return [{"role": "user", "content": content}]
 
 
 def build_repair_messages(
