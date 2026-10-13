@@ -76,7 +76,7 @@ def _neighbour_mask(ir: IRLevel, col: int, row: int, tile_val: TileValue) -> int
 
 
 def _role_to_entry(col: int, row: int, role: TileRole, theme: Theme) -> TileEntry:
-    addr = theme.tile(role)
+    addr = theme.tile_for(role, col, row)  # variants chosen deterministically
     return TileEntry(col=col, row=row, src_x=addr.src_x, src_y=addr.src_y)
 
 
