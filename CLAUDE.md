@@ -119,3 +119,7 @@ EOF
 ```
 
 The generator script is not saved as a file — it lives in the conversation history. To regenerate, recreate it using the spec in `aesthetic/themes.py` docstring (5×3 tile regions, `base_x` offsets 0/80/160).
+
+## v2 work in progress
+
+A major extension (full prompt fidelity, entity catalog, Game Profile, regional editing, AI art) is underway on branch `feat/v2`. The settled design is in `docs/v2/DESIGN.md`, and part-by-part status is in `docs/v2/PROGRESS.md`. Read both before working on v2.
