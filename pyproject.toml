@@ -19,6 +19,7 @@ server = [
 dev = [
     "pytest>=8",
     "pillow>=10",
+    "jsonschema>=4",
 ]
 
 [tool.setuptools.packages.find]
