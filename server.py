@@ -26,6 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from aesthetic import build_aesthetic_layer
 from aesthetic.themes import THEMES, Theme, copy_theme_assets, detect_theme
+from api import art_routes
 from api.models import GenerateRequest, GenerateResponse, LevelStats
 from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
 from game.profile import (
@@ -84,6 +85,7 @@ provider_factory: Callable[[GenerateRequest], LLMProvider] = default_provider_fa
 
 
 app = FastAPI(title="GLDtk Companion", version="0.1.0")
+app.include_router(art_routes.router)
 
 
 @app.exception_handler(RequestValidationError)

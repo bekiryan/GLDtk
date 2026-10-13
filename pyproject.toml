@@ -16,15 +16,18 @@ server = [
     "fastapi[standard]>=0.111",
     "uvicorn[standard]>=0.29",
 ]
+art = [
+    "pillow>=10",
+]
 dev = [
     "pytest>=8",
-    "pillow>=10",
+    "gldtk[art]",
     "jsonschema>=4",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*", "spec*", "game*", "pipeline*"]
+include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*", "spec*", "game*", "pipeline*", "art*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
