@@ -86,7 +86,9 @@ App.ME.loadProject(path)   ← called from GldtkSidebar.hx after server responds
 
 **GameProfile** (`game/profile.py`, file `gldtk.game.json` beside the `.ldtk`): physics (gravity, jump_v, run_speed, walk_step_px) and abilities (double_jump, dash, wall_jump). It replaces the old `PhysicsParams`. The oracle entry points are `reachable()` / `best_ability()` in `symbolic/physics.py`; edges carry `metadata["ability"]` and `metadata["gravity_scale"]` (from the source section).
 
-**Tileset layout** (`aesthetic/themes.py`): Three themes share one 256×256 PNG. Each occupies a 5×3 tile region at `base_x` offset: Dungeon=0, Forest=80, Sky=160. Placeholder PNGs live in `tilesets/`. Replace with real art — no code changes needed.
+**Asset library** (`assets/manifest.json`, loaded by `aesthetic/library.py`): 8 CC0 themes and 25 sprites (licences in `assets/LICENSES.md`). Each theme is its own 80×64 sheet: the 14 tile roles in a 5×3 grid plus a row of CENTER variants. `THEMES` in `aesthetic/themes.py` is built from the manifest. The server copies the sheet to `<ldtk_dir>/gldtk_assets/themes/` and the `.ldtk` references it there. Rebuild sheets with `python scripts/build_assets.py`. `tilesets/` only remains for the old v1 `level.ldtk` sample.
+
+**LDtk export** (`layout/ldtk_adapter.py`, catalog in `spec/catalog.py`, reader in `layout/ldtk_reader.py`): every entity kind has typed `fieldDefs`; GLDtk state is stored in the level fields `gldtk_prompt`, `gldtk_sections`, `gldtk_requirements`, `gldtk_game_profile`, `gldtk_spec` and `gldtk_version`. Exports are validated in tests against `ldtk-src/docs/JSON_SCHEMA.json`.
 
 **LDtk JSON format** (`layout/ldtk_adapter.py`): Layer instances require `__tilesetRelPath`, `__tilesetDefUid`, `__opacity`, `optionalRules` (cached computed fields). Levels require `__bgColor`, `__smartColor`. Project root requires `bgColor`, `worldLayout`, `flags`, etc. Missing any of these causes silent blank rendering in LDtk.
 
@@ -119,18 +121,6 @@ To add a new generation parameter (e.g. a new constraint):
 2. `server.py` — thread into `LayoutConfig` or `constraints` dict
 3. `GldtkSidebar.hx` — add DOM input, read value, `Reflect.setField(payload, "key", value)`
 4. Rebuild Haxe renderer
-
-## Tileset regeneration
-
-```bash
-source .venv/bin/activate
-python - << 'EOF'
-# Run the inline tileset generator from the session that created tilesets/
-# (see aesthetic/themes.py for layout spec)
-EOF
-```
-
-The generator script is not saved as a file — it lives in the conversation history. To regenerate, recreate it using the spec in `aesthetic/themes.py` docstring (5×3 tile regions, `base_x` offsets 0/80/160).
 
 ## v2 work in progress
 

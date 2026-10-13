@@ -27,7 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from aesthetic import build_aesthetic_layer
 from aesthetic.themes import THEMES, Theme, copy_theme_assets, detect_theme
 from api.models import GenerateRequest, GenerateResponse, LevelStats
-from layout import to_ldtk_dict
+from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
 from game.profile import (
     PROFILE_FILENAME,
     GameProfile,
@@ -272,7 +272,17 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         out.parent.mkdir(parents=True, exist_ok=True)
         # The .ldtk references the theme sheet relative to itself.
         copy_theme_assets(result.theme, out.parent)
-        doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
+        level_meta = LevelMeta(
+            prompt=req.description,
+            requirements=list(spec.requirements),
+            game_profile_relpath=os.path.relpath(Path(profile_path).resolve(), out.parent.resolve()),
+            spec_json=spec,
+        )
+        tw, th = profile.player_tiles()
+        ldtk_cfg = LDtkConfig(player_px=(tw * profile.tile_size, th * profile.tile_size))
+        doc, export_warnings = to_ldtk_dict_with_warnings(
+            ir, aesthetic=result.aesthetic, cfg=ldtk_cfg, level_meta=level_meta
+        )
         out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Serialisation error: {exc}")
@@ -300,7 +310,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         sections=sections,
         profile_path=str(profile_path.resolve()),
         verified=built.report.ok,
-        warnings=built.warnings,
+        warnings=built.warnings + export_warnings,
     )
 
 

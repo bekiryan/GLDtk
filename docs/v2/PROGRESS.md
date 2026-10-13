@@ -10,8 +10,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 1 | Level spec schema + structured-output providers | strong | ✅ | see git log |
 | 2 | Game Profile + ability-aware physics | strong | ✅ | see git log |
 | 3 | Layout v2 (+ physics re-verification on the final grid) | strong | ✅ | see git log |
-| 4 | Entity catalog + full LDtk export | medium | ⏳ running (worktree) | |
-| **M1** | **User review: prompt → detailed level end to end** | | ⬜ | |
+| 4 | Entity catalog + full LDtk export | medium | ✅ | see git log |
+| **M1** | **User review: prompt → detailed level end to end** | | ⏳ waiting for user | |
 | 7 | Fidelity report | strong | ⬜ | |
 | 9 | Sidebar UI (Haxe) | medium | ⬜ | |
 | **M2** | **User review in LDtk** | | ⬜ | |
@@ -19,7 +19,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 8 | Regional editing + undo | strong | ⬜ | |
 | **M3** | **User review** | | ⬜ | |
 | 10 | Evaluation harness | light | ⬜ | |
-| 6 | AI theme/sprite generation | medium | ⬜ | |
+| 6 | AI theme/sprite generation | medium | ⏳ running (worktree, pulled forward) | |
 | **M4** | **Final review** | | ⬜ | |
 
 ## Notes
@@ -29,3 +29,4 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 - 2026-10-13: Part 3 done ([spec](parts/03-layout-v2.md)). 136 offline tests pass. The layout keeps the LLM's coordinates (`col=round(x/16)`, `row=H-1-round(y/16)`) and section order. The final grid is verified with hitbox-swept trajectories (12×24 px, 6 px samples), repaired deterministically (stepping stones, nudges), and the LLM is re-prompted only as a last resort. A 300×100 level with 87 nodes builds in about 1.6 s; the 50-seed property test verified 50/50. Open: the gravity scale of the starting section applies to the whole arc; walking under a low ceiling along one span is not checked; wall-jump paths are approximate; the server writes no `.ldtk` when verification fails.
 - 2026-10-13: The user asked for independent parts to run in parallel. Parts 4 and 5 run at the same time in separate git worktrees (they edit disjoint files), and the orchestrator merges them and does the server wiring. Milestone review points are unchanged.
 - 2026-10-13: Part 5 done ([spec](parts/05-asset-library.md)). Three Kenney CC0 packs (Tiny Dungeon, Tiny Town, 1-Bit), 8 themes and 25 sprites in `assets/manifest.json`, about 250 KB. Six of the themes use derived edge tiles (texture plus outline and top band), because the packs have no platformer edge sets; only forest and castle use real 3×3 blocks. The orchestrator reviewed `assets/preview.png` and had cave and sky redone. The server copies the theme sheet to `<ldtk_dir>/gldtk_assets/themes/`. Still to do: delete `tilesets/` once the default in `ldtk_adapter.AestheticData` (Part 4) no longer references it; use `find_sprite` for entity sprites when wiring Part 4.
+- 2026-10-13: Part 4 done ([spec](parts/04-entity-catalog.md)). It was merged from its worktree into `feat/v2` (only conflict: dev deps in pyproject). There are 193 tests, and exports validate against LDtk's JSON schema. Fixing that schema validation also fixed about 45 schema violations the v1 export already had. The server passes `LevelMeta` (prompt, requirements, profile path, full spec) and the player hitbox size, and returns export warnings. `read_level` round-trips the export and keeps iids, which Part 8 needs. Open: no export has been opened in the LDtk app yet (check at M1); LDtk re-saving doubles backslashes in string fields, and the reader compensates; entity sprites are not shown in LDtk yet (Part 4 exports kinds with colour only; `find_sprite` exists).

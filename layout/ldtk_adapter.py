@@ -80,9 +80,9 @@ class AestheticData:
     tile_entries: List[TileEntry] = field(default_factory=list)
     bg_color: str = "#1a1a2e"
     tileset_uid: int = 100
-    tileset_rel_path: str = "tilesets/dungeon.png"
-    tileset_px_width: int = 256
-    tileset_px_height: int = 256
+    tileset_rel_path: str = "gldtk_assets/themes/dungeon.png"
+    tileset_px_width: int = 80
+    tileset_px_height: int = 64
 
 
 # ─────────────────────────────────────────────────────────────────────────────
