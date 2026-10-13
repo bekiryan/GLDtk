@@ -13,6 +13,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 4 | Entity catalog + full LDtk export | medium | ✅ | see git log |
 | **M1** | **User review: prompt → detailed level end to end** | | ⏳ waiting for user | |
 | 7 | Fidelity report + completeness loop | strong | ✅ | see git log |
+| 7b | M1 fixes (export, layout, art) | medium | ✅ | see git log |
 | 9 | Sidebar UI (Haxe) | medium | ⬜ | |
 | **M2** | **User review in LDtk** | | ⬜ | |
 | 5 | Asset library | light | ✅ (pulled forward) | see git log |
@@ -41,12 +42,17 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 
 - 2026-10-13: Part 7 done ([spec](parts/07-fidelity.md)); 248 tests pass. `Requirement.check` is a flat, nullable object (`type`: entity_count, start_item, section, ability, size, gravity or none). `fidelity/` holds the checker, the report and the deterministic fill; the loop is in `pipeline/completeness.py`. The fill adds missing entities, start items and size; then there is **at most one** LLM re-prompt (`complete_spec`) for whatever it cannot fill. Score = (satisfied + 0.5·approximated) / checkable items, or None when nothing is checkable. `GenerateResponse.fidelity` carries the report. The fill runs again after every grid re-prompt. Open: overlapping requirements can be met by the same entities; the fill can overcrowd small sections (placement handles it with warnings); the new prompt and layout guidance has not been tried on a real LLM; the report is not stored in the `.ldtk` yet (Part 8/9).
 
+- 2026-10-13: M1 fixes done ([spec](parts/07b-m1-fixes.md)) and merged; 265 tests pass.
+  - **Bug 3 root cause:** the `defs.layers` order did not match `layerInstances`. `Level.tidy()` (`Level.hx` ~628) re-sorted the layers and invalidated the JSON cache, so the editor flagged the level as needing a save. The same re-sort put the IntGrid on top of the tiles (bug 2).
+  - **Release builds:** `appBuildId` was 0, which would make LDtk ask to re-save (`ProjectLoader.hx`, `#if !debug`).
+  - **Layers:** now Entities, then one Tiles layer per section theme, then Collisions at 0.5 opacity.
+  - **Crowding:** one entity per 2 tiles. A crowded platform is widened first; otherwise the extra entities move to a platform in the same section.
+  - **Sprites:** packed into `gldtk_assets/sprites.png`. Each instance carries an `F_Tile` field `sprite_tile`, chosen with `find_sprite`.
+  - **Cleanup:** `tilesets/` and the root v1 `level.ldtk` were deleted. Pillow is now in the `server` extra.
+  - **App test** (`demo_m1/fix/level.ldtk`, fake provider): layer order correct, tiles in full colour with a per-section sheet, sprite icons in the palette and on the canvas, and no `*` after opening.
+
 ## Next steps (resume here)
-1. **Part 7 (fidelity report + completeness loop):** spec written: [parts/07-fidelity.md](parts/07-fidelity.md). Next, dispatch it in a worktree (strong model).
-2. **In parallel, "M1 fixes"**, spec written: [parts/07b-m1-fixes.md](parts/07b-m1-fixes.md). Dispatch it in a worktree (medium model). It covers:
-   - app-test bugs 2, 3 and 5 above;
-   - library sprites as LDtk entity icons;
-   - per-section tilesets.
-3. Then **Part 9** (sidebar), including app-test bugs 1 and 4. Then M2.
-- Merged worktree branches can be deleted: `worktree-agent-a4c95…` (Part 5), `aa72ba…` (Part 4), `ae8be5…` (Part 6).
-- App testing: Playwright `_electron` with `args: ['.']`, `cwd = ldtk-src/app`. Open a level by stubbing `dialog.showOpenDialog` in the main process, then clicking `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`.
+1. **Part 9 (sidebar UI, Haxe):** Game Profile panel, fidelity report view (`GenerateResponse.fidelity`), section dropdown, rectangle selection mode, undo button, provider selector. Also app-test bugs 1 (blank canvas after the in-app reload) and 4 (the "No project open" label). Write `parts/09-sidebar.md` first. Haxe changes are committed and pushed in `ldtk-src` on its own `feat/v2`.
+2. Then **M2**: the user reviews in LDtk. Try the new prompt guidance with a real Gemini run (the Flash quota resets daily).
+- Merged worktree branches can be deleted: Parts 4, 5, 6, 7 and M1 fixes (`worktree-agent-*`).
+- App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash screen). Stub `dialog.showOpenDialog` in the main process, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`.
