@@ -40,8 +40,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   5. Platforms are 3 tiles wide, and entities crowd onto one platform (coin, enemy and checkpoint together). Needs prompt and layout guidance.
 
 ## Next steps (resume here)
-1. **Part 7 (fidelity report + completeness loop):** a deterministic check of requirements against the spec runs before layout, and missing items go back to the LLM. Write `parts/07-fidelity.md`, then run it in a worktree.
-2. **In parallel, "M1 fixes"** (worktree; touches export and layout only):
+1. **Part 7 (fidelity report + completeness loop):** spec written: [parts/07-fidelity.md](parts/07-fidelity.md). Next, dispatch it in a worktree (strong model).
+2. **In parallel, "M1 fixes"**, spec written: [parts/07b-m1-fixes.md](parts/07b-m1-fixes.md). Dispatch it in a worktree (medium model). It covers:
    - app-test bugs 2, 3 and 5 above;
    - library sprites as LDtk entity icons;
    - per-section tilesets.
