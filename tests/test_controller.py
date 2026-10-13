@@ -29,7 +29,9 @@ def test_valid_on_first_try(load_fixture):
     assert ctrl.stats.attempts == 1
     assert ctrl.stats.success and not ctrl.stats.patched
     assert fake.calls[0].system == SYSTEM_PROMPT
-    assert fake.calls[0].messages == [{"role": "user", "content": "A meadow then a dungeon."}]
+    [msg] = fake.calls[0].messages
+    assert msg["role"] == "user"
+    assert msg["content"].startswith("A meadow then a dungeon.\n\nGAME PROFILE")
 
 
 def test_invalid_is_patched_without_second_call(load_fixture):
@@ -50,7 +52,8 @@ def test_invalid_json_triggers_repair_with_error_text(fixtures_dir):
     assert spec.title == "Tiny"
     assert len(fake.calls) == 2
     repair_messages = fake.calls[1].messages
-    assert repair_messages[0] == {"role": "user", "content": "A tiny field."}
+    assert repair_messages[0] == fake.calls[0].messages[0]
+    assert repair_messages[0]["content"].startswith("A tiny field.")
     assert repair_messages[1]["role"] == "assistant"
     assert "oops" in repair_messages[1]["content"]  # echoes the bad output
     assert repair_messages[2]["role"] == "user"

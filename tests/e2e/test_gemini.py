@@ -13,7 +13,7 @@ import pytest
 
 from llm import LLMController, MaxRetriesExceeded, ProviderError, validate_spec
 from llm.providers import make_provider
-from llm.validator import PhysicsParams
+from game import GameProfile
 from server import load_env_file
 from spec import LevelSpec
 
@@ -52,6 +52,6 @@ def test_gemini_produces_valid_level_spec():
     print(f"[e2e] requirements={[r.text for r in spec.requirements]}")
 
     assert isinstance(spec, LevelSpec)
-    assert validate_spec(spec, PhysicsParams()).valid
+    assert validate_spec(spec, GameProfile()).valid
     assert spec.requirements
     assert any(e.kind == "Pickup" for e in spec.entities)

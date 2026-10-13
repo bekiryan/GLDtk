@@ -21,14 +21,25 @@ The extractor runs three passes:
   1. Collect horizontal platform spans (and single-tile special nodes).
   2. Emit a LevelNode per span.
   3. Classify edges between every pair of nodes using the physics oracle.
+
+Game Profile (v2)
+-----------------
+With ``profile`` given, classification uses the profile's tile size,
+gravity, jump_v and run_speed (as both the walk speed and the |vx| cap), and
+``gravity_scale_at(col)`` (default 1.0) scales gravity by the column of the
+source span's centre.  When a plain jump fails but an enabled ability makes
+the move (``best_ability``), the Jump edge carries ``metadata["ability"]``.
+Every edge then carries ``metadata["gravity_scale"]``.  Without a profile the
+behaviour is the v1 one.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple
 
-from .physics import check_jump_arc, fall_time
+from .physics import best_ability, check_jump_arc, fall_time, required_launch_velocity
 from .schema import (
     AbstractLevelGraph,
     EdgeType,
@@ -51,6 +62,10 @@ _SOLID_TILES = {TILE_SOLID, TILE_START, TILE_EXIT}
 _SURFACE_TILES = {TILE_SOLID, TILE_HAZARD, TILE_START, TILE_EXIT}
 
 Grid = Sequence[Sequence[int]]
+GravityScaleAt = Callable[[int], float]
+
+if TYPE_CHECKING:  # pragma: no cover
+    from game.profile import GameProfile
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +97,8 @@ def extract_graph(
     jump_v: float = 600.0,
     max_horizontal_speed: Optional[float] = None,
     walk_speed: float = 200.0,
+    profile: Optional["GameProfile"] = None,
+    gravity_scale_at: Optional[GravityScaleAt] = None,
 ) -> AbstractLevelGraph:
     """Build an AbstractLevelGraph from a 2-D tile grid.
 
@@ -93,6 +110,10 @@ def extract_graph(
     jump_v : maximum upward launch speed in px/s.
     max_horizontal_speed : optional cap on |vx| for jump feasibility checks.
     walk_speed : horizontal speed assumed for Walk edges (stored in v_launch).
+    profile : optional Game Profile.  When given it overrides tile_size,
+        gravity, jump_v, max_horizontal_speed (= run_speed) and walk_speed,
+        and enables ability-annotated Jump edges.
+    gravity_scale_at : optional ``col -> gravity_scale`` (default 1.0).
 
     Returns
     -------
@@ -103,6 +124,13 @@ def extract_graph(
         return AbstractLevelGraph()
     width = len(grid[0])
 
+    if profile is not None:
+        tile_size = float(profile.tile_size)
+        gravity = profile.physics.gravity
+        jump_v = profile.physics.jump_v
+        max_horizontal_speed = profile.physics.run_speed
+        walk_speed = profile.physics.run_speed
+
     spans = _collect_spans(grid, height, width)
     nodes = _spans_to_nodes(spans, height, tile_size)
 
@@ -110,7 +138,16 @@ def extract_graph(
     for node in nodes.values():
         graph.add_node(node)
 
-    _add_edges(graph, nodes, gravity, jump_v, max_horizontal_speed, walk_speed)
+    _add_edges(
+        graph,
+        nodes,
+        gravity,
+        jump_v,
+        max_horizontal_speed,
+        walk_speed,
+        profile,
+        gravity_scale_at,
+    )
     return graph
 
 
@@ -216,12 +253,21 @@ def _classify_edge(
     jump_v: float,
     max_horizontal_speed: Optional[float],
     walk_speed: float,
+    profile: Optional["GameProfile"] = None,
+    gravity_scale: float = 1.0,
 ) -> Optional[LevelEdge]:
-    """Return the cheapest valid edge from src to dst, or None."""
+    """Return the cheapest valid edge from src to dst, or None.
+
+    *gravity* is the base gravity; the effective one is gravity · gravity_scale.
+    """
     p1 = _surface_point(src)
     p2 = _surface_point(dst)
     dx = p2[0] - p1[0]
     dy = p2[1] - p1[1]
+    meta: Dict[str, object] = {}
+    if profile is not None:
+        meta["gravity_scale"] = gravity_scale
+    gravity = gravity * gravity_scale
 
     # --- Walk (same surface height, horizontally contiguous) ---
     if _nodes_are_horizontally_adjacent(src, dst):
@@ -233,6 +279,7 @@ def _classify_edge(
             dx=dx,
             dy=dy,
             v_launch=(vx, 0.0),
+            metadata=dict(meta),
         )
 
     # --- Fall (destination is strictly below source) ---
@@ -248,12 +295,11 @@ def _classify_edge(
                     dx=dx,
                     dy=dy,
                     v_launch=(vx, 0.0),
+                    metadata=dict(meta),
                 )
 
     # --- Jump (destination is above, or lateral with upward arc) ---
     if check_jump_arc(p1, p2, gravity, jump_v, max_horizontal_speed):
-        from .physics import required_launch_velocity
-
         vel = required_launch_velocity(p1, p2, gravity, jump_v)
         v_launch: Tuple[float, float] = vel if vel is not None else (0.0, jump_v)
         return LevelEdge(
@@ -263,7 +309,23 @@ def _classify_edge(
             dx=dx,
             dy=dy,
             v_launch=v_launch,
+            metadata=dict(meta),
         )
+
+    # --- Jump with an ability (profile only) ---
+    if profile is not None:
+        ability = best_ability(p1, p2, profile, gravity_scale)
+        if isinstance(ability, str):
+            vx = math.copysign(walk_speed, dx) if dx else 0.0
+            return LevelEdge(
+                source_id=src.id,
+                target_id=dst.id,
+                edge_type=EdgeType.JUMP,
+                dx=dx,
+                dy=dy,
+                v_launch=(vx, jump_v),
+                metadata={**meta, "ability": ability},
+            )
 
     return None
 
@@ -275,6 +337,8 @@ def _add_edges(
     jump_v: float,
     max_horizontal_speed: Optional[float],
     walk_speed: float,
+    profile: Optional["GameProfile"] = None,
+    gravity_scale_at: Optional[GravityScaleAt] = None,
 ) -> None:
     node_list = list(nodes.values())
     for i, src in enumerate(node_list):
@@ -284,8 +348,19 @@ def _add_edges(
             # Skip edges originating from hazard nodes (can't stand on them).
             if src.node_type == NodeType.HAZARD:
                 continue
+            scale = 1.0
+            if gravity_scale_at is not None:
+                col = (int(src.metadata["col_start"]) + int(src.metadata["col_end"])) // 2
+                scale = float(gravity_scale_at(col))
             edge = _classify_edge(
-                src, dst, gravity, jump_v, max_horizontal_speed, walk_speed
+                src,
+                dst,
+                gravity,
+                jump_v,
+                max_horizontal_speed,
+                walk_speed,
+                profile,
+                scale,
             )
             if edge is not None:
                 graph.add_edge(edge)

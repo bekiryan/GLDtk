@@ -5,6 +5,8 @@ Run:
 
 The GLDtk panel inside LDtk sends requests to this server.
 POST /generate  — run the pipeline and write a .ldtk file.
+GET  /profile   — read the project's Game Profile (defaults if missing).
+PUT  /profile   — validate and write the project's Game Profile.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import logging
@@ -26,7 +28,14 @@ from aesthetic import build_aesthetic_layer
 from aesthetic.themes import THEMES
 from api.models import GenerateRequest, GenerateResponse, LevelStats
 from layout import LayoutConfig, sugiyama_layout, to_ldtk_dict
-from llm import LLMController, MaxRetriesExceeded, PhysicsParams
+from game.profile import (
+    PROFILE_FILENAME,
+    GameProfile,
+    load_profile,
+    profile_path_for,
+    save_profile,
+)
+from llm import LLMController, MaxRetriesExceeded
 from llm.providers import LLMProvider, make_provider
 
 
@@ -87,7 +96,7 @@ async def validation_exception_handler(request, exc):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
 
@@ -117,8 +126,54 @@ def list_themes() -> Dict[str, List[str]]:
     return {"themes": [k for k in THEMES if k != "default"]}
 
 
+def resolve_profile_path(path: str) -> Path:
+    """``path`` may name the profile file itself or the project's ``.ldtk`` file."""
+    p = Path(path)
+    if p.suffix.lower() == ".ldtk":
+        return profile_path_for(p)
+    if p.is_dir():
+        return p / PROFILE_FILENAME
+    return p
+
+
+@app.get("/profile")
+def get_profile(path: str = Query(..., description=".ldtk or gldtk.game.json path")) -> Dict[str, Any]:
+    profile_path = resolve_profile_path(path)
+    try:
+        profile = load_profile(profile_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return profile.model_dump()
+
+
+@app.put("/profile")
+def put_profile(
+    path: str = Query(..., description=".ldtk or gldtk.game.json path"),
+    profile: GameProfile = Body(...),
+) -> Dict[str, Any]:
+    profile_path = resolve_profile_path(path)
+    try:
+        save_profile(profile, profile_path)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not write {profile_path}: {exc}")
+    return profile.model_dump()
+
+
 @app.post("/generate", response_model=GenerateResponse)
 def generate(req: GenerateRequest) -> GenerateResponse:
+    # ── game profile (never written during generate) ──────────────────────
+    profile_path = (
+        Path(req.game_profile_path)
+        if req.game_profile_path
+        else profile_path_for(req.output_path)
+    )
+    try:
+        profile = load_profile(profile_path)
+    except ValueError as exc:
+        return GenerateResponse(
+            success=False, error=str(exc), profile_path=str(profile_path)
+        )
+
     # ── difficulty params ─────────────────────────────────────────────────
     diff_cfg = _DIFFICULTY.get(req.difficulty or "medium", _DIFFICULTY["medium"])
     density: float = diff_cfg["density"]
@@ -142,7 +197,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     # ── LLM spec generation ───────────────────────────────────────────────
     try:
         controller = LLMController(
-            physics=PhysicsParams(),
+            profile=profile,
             provider=provider_factory(req),
             max_retries=req.max_retries,
         )
@@ -151,9 +206,13 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         )
         graph = spec.to_graph()
     except MaxRetriesExceeded as exc:
-        return GenerateResponse(success=False, error=str(exc))
+        return GenerateResponse(
+            success=False, error=str(exc), profile_path=str(profile_path)
+        )
     except Exception as exc:
-        return GenerateResponse(success=False, error=f"LLM error: {exc}")
+        return GenerateResponse(
+            success=False, error=f"LLM error: {exc}", profile_path=str(profile_path)
+        )
 
     requirements = [r.text for r in spec.requirements]
     sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)]
@@ -221,6 +280,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         output_path=str(out.resolve()),
         requirements=requirements,
         sections=sections,
+        profile_path=str(profile_path.resolve()),
     )
 
 

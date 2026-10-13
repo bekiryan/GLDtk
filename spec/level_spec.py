@@ -41,6 +41,7 @@ TILE_SIZE = 16  # px — matches the physics contract in llm/prompt.py
 
 NodeKind = Literal["Start", "Exit", "Platform", "Hazard"]
 EdgeKind = Literal["Walk", "Jump", "Fall"]
+AbilityName = Literal["double_jump", "dash", "wall_jump"]
 Difficulty = Literal["easy", "medium", "hard"]
 EntityKind = Literal[
     "Start", "Exit", "Enemy", "Pickup", "Weapon", "Interactive", "NPC", "Checkpoint", "Key"
@@ -97,6 +98,9 @@ class SpecEdge(_SpecModel):
     type: EdgeKind
     vx: float = Field(0.0, description="Horizontal launch speed in px/s (signed).")
     vy: float = Field(0.0, description="Upward launch speed in px/s (0 for Walk/Fall).")
+    ability: Optional[AbilityName] = Field(
+        None, description="Ability a Jump needs (from the game profile); null = plain jump."
+    )
 
 
 class SpecEntity(_SpecModel):
@@ -179,14 +183,22 @@ class LevelSpec(_SpecModel):
     def to_graph(self) -> AbstractLevelGraph:
         """Build the AbstractLevelGraph (Δx/Δy re-derived from positions).
 
+        Each edge carries ``metadata["ability"]`` (when set) and
+        ``metadata["gravity_scale"]`` — the gravity scale of the *source*
+        node's section — so physics validation does not need the spec.
+
         Raises ``ValueError`` / ``KeyError`` on dangling edge endpoints;
         ``validate_spec`` reports those before calling this.
         """
+        scales = {s.id: s.gravity_scale for s in self.sections}
+        node_scale = {n.id: scales.get(n.section, 1.0) for n in self.nodes}
+        edges = []
+        for e in self.edges:
+            raw = e.model_dump(by_alias=True)
+            raw["gravity_scale"] = node_scale.get(e.from_, 1.0)
+            edges.append(raw)
         return parse_graph(
-            {
-                "nodes": [n.model_dump() for n in self.nodes],
-                "edges": [e.model_dump(by_alias=True) for e in self.edges],
-            }
+            {"nodes": [n.model_dump() for n in self.nodes], "edges": edges}
         )
 
     def with_graph(self, graph: AbstractLevelGraph) -> "LevelSpec":
@@ -229,6 +241,7 @@ class LevelSpec(_SpecModel):
                 type=_EDGE_TYPE_NAMES[e.edge_type],
                 vx=float(e.v_launch[0]),
                 vy=float(e.v_launch[1]),
+                ability=e.metadata.get("ability") or None,
             )
             for e in graph.edges()
         ]
@@ -270,7 +283,8 @@ def parse_graph(data: Dict[str, Any]) -> AbstractLevelGraph:
     """Build an AbstractLevelGraph from a ``{nodes, edges}`` dict.
 
     Δx/Δy are always re-derived from node surfaces — never trusted from the
-    LLM.  A node's ``section`` (if present) is stored in ``metadata``.
+    LLM.  A node's ``section`` (if present) is stored in ``metadata``; an
+    edge's ``ability`` and ``gravity_scale`` (if present) in its ``metadata``.
     """
     graph = AbstractLevelGraph()
 
@@ -300,6 +314,12 @@ def parse_graph(data: Dict[str, Any]) -> AbstractLevelGraph:
         dx = dst.surface.x - src.surface.x
         dy = dst.surface.y - src.surface.y  # derived, not trusted from LLM
 
+        edge_meta: Dict[str, object] = {}
+        if raw_edge.get("ability"):
+            edge_meta["ability"] = str(raw_edge["ability"])
+        if raw_edge.get("gravity_scale") is not None:
+            edge_meta["gravity_scale"] = float(raw_edge["gravity_scale"])
+
         graph.add_edge(
             LevelEdge(
                 source_id=src.id,
@@ -311,6 +331,7 @@ def parse_graph(data: Dict[str, Any]) -> AbstractLevelGraph:
                     float(raw_edge.get("vx", 0.0)),
                     float(raw_edge.get("vy", 0.0)),
                 ),
+                metadata=edge_meta,
             )
         )
 

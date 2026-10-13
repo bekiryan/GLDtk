@@ -6,7 +6,18 @@ from .schema import (
     NodeType,
     Vec2,
 )
-from .physics import check_jump_arc, fall_time, required_launch_velocity
+from .physics import (
+    ABILITY_ORDER,
+    best_ability,
+    check_dash_jump,
+    check_double_jump,
+    check_jump_arc,
+    check_wall_jump,
+    fall_time,
+    gravity_for,
+    reachable,
+    required_launch_velocity,
+)
 from .extractor import extract_graph
 
 __all__ = [
@@ -16,7 +27,14 @@ __all__ = [
     "LevelNode",
     "NodeType",
     "Vec2",
+    "ABILITY_ORDER",
+    "best_ability",
+    "check_dash_jump",
+    "check_double_jump",
     "check_jump_arc",
+    "check_wall_jump",
+    "gravity_for",
+    "reachable",
     "fall_time",
     "required_launch_velocity",
     "extract_graph",

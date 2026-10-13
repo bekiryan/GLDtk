@@ -28,6 +28,10 @@ class GenerateRequest(BaseModel):
     )
     model: Optional[str] = Field(None, description="None = provider default model")
     max_retries: int = Field(3, ge=1, le=10)
+    game_profile_path: Optional[str] = Field(
+        None,
+        description="Path to gldtk.game.json; None = next to output_path (defaults if missing)",
+    )
 
 
 class LevelStats(BaseModel):
@@ -45,3 +49,4 @@ class GenerateResponse(BaseModel):
     error: Optional[str] = None
     requirements: List[str] = Field(default_factory=list)  # requirement texts
     sections: List[str] = Field(default_factory=list)  # section names, in order
+    profile_path: Optional[str] = None  # the Game Profile path that was used

@@ -96,3 +96,89 @@ def test_load_env_file(tmp_path, monkeypatch):
     assert os.environ["GLDTK_TEST_KEEP"] == "old"  # never overridden
     for k in ("GLDTK_TEST_A", "GLDTK_TEST_B", "GLDTK_TEST_C"):
         monkeypatch.delenv(k)
+
+
+# ── Game Profile ─────────────────────────────────────────────────────────────
+
+
+def test_profile_get_put_round_trip(client, tmp_path):
+    from game import PROFILE_FILENAME, GameProfile
+
+    ldtk = tmp_path / "proj" / "level.ldtk"
+    resp = client.get("/profile", params={"path": str(ldtk)})
+    assert resp.status_code == 200
+    assert resp.json() == GameProfile().model_dump()  # defaults, nothing written
+    assert not (ldtk.parent / PROFILE_FILENAME).exists()
+
+    body = GameProfile(name="Moon").model_dump()
+    body["abilities"]["dash"]["enabled"] = True
+    body["physics"]["gravity"] = 500
+    resp = client.put("/profile", params={"path": str(ldtk)}, json=body)
+    assert resp.status_code == 200
+    written = ldtk.parent / PROFILE_FILENAME
+    assert written.is_file()
+
+    # GET by the profile file path itself returns what was PUT
+    assert client.get("/profile", params={"path": str(written)}).json() == body
+
+
+def test_profile_put_rejects_invalid(client, tmp_path):
+    resp = client.put(
+        "/profile",
+        params={"path": str(tmp_path / "level.ldtk")},
+        json={"physics": {"gravity": -5}},
+    )
+    assert resp.status_code == 422
+
+
+def test_profile_get_reports_broken_file(client, tmp_path):
+    from game import PROFILE_FILENAME
+
+    (tmp_path / PROFILE_FILENAME).write_text("{oops", encoding="utf-8")
+    resp = client.get("/profile", params={"path": str(tmp_path / "level.ldtk")})
+    assert resp.status_code == 400
+    assert "not valid JSON" in resp.json()["detail"]
+
+
+def test_generate_uses_profile_file(client, monkeypatch, tmp_path, minimal_spec_dict):
+    from game import PROFILE_FILENAME, GameProfile, save_profile
+
+    # Exit 200 px up: impossible as a plain jump, fine with double_jump.
+    d = json.loads(json.dumps(minimal_spec_dict))
+    d["nodes"][1]["y"] = 232
+    d["edges"] = [{"from": "start", "to": "exit", "type": "Jump", "vx": 50, "vy": 600,
+                   "ability": "double_jump"}]
+    fake = FakeProvider([json.dumps(d)])
+    monkeypatch.setattr(server, "provider_factory", lambda req: fake)
+
+    profile = GameProfile()
+    profile.abilities.double_jump.enabled = True
+    profile_path = save_profile(profile, tmp_path / PROFILE_FILENAME)
+
+    out = tmp_path / "level.ldtk"
+    body = client.post(
+        "/generate",
+        json={"description": "a tall jump", "output_path": str(out), "max_retries": 1},
+    ).json()
+    assert body["success"], body.get("error")
+    assert body["profile_path"] == str(profile_path.resolve())
+    assert "double_jump" in fake.calls[0].messages[0]["content"]
+
+
+def test_generate_explicit_profile_path_missing_uses_defaults(
+    client, monkeypatch, tmp_path, load_fixture
+):
+    fake = FakeProvider([load_fixture("valid_minimal.json")])
+    monkeypatch.setattr(server, "provider_factory", lambda req: fake)
+    missing = tmp_path / "nowhere" / "game.json"
+    body = client.post(
+        "/generate",
+        json={
+            "description": "tiny",
+            "output_path": str(tmp_path / "level.ldtk"),
+            "game_profile_path": str(missing),
+        },
+    ).json()
+    assert body["success"], body.get("error")
+    assert body["profile_path"] == str(missing.resolve())
+    assert not missing.exists()  # generate never writes a profile

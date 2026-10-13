@@ -12,8 +12,10 @@ Orchestrates:
 The controller is provider-agnostic: it talks to an ``LLMProvider``
 (``llm/providers/``) built by the registry or injected directly.
 
-Physics constants default to the values embedded in the system prompt so the
-Oracle and the prompt always agree.
+Physics constants and player abilities come from the project's Game Profile
+(``game/profile.py``) — the single source of truth.  The same profile is
+summarised into the user message (``GAME PROFILE`` block) so the Oracle and
+the prompt always agree.
 """
 
 from __future__ import annotations
@@ -26,8 +28,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import ValidationError as PydanticValidationError
 
+from game.profile import GameProfile
 from spec.level_spec import TILE_SIZE, LevelSpec, parse_graph
-from symbolic.physics import check_jump_arc
+from symbolic.physics import ability_enabled, best_ability, max_jump_height, reachable
 from symbolic.schema import AbstractLevelGraph, EdgeType, NodeType
 
 from .prompt import SYSTEM_PROMPT, build_generate_messages, build_repair_messages
@@ -43,13 +46,6 @@ from .providers import (
 # ─────────────────────────────────────────────────────────────────────────────
 # Data types
 # ─────────────────────────────────────────────────────────────────────────────
-
-
-@dataclass
-class PhysicsParams:
-    gravity: float = 980.0
-    jump_v: float = 600.0
-    max_horizontal_speed: Optional[float] = None  # None = unconstrained
 
 
 @dataclass
@@ -163,17 +159,76 @@ def _validate_structure(graph: AbstractLevelGraph) -> List[ValidationError]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def edge_gravity_scale(edge: Any) -> float:
+    """Gravity scale of the section an edge starts in (1.0 if unknown)."""
+    try:
+        return float(edge.metadata.get("gravity_scale", 1.0) or 1.0)
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def _ability_hint(
+    p1: Tuple[float, float],
+    p2: Tuple[float, float],
+    profile: GameProfile,
+    scale: float,
+) -> str:
+    """Sentence telling the LLM which enabled ability (if any) makes a move possible."""
+    best = best_ability(p1, p2, profile, scale)
+    if best is None:
+        return 'A plain jump makes it: set "ability" to null.'
+    if best is False:
+        enabled = profile.abilities.enabled_names()
+        which = (
+            f"none of the game's abilities ({', '.join(enabled)})"
+            if enabled
+            else "the game has no abilities, so nothing"
+        )
+        return (
+            f"{which[0].upper()}{which[1:]} makes it possible. "
+            "Reduce the gap or add an intermediate Platform node."
+        )
+    return f'It is possible with the "{best}" ability: set "ability": "{best}" on this edge.'
+
+
 def _validate_physics(
     graph: AbstractLevelGraph,
-    physics: PhysicsParams,
+    profile: GameProfile,
 ) -> List[ValidationError]:
     errors: List[ValidationError] = []
+    phys = profile.physics
 
     for edge in graph.edges():
         src = graph.get_node(edge.source_id)
         dst = graph.get_node(edge.target_id)
         p1 = (src.surface.x, src.surface.y)
         p2 = (dst.surface.x, dst.surface.y)
+        scale = edge_gravity_scale(edge)
+        ability = edge.metadata.get("ability") or None
+        name = f"Edge '{edge.source_id}'→'{edge.target_id}'"
+
+        if ability is not None:
+            known = True
+            try:
+                enabled = ability_enabled(profile, str(ability))
+            except ValueError:
+                known = enabled = False
+            if not enabled:
+                errors.append(
+                    ValidationError(
+                        code="ABILITY_NOT_IN_PROFILE",
+                        message=(
+                            f"{name} uses the ability '{ability}', which "
+                            + ("is not enabled in" if known else "does not exist in")
+                            + " the game profile. Set \"ability\" to null (or to an "
+                            "ability the GAME PROFILE lists) and make the edge reachable "
+                            f"without '{ability}' — e.g. move the platforms closer or add "
+                            "an intermediate Platform node."
+                        ),
+                        edge=(edge.source_id, edge.target_id),
+                    )
+                )
+                continue
 
         if edge.edge_type == EdgeType.JUMP:
             if edge.dy < -1e-6:  # target below source → should be FALL
@@ -181,7 +236,7 @@ def _validate_physics(
                     ValidationError(
                         code="JUMP_GOES_DOWN",
                         message=(
-                            f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Jump' "
+                            f"{name} is typed 'Jump' "
                             f"but target is {abs(edge.dy):.0f} px BELOW source (Δy={edge.dy:.0f}). "
                             "Change the edge type to 'Fall'."
                         ),
@@ -190,19 +245,19 @@ def _validate_physics(
                 )
                 continue
 
-            if not check_jump_arc(
-                p1, p2, physics.gravity, physics.jump_v, physics.max_horizontal_speed
-            ):
-                apex = physics.jump_v**2 / (2 * physics.gravity)
+            if not reachable(p1, p2, profile, scale, ability):
+                g = phys.gravity * scale
+                apex = max_jump_height(g, phys.jump_v)
+                how = f"with the '{ability}' ability" if ability else "as a plain jump"
                 errors.append(
                     ValidationError(
                         code="IMPOSSIBLE_JUMP",
                         message=(
-                            f"Edge '{edge.source_id}'→'{edge.target_id}': "
-                            f"Jump is physically impossible. "
-                            f"Δy={edge.dy:.0f} px exceeds the max apex of {apex:.0f} px "
-                            f"(gravity={physics.gravity}, jump_v={physics.jump_v}). "
-                            "Reduce the vertical gap or add an intermediate Platform node."
+                            f"{name}: Jump is physically impossible {how} "
+                            f"(Δx={edge.dx:.0f} px, Δy={edge.dy:.0f} px; plain-jump apex "
+                            f"{apex:.0f} px, run_speed {phys.run_speed:g} px/s, "
+                            f"gravity {g:g} px/s² with gravity_scale {scale:g}). "
+                            + _ability_hint(p1, p2, profile, scale)
                         ),
                         edge=(edge.source_id, edge.target_id),
                     )
@@ -214,7 +269,7 @@ def _validate_physics(
                     ValidationError(
                         code="FALL_GOES_UP",
                         message=(
-                            f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Fall' "
+                            f"{name} is typed 'Fall' "
                             f"but target is {edge.dy:.0f} px ABOVE source. "
                             "Change the edge type to 'Jump'."
                         ),
@@ -223,14 +278,14 @@ def _validate_physics(
                 )
 
         elif edge.edge_type == EdgeType.WALK:
-            if abs(edge.dy) > 8.0:
+            if abs(edge.dy) > phys.walk_step_px:
                 errors.append(
                     ValidationError(
                         code="WALK_HEIGHT_MISMATCH",
                         message=(
-                            f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Walk' "
+                            f"{name} is typed 'Walk' "
                             f"but nodes differ by {abs(edge.dy):.0f} px vertically "
-                            "(Walk requires |Δy| ≤ 8 px). "
+                            f"(Walk requires |Δy| ≤ {phys.walk_step_px:g} px). "
                             "Use 'Jump' or 'Fall' instead, or align the platform heights."
                         ),
                         edge=(edge.source_id, edge.target_id),
@@ -247,15 +302,16 @@ def _validate_physics(
 
 def validate_graph(
     graph: AbstractLevelGraph,
-    physics: PhysicsParams,
+    profile: Optional[GameProfile] = None,
 ) -> ValidationResult:
-    errors = _validate_structure(graph) + _validate_physics(graph, physics)
+    profile = profile or GameProfile()
+    errors = _validate_structure(graph) + _validate_physics(graph, profile)
     return ValidationResult(valid=not errors, errors=errors, graph=graph)
 
 
 def parse_and_validate(
     raw: str,
-    physics: PhysicsParams,
+    profile: Optional[GameProfile] = None,
 ) -> ValidationResult:
     """Parse a bare ``{nodes, edges}`` graph JSON (v1 contract). Never raises."""
     try:
@@ -276,7 +332,7 @@ def parse_and_validate(
             graph=None,
         )
 
-    return validate_graph(graph, physics)
+    return validate_graph(graph, profile)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -450,7 +506,9 @@ def _validate_spec_semantics(spec: LevelSpec) -> List[ValidationError]:
     return errors
 
 
-def validate_spec(spec: LevelSpec, physics: PhysicsParams) -> ValidationResult:
+def validate_spec(
+    spec: LevelSpec, profile: Optional[GameProfile] = None
+) -> ValidationResult:
     """Spec semantics + structural + physics checks on ``spec.to_graph()``."""
     errors = _validate_spec_semantics(spec)
     if any(e.code == "UNKNOWN_EDGE_NODE" for e in errors):
@@ -465,7 +523,7 @@ def validate_spec(spec: LevelSpec, physics: PhysicsParams) -> ValidationResult:
             )
         )
         return ValidationResult(valid=False, errors=errors, graph=None, spec=spec)
-    errors += validate_graph(graph, physics).errors
+    errors += validate_graph(graph, profile).errors
     return ValidationResult(valid=not errors, errors=errors, graph=graph, spec=spec)
 
 
@@ -497,12 +555,14 @@ def parse_spec(raw: str) -> Tuple[Optional[LevelSpec], List[ValidationError]]:
         ]
 
 
-def parse_and_validate_spec(raw: str, physics: PhysicsParams) -> ValidationResult:
+def parse_and_validate_spec(
+    raw: str, profile: Optional[GameProfile] = None
+) -> ValidationResult:
     """Parse raw LLM output and run full LevelSpec validation. Never raises."""
     spec, errors = parse_spec(raw)
     if spec is None:
         return ValidationResult(valid=False, errors=errors, graph=None, spec=None)
-    return validate_spec(spec, physics)
+    return validate_spec(spec, profile)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -522,7 +582,7 @@ class LLMController:
 
     def __init__(
         self,
-        physics: Optional[PhysicsParams] = None,
+        profile: Optional[GameProfile] = None,
         model: Optional[str] = None,
         max_retries: int = 3,
         api_key: Optional[str] = None,
@@ -531,7 +591,7 @@ class LLMController:
         timeout_seconds: float = 120.0,
         provider_config: Optional[LLMProviderConfig] = None,
     ) -> None:
-        self._physics = physics or PhysicsParams()
+        self._profile = profile or GameProfile()
         self._max_retries = max_retries
 
         if provider_config is not None:
@@ -553,11 +613,15 @@ class LLMController:
         # Import here to avoid circular imports at module load time
         from .patcher import SymbolicPatcher
 
-        self._patcher = SymbolicPatcher(self._physics)
+        self._patcher = SymbolicPatcher(self._profile)
 
     @property
     def provider(self) -> LLMProvider:
         return self._provider
+
+    @property
+    def profile(self) -> GameProfile:
+        return self._profile
 
     # ------------------------------------------------------------------
     # Public API
@@ -584,13 +648,13 @@ class LLMController:
             ``exc.stats`` / ``self.stats`` hold the run's bookkeeping.
         """
         self.stats = stats = GenerationStats()
-        messages = build_generate_messages(description, constraints)
+        messages = build_generate_messages(description, constraints, self._profile)
         result: Optional[ValidationResult] = None
 
         for attempt in range(self._max_retries):
             raw = self._provider.complete_json(SYSTEM_PROMPT, messages, self._schema)
             stats.attempts += 1
-            result = parse_and_validate_spec(raw, self._physics)
+            result = parse_and_validate_spec(raw, self._profile)
             stats.error_codes_per_attempt.append([e.code for e in result.errors])
 
             if result.valid:
@@ -643,7 +707,7 @@ class LLMController:
 
         # 1. Graph-level patches (physics / structure) on the platform graph.
         if result.graph is not None:
-            graph_errors = validate_graph(result.graph, self._physics).errors
+            graph_errors = validate_graph(result.graph, self._profile).errors
             if graph_errors:
                 patch = self._patcher.patch(result.graph, graph_errors)
                 if not patch.success:
@@ -652,13 +716,13 @@ class LLMController:
                 applied += patch.applied
 
         # 2. Spec-level patch: missing / mis-anchored Start and Exit entities.
-        errors = validate_spec(spec, self._physics).errors
+        errors = validate_spec(spec, self._profile).errors
         entity_patch = TerminalEntityPatch()
         if entity_patch.applies_to(errors):
             spec = entity_patch.apply_to_spec(spec)
             applied.append(entity_patch.name)
 
-        final = validate_spec(spec, self._physics)
+        final = validate_spec(spec, self._profile)
         if not final.valid or not applied:
             return None
         return spec, applied

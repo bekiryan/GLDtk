@@ -84,6 +84,8 @@ App.ME.loadProject(path)   ← called from GldtkSidebar.hx after server responds
 
 **AbstractLevelGraph** (`symbolic/schema.py`): `nx.DiGraph` wrapper. Nodes have `NodeType` (PLATFORM, START, EXIT, HAZARD). Edges have `EdgeType` (WALK, JUMP, FALL). Physics oracle (`symbolic/physics.py`) validates jump arcs using `½g·t² − v·t + Δy = 0`.
 
+**GameProfile** (`game/profile.py`, file `gldtk.game.json` beside the `.ldtk`): physics (gravity, jump_v, run_speed, walk_step_px) and abilities (double_jump, dash, wall_jump). It replaces the old `PhysicsParams`. The oracle entry points are `reachable()` / `best_ability()` in `symbolic/physics.py`; edges carry `metadata["ability"]` and `metadata["gravity_scale"]` (from the source section).
+
 **Tileset layout** (`aesthetic/themes.py`): Three themes share one 256×256 PNG. Each occupies a 5×3 tile region at `base_x` offset: Dungeon=0, Forest=80, Sky=160. Placeholder PNGs live in `tilesets/`. Replace with real art — no code changes needed.
 
 **LDtk JSON format** (`layout/ldtk_adapter.py`): Layer instances require `__tilesetRelPath`, `__tilesetDefUid`, `__opacity`, `optionalRules` (cached computed fields). Levels require `__bgColor`, `__smartColor`. Project root requires `bgColor`, `worldLayout`, `flags`, etc. Missing any of these causes silent blank rendering in LDtk.

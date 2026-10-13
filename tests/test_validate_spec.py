@@ -7,12 +7,13 @@ from typing import Any, Callable, Dict
 
 import pytest
 
-from llm import PhysicsParams, TerminalEntityPatch, parse_and_validate_spec
+from game import GameProfile
+from llm import TerminalEntityPatch, parse_and_validate_spec
 from spec import LevelSpec
 
 
 def _codes(d: Dict[str, Any]) -> list[str]:
-    result = parse_and_validate_spec(json.dumps(d), PhysicsParams())
+    result = parse_and_validate_spec(json.dumps(d), GameProfile())
     return [e.code for e in result.errors]
 
 
@@ -144,17 +145,17 @@ def test_graph_codes_still_fire(valid_spec_dict):
 
 def test_parse_never_raises_and_reports_pydantic_text():
     for raw in ["", "not json", "[1, 2]", '{"title": 3}', "{" * 50]:
-        result = parse_and_validate_spec(raw, PhysicsParams())
+        result = parse_and_validate_spec(raw, GameProfile())
         assert not result.valid
         assert result.errors[0].code in {"INVALID_JSON", "INVALID_SPEC"}
-    result = parse_and_validate_spec('{"title": "x"}', PhysicsParams())
+    result = parse_and_validate_spec('{"title": "x"}', GameProfile())
     assert result.errors[0].code == "INVALID_SPEC"
     assert "size" in result.errors[0].message  # pydantic names the missing field
 
 
 def test_markdown_fenced_output_is_accepted(load_fixture):
     raw = "```json\n" + load_fixture("valid_minimal.json") + "\n```"
-    assert parse_and_validate_spec(raw, PhysicsParams()).valid
+    assert parse_and_validate_spec(raw, GameProfile()).valid
 
 
 def test_terminal_entity_patch_fixes_start_and_exit(valid_spec_dict):
@@ -167,7 +168,7 @@ def test_terminal_entity_patch_fixes_start_and_exit(valid_spec_dict):
     assert starts[0].section == "meadow"
     assert any(e.kind == "Exit" and e.anchor == "exit" for e in patched.entities)
     assert parse_and_validate_spec(
-        patched.model_dump_json(by_alias=True), PhysicsParams()
+        patched.model_dump_json(by_alias=True), GameProfile()
     ).valid
 
 

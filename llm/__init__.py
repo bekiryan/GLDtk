@@ -4,7 +4,6 @@ from .validator import (
     LLMProvider,
     LLMProviderConfig,
     MaxRetriesExceeded,
-    PhysicsParams,
     ValidationError,
     ValidationResult,
     parse_and_validate,
@@ -13,7 +12,7 @@ from .validator import (
     validate_graph,
     validate_spec,
 )
-from .patcher import PatchResult, SymbolicPatcher, TerminalEntityPatch
+from .patcher import AbilityAssignPatch, PatchResult, SymbolicPatcher, TerminalEntityPatch
 from .prompt import SYSTEM_PROMPT, build_generate_messages, build_repair_messages
 from .providers import FakeProvider, ProviderError, make_provider
 
@@ -23,7 +22,6 @@ __all__ = [
     "LLMProvider",
     "LLMProviderConfig",
     "MaxRetriesExceeded",
-    "PhysicsParams",
     "ValidationError",
     "ValidationResult",
     "parse_and_validate",
@@ -31,6 +29,7 @@ __all__ = [
     "parse_spec",
     "validate_graph",
     "validate_spec",
+    "AbilityAssignPatch",
     "PatchResult",
     "SymbolicPatcher",
     "TerminalEntityPatch",

@@ -22,7 +22,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*", "spec*"]
+include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*", "spec*", "game*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
