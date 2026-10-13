@@ -108,3 +108,14 @@ def test_unknown_names_map_to_closest_kind():
     # nothing matches → Interactive, never silently Enemy
     r = resolve_kind("Spring")
     assert r.kind.kind == "Interactive" and not r.exact
+
+
+def test_sprite_tile_is_an_internal_tile_field_on_every_kind():
+    from spec.catalog import F_TILE, INTERNAL_FIELDS
+
+    assert "sprite_tile" in INTERNAL_FIELDS
+    for kind in KINDS.values():
+        fs = kind.field("sprite_tile")
+        assert fs is not None and fs.ftype == F_TILE and fs.display == "EntityTile"
+    # appended after the existing common fields, so older field uids do not shift
+    assert [f.name for f in COMMON_FIELDS][-2:] == ["gldtk_meta", "sprite_tile"]

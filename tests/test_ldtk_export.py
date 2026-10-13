@@ -489,3 +489,237 @@ def test_enum_value_ids_use_ldtk_identifier_style():
         for v in e["values"]:
             assert v["id"] == enum_value_id(v["id"].lower())
             assert v["id"][0].isupper()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# M1 fixes: layer order, load-modified regression, entity sprites, per-section tilesets
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _two_theme_level(themes=("forest", "dungeon")):
+    """A 40x15 level: one platform crossing the seam at column 20, two sections."""
+    ir = IRLevel.empty("Level_0", 40, 15)
+    ir.fill_rect(0, 14, 40, 1, TileValue.SOLID)
+    ir.fill_rect(14, 10, 12, 1, TileValue.SOLID)  # crosses the section seam
+    ir.fill_rect(30, 13, 2, 1, TileValue.HAZARD)
+    ir.metadata["sections"] = [
+        {"id": "a", "name": "A", "col_start": 0, "col_end": 19, "gravity_scale": 1.0,
+         "theme": themes[0], "difficulty": "easy", "mapped_theme": themes[0]},
+        {"id": "b", "name": "B", "col_start": 20, "col_end": 39, "gravity_scale": 1.0,
+         "theme": themes[1], "difficulty": "easy", "mapped_theme": themes[1]},
+    ]
+    ir.entities = [
+        IREntity("Start", 2, 13, {"spec_id": "player", "description": "the hero", "sprite": ""}),
+        IREntity("Enemy", 16, 9, {"spec_id": "bat", "archetype": "flyer",
+                                  "description": "a bat", "sprite": "bat"}),
+        IREntity("Pickup", 18, 9, {"spec_id": "gem", "pickup_kind": "gem",
+                                   "description": "a gem", "sprite": ""}),
+        IREntity("Exit", 38, 13, {"spec_id": "door"}),
+    ]
+    return ir
+
+
+def _build(ir, **kw):
+    from aesthetic import build_aesthetic_layer
+    from symbolic.schema import AbstractLevelGraph
+
+    return build_aesthetic_layer("a level", AbstractLevelGraph(), {}, ir,
+                                 place_random_entities=False, **kw)
+
+
+def _layer_stack(doc):
+    return ([(d["identifier"], d["uid"]) for d in doc["defs"]["layers"]],
+            [(li["__identifier"], li["layerDefUid"]) for li in doc["levels"][0]["layerInstances"]])
+
+
+def test_layer_order_entities_tiles_collisions(validator):
+    doc = to_ldtk_dict(_two_theme_level(), aesthetic=_build(_two_theme_level()).aesthetic)
+    defs, insts = _layer_stack(doc)
+    assert [n for n, _ in defs] == ["Entities", "Tiles", "Tiles_Dungeon", "Collisions"]
+    assert defs == insts  # LDtk requires the same order, or it re-sorts and marks the level modified
+    assert_valid(validator, doc)
+    # without aesthetics: Entities, Collisions, and still the same order in both lists
+    plain = to_ldtk_dict(_two_theme_level())
+    assert [n for n, _ in _layer_stack(plain)[0]] == ["Entities", "Collisions"]
+    assert _layer_stack(plain)[0] == _layer_stack(plain)[1]
+
+
+def test_collisions_are_translucent_under_the_tiles():
+    doc = to_ldtk_dict(_two_theme_level(), aesthetic=_build(_two_theme_level()).aesthetic)
+    coll = next(d for d in doc["defs"]["layers"] if d["identifier"] == "Collisions")
+    assert coll["displayOpacity"] < 1.0
+
+
+def test_export_has_what_ldtk_would_otherwise_fix_on_load(validator):
+    """Regression for "LDtk marks the level modified as soon as it opens".
+
+    On load LDtk (``Level.tidy``) re-sorts ``layerInstances`` to follow
+    ``defs.layers`` and creates missing instances, which invalidates the level
+    JSON cache; ``Editor`` then flags the project as needing a save.  Release
+    builds also re-save any project whose ``appBuildId`` is older than the app.
+    """
+    for ir, aesthetic in (
+        (_two_theme_level(), _build(_two_theme_level()).aesthetic),
+        (_two_theme_level(), AestheticData()),  # a Tiles layer without any tile
+        (_two_theme_level(), None),
+    ):
+        doc = to_ldtk_dict(ir, aesthetic=aesthetic)
+        layer_uids = [d["uid"] for d in doc["defs"]["layers"]]
+        for level in doc["levels"]:
+            assert [li["layerDefUid"] for li in level["layerInstances"]] == layer_uids
+            assert len({li["iid"] for li in level["layerInstances"]}) == len(layer_uids)
+            for fi in level["fieldInstances"]:
+                assert fi["defUid"] in {d["uid"] for d in doc["defs"]["levelFields"]}
+            assert {fi["defUid"] for fi in level["fieldInstances"]} == {
+                d["uid"] for d in doc["defs"]["levelFields"]
+            }
+        # every referenced tileset exists
+        tileset_uids = {t["uid"] for t in doc["defs"]["tilesets"]}
+        for d in doc["defs"]["layers"]:
+            assert d["tilesetDefUid"] is None or d["tilesetDefUid"] in tileset_uids
+        # entity instances carry exactly the def's fields, in order
+        fields = {d["uid"]: [f["uid"] for f in d["fieldDefs"]] for d in doc["defs"]["entities"]}
+        for li in doc["levels"][0]["layerInstances"]:
+            for ei in li["entityInstances"]:
+                assert [f["defUid"] for f in ei["fieldInstances"]] == fields[ei["defUid"]]
+        assert doc["appBuildId"] >= 473702  # LDtk 1.5.3 sample build; a lower id forces a re-save
+        assert doc["jsonVersion"] == "1.5.3"
+        assert doc["dummyWorldIid"] and doc["iid"]
+        assert_valid(validator, doc)
+
+
+def test_atlas_and_entity_tiles(tmp_path, validator):
+    from aesthetic import copy_aesthetic_assets
+    from PIL import Image
+
+    result = _build(_two_theme_level())
+    atlas = result.sprite_atlas
+    assert atlas is not None and result.aesthetic.entity_atlas is not None
+    ir = _two_theme_level()
+    doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
+    assert_valid(validator, doc)
+
+    ts = next(t for t in doc["defs"]["tilesets"] if t["relPath"] == atlas.rel_path)
+    copy_aesthetic_assets(result, tmp_path)
+    assert Image.open(tmp_path / atlas.rel_path).size == (ts["pxWid"], ts["pxHei"])
+    assert ts["tileGridSize"] == 16
+
+    # every entity def shows its kind's default sprite, inside the atlas
+    for d in doc["defs"]["entities"]:
+        r = d["tileRect"]
+        assert d["renderMode"] == "Tile" and d["tilesetId"] == ts["uid"] and d["color"]
+        assert r["tilesetUid"] == ts["uid"] and (r["w"], r["h"]) == (16, 16)
+        assert 0 <= r["x"] <= ts["pxWid"] - 16 and 0 <= r["y"] <= ts["pxHei"] - 16
+        fd = next(f for f in d["fieldDefs"] if f["identifier"] == "sprite_tile")
+        assert (fd["type"], fd["__type"], fd["editorDisplayMode"]) == ("F_Tile", "Tile", "EntityTile")
+        assert fd["tilesetUid"] == ts["uid"]
+        assert fd["defaultOverride"]["params"] == [f"{r['x']},{r['y']},{r['w']},{r['h']}"]
+
+    # per-instance tiles: the sprite find_sprite picks for the hints
+    def cell_of(sprite_id):
+        c, r = atlas.cells[sprite_id]
+        return {"tilesetUid": ts["uid"], "x": c * 16, "y": r * 16, "w": 16, "h": 16}
+
+    by_id = {}
+    for ei in _all_instances(doc):
+        fi = {f["__identifier"]: f for f in ei["fieldInstances"]}
+        by_id[fi["spec_id"]["__value"]] = (ei, fi["sprite_tile"])
+    assert by_id["bat"][1]["__value"] == cell_of("enemy_bat")
+    assert by_id["gem"][1]["__value"] == cell_of("pickup_gem")
+    assert by_id["player"][1]["__value"] == cell_of("player")
+    for ei, tile_fi in by_id.values():
+        assert ei["__tile"] == tile_fi["__value"] == tile_fi["__tile"]  # what LDtk computes
+        x, y = tile_fi["__value"]["x"], tile_fi["__value"]["y"]
+        assert tile_fi["realEditorValues"] == [{"id": "V_String", "params": [f"{x},{y},16,16"]}]
+
+    # the tile field is derived, never read back as entity data
+    back = read_level(doc)
+    assert all("sprite_tile" not in e.metadata for e in back.entities)
+
+
+def test_export_without_atlas_keeps_colour_boxes(validator):
+    doc = to_ldtk_dict(_two_theme_level(), aesthetic=_build(_two_theme_level(), entity_sprites=False).aesthetic)
+    assert_valid(validator, doc)
+    for d in doc["defs"]["entities"]:
+        assert d["renderMode"] == "Rectangle" and d["tileRect"] is None
+    for ei in _all_instances(doc):
+        assert ei["__tile"] is None
+        assert next(f for f in ei["fieldInstances"] if f["__identifier"] == "sprite_tile")["__value"] is None
+
+
+def test_one_tiles_layer_per_theme_with_disjoint_columns(tmp_path, validator):
+    from aesthetic import THEMES, TileRole, copy_aesthetic_assets
+    from PIL import Image
+
+    ir = _two_theme_level()
+    result = _build(ir)
+    assert [t.identifier for t in result.themes] == ["forest", "dungeon"]
+    doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
+    assert_valid(validator, doc)
+
+    tilesets = {t["uid"]: t for t in doc["defs"]["tilesets"]}
+    forest, dungeon = THEMES["forest"], THEMES["dungeon"]
+    layers = {li["__identifier"]: li for li in doc["levels"][0]["layerInstances"]}
+    assert layers["Tiles"]["__tilesetDefUid"] == forest.tileset_uid
+    assert layers["Tiles_Dungeon"]["__tilesetDefUid"] == dungeon.tileset_uid
+    assert layers["Tiles"]["__tilesetRelPath"] == forest.tileset_rel_path
+    cols = {name: {t["px"][0] // 16 for t in layers[name]["gridTiles"]}
+            for name in ("Tiles", "Tiles_Dungeon")}
+    assert cols["Tiles"] and max(cols["Tiles"]) <= 19
+    assert cols["Tiles_Dungeon"] and min(cols["Tiles_Dungeon"]) >= 20
+    # together they cover every non-empty cell exactly once
+    occupied = {(c, r) for r in range(15) for c in range(40) if ir.grid[r][c] != TileValue.EMPTY}
+    cells = [(t["px"][0] // 16, t["px"][1] // 16) for l in layers.values() for t in l["gridTiles"]]
+    assert len(cells) == len(set(cells)) and set(cells) == occupied
+    # tile ids address their own sheet
+    for name, theme in (("Tiles", forest), ("Tiles_Dungeon", dungeon)):
+        per_row = tilesets[theme.tileset_uid]["pxWid"] // 16
+        for t in layers[name]["gridTiles"]:
+            assert t["t"] == (t["src"][1] // 16) * per_row + t["src"][0] // 16
+
+    # seam: the platform on row 10 spans columns 14..25 across the seam, so
+    # every tile on it is a FILL of its own theme except the two real ends
+    row10 = {(t["px"][0] // 16): (name, tuple(t["src"]))
+             for name, l in layers.items() for t in l["gridTiles"] if t["px"][1] // 16 == 10}
+    for c in range(15, 25):
+        name, src = row10[c]
+        theme = forest if c < 20 else dungeon
+        want = theme.tile(TileRole.FILL)
+        assert src == (want.src_x, want.src_y), c
+        assert name == ("Tiles" if c < 20 else "Tiles_Dungeon")
+
+    # every sheet in use is copied and matches its def
+    paths = copy_aesthetic_assets(result, tmp_path)
+    assert {forest.tileset_rel_path, dungeon.tileset_rel_path} <= set(paths)
+    for t in doc["defs"]["tilesets"]:
+        assert Image.open(tmp_path / t["relPath"]).size == (t["pxWid"], t["pxHei"])
+    # uids / identifiers are unique
+    assert len({t["uid"] for t in doc["defs"]["tilesets"]}) == len(doc["defs"]["tilesets"])
+    assert len({t["identifier"] for t in doc["defs"]["tilesets"]}) == len(doc["defs"]["tilesets"])
+
+
+def test_single_theme_level_has_one_tiles_layer():
+    ir = _two_theme_level(("forest", "forest"))
+    result = _build(ir)
+    assert len(result.themes) == 1
+    doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
+    assert [n for n, _ in _layer_stack(doc)[0]] == ["Entities", "Tiles", "Collisions"]
+
+
+def test_many_themes_get_distinct_layer_uids(validator):
+    from aesthetic import THEMES
+
+    names = [t for t in THEMES if t != "default"][:8]
+    ir = IRLevel.empty("Level_0", 8 * 4, 6)
+    ir.fill_rect(0, 5, 8 * 4, 1, TileValue.SOLID)
+    ir.metadata["sections"] = [
+        {"id": f"s{i}", "name": n, "col_start": i * 4, "col_end": i * 4 + 3, "gravity_scale": 1.0,
+         "theme": n, "difficulty": "easy", "mapped_theme": n}
+        for i, n in enumerate(names)
+    ]
+    doc = to_ldtk_dict(ir, aesthetic=_build(ir).aesthetic)
+    uids = [d["uid"] for d in doc["defs"]["layers"]]
+    assert len(uids) == len(set(uids)) == len(names) + 2
+    assert _layer_stack(doc)[0] == _layer_stack(doc)[1]
+    assert doc["nextUid"] > max(uids)
+    assert_valid(validator, doc)

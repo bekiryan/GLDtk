@@ -24,8 +24,8 @@ from fastapi.responses import JSONResponse
 import logging
 from fastapi.middleware.cors import CORSMiddleware
 
-from aesthetic import build_aesthetic_layer
-from aesthetic.themes import THEMES, Theme, copy_theme_assets, detect_theme
+from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
+from aesthetic.themes import THEMES, Theme, detect_theme
 from api import art_routes
 from api.models import GenerateRequest, GenerateResponse, LevelStats
 from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
@@ -251,7 +251,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     try:
         for band in ir.metadata.get("sections", []):
             band["mapped_theme"] = section_theme(
-                str(band["theme"]), req.description
+                str(band["theme"]), req.description, req.theme
             ).identifier
         theme = section_theme(ordered_sections[0].theme, req.description, req.theme)
         result = build_aesthetic_layer(
@@ -272,8 +272,8 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     try:
         out = Path(req.output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-        # The .ldtk references the theme sheet relative to itself.
-        copy_theme_assets(result.theme, out.parent)
+        # The .ldtk references the theme sheets and the sprite atlas relative to itself.
+        copy_aesthetic_assets(result, out.parent)
         level_meta = LevelMeta(
             prompt=req.description,
             requirements=list(spec.requirements),

@@ -174,3 +174,116 @@ def test_entity_on_blocked_anchor_is_flagged():
     [coin] = [e for e in place_spec_entities(spec, lay) if e.entity_type == "Pickup"]
     assert coin.metadata.get("blocked") is True
     assert any("'c'" in w for w in lay.entity_warnings)
+
+
+
+# ── crowding: widen, then relocate ───────────────────────────────────────────
+
+
+def _coins(n, anchor="p", prefix="c"):
+    return [entity(f"{prefix}{i}", "Pickup", anchor, pickup_kind="coin", value=1) for i in range(n)]
+
+
+def _crowd_spec(ents, walls=False):
+    """start | p (3 wide) | q | r | exit; *walls* puts q and start flush against p."""
+    p_col = 3 if walls else 8
+    nodes = [node("start", "Start", 0, 3), node("p", "Platform", p_col, 3, 3),
+             node("q", "Platform", p_col + 3 if walls else 15, 3, 3),
+             node("r", "Platform", 20, 3, 4), node("exit", "Exit", 27, 3)]
+    base = [entity("player", "Start", "start", facing="right"),
+            entity("door", "Exit", "exit", requires_key=False)]
+    edges = [("start", "p", "Walk"), ("p", "q", "Walk"), ("q", "r", "Jump"), ("r", "exit", "Jump")]
+    return make_spec(nodes, edges, base + ents, size=(40, 15))
+
+
+def _on(placed, nid, lay):
+    nl = lay.node_layouts[nid]
+    return [e for e in placed if e.row == nl.row - 1 and nl.col <= e.col < nl.col + nl.width
+            and e.entity_type == "Pickup"]
+
+
+def test_capacity_is_one_entity_per_two_tiles():
+    from layout.spec_entities import capacity
+
+    assert [capacity(w) for w in (1, 2, 3, 4, 5, 6)] == [1, 1, 1, 2, 2, 3]
+
+
+def test_crowded_platform_is_widened_not_emptied():
+    spec = _crowd_spec(_coins(3))
+    lay = layout_spec(spec)
+    assert lay.node_layouts["p"].width == 3
+    placed = place_spec_entities(spec, lay)
+    nl = lay.node_layouts["p"]
+    assert nl.width == 6  # 2 tiles per entity
+    assert len(_on(placed, "p", lay)) == 3
+    assert len({(e.col, e.row) for e in placed}) == len(placed)
+    assert any("widened 'p' from 3 to 6" in a for a in lay.adjustments)
+    assert not any("moved" in w for w in lay.entity_warnings)
+    # the new cells are solid in the grid
+    assert all(lay.ir.get_tile(c, nl.row) == TileValue.SOLID for c in range(nl.col, nl.col + nl.width))
+    # idempotent: placing again does not widen further or warn again
+    place_spec_entities(spec, lay)
+    assert lay.node_layouts["p"].width == 6
+    assert sum("widened" in a for a in lay.adjustments) == 1
+
+
+def test_uncrowded_platform_is_left_alone():
+    spec = _crowd_spec(_coins(1))
+    lay = layout_spec(spec)
+    place_spec_entities(spec, lay)
+    assert lay.node_layouts["p"].width == 3
+    assert not any("widened" in a for a in lay.adjustments)
+
+
+def test_overflow_moves_to_nearest_platform_in_the_same_section_with_a_warning():
+    spec = _crowd_spec(_coins(3), walls=True)  # p cannot grow: start and q touch it
+    lay = layout_spec(spec)
+    placed = place_spec_entities(spec, lay)
+    assert lay.node_layouts["p"].width == 3
+    by_id = {e.metadata["spec_id"]: e for e in placed}
+    assert by_id["c0"].metadata["anchor"] == "p"
+    assert by_id["c1"].metadata["anchor"] == "q" and by_id["c1"].metadata["original_anchor"] == "p"
+    assert by_id["c2"].metadata["anchor"] == "r"
+    assert len(_on(placed, "q", lay)) == 1 and len(_on(placed, "r", lay)) == 1
+    moved = [w for w in lay.entity_warnings if w.startswith("moved")]
+    assert len(moved) == 2 and "'c1' from 'p' to 'q'" in moved[0]
+    # Start and Exit stay on their own nodes
+    assert by_id["player"].metadata["anchor"] == "start" and by_id["door"].metadata["anchor"] == "exit"
+    assert not [e for e in placed if e.entity_type not in ("Start", "Exit")
+                and e.metadata["anchor"] in ("start", "exit")]
+    # the relocation is deterministic: a second placement reports it again
+    place_spec_entities(spec, lay)
+    assert len([w for w in lay.entity_warnings if w.startswith("moved")]) == 2
+
+
+def test_relocation_stays_inside_the_section():
+    secs = [section("a", 0), section("b", 1)]
+    nodes = [node("start", "Start", 0, 3, section="a"), node("p", "Platform", 3, 3, section="a"),
+             node("q", "Platform", 6, 3, section="a"), node("far", "Platform", 30, 3, 4, section="b"),
+             node("exit", "Exit", 36, 3, section="b")]
+    ents = [entity("player", "Start", "start", "a", facing="right"),
+            entity("door", "Exit", "exit", "b", requires_key=False)]
+    ents += [entity(f"c{i}", "Pickup", "p", "a", pickup_kind="coin") for i in range(4)]
+    spec = make_spec(nodes, [("start", "p", "Walk"), ("p", "q", "Walk"), ("q", "far", "Jump"),
+                             ("far", "exit", "Walk")], ents, sections=secs, size=(50, 15))
+    lay = layout_spec(spec)
+    placed = place_spec_entities(spec, lay)
+    assert not [e for e in placed if e.metadata.get("anchor") == "far"]  # never crosses sections
+    for nid, nl in lay.node_layouts.items():  # widening never leaves the section band
+        band = next(b for b in lay.sections if b.id == lay.node_sections[nid])
+        assert band.col_start <= nl.col and nl.col + nl.width - 1 <= band.col_end, nid
+
+
+def test_crowding_fix_keeps_the_level_verifiable():
+    from game import GameProfile
+    from layout import repair_grid, verify_grid
+
+    spec = _crowd_spec(_coins(4))
+    profile = GameProfile()
+    lay = layout_spec(spec, profile)
+    place_spec_entities(spec, lay)
+    report = verify_grid(lay, profile, spec)
+    if not report.ok:
+        lay, _ = repair_grid(lay, report, profile, spec)
+        report = verify_grid(lay, profile, spec)
+    assert report.ok, report.error_messages()

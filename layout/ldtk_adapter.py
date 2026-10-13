@@ -19,17 +19,36 @@ What is written
 
 Aesthetic integration
 ---------------------
-Pass an ``AestheticData`` instance to activate a ``Tiles`` visual layer, the
-theme background colour and the tileset reference.
+Pass an ``AestheticData`` instance to activate the visual ``Tiles`` layers (one
+per tileset in use, so each section can have its own theme sheet), the theme
+background colour, the tileset references and the entity sprite atlas.
+
+Layer order
+-----------
+LDtk keeps ``defs.layers`` and every level's ``layerInstances`` in the same
+order (first = drawn on top) and silently re-sorts / re-creates instances that
+differ from the defs on load -- which also marks the level as modified.  Both
+lists are therefore built from the same layer list: Entities, the Tiles
+layer(s), then Collisions (the IntGrid) at the bottom so it never covers the
+tile art.
+
+Entity sprites
+--------------
+When ``AestheticData.entity_atlas`` is set every entity def renders its kind's
+default sprite (``renderMode: "Tile"``) and every instance carries an
+``F_Tile`` field (``sprite_tile``, display mode ``EntityTile``) holding the
+atlas tile picked for it; LDtk shows that tile and computes the instance
+``__tile`` from it.  The def colour stays as the fallback.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from spec.catalog import (
     ENUMS,
@@ -39,6 +58,7 @@ from spec.catalog import (
     F_INT,
     F_STRING,
     F_TEXT,
+    F_TILE,
     GLDTK_VERSION,
     KINDS,
     LEVEL_FIELDS,
@@ -71,11 +91,50 @@ class TileEntry:
     src_y: int  # pixel Y in the tileset image
     flip_x: bool = False
     flip_y: bool = False
+    tileset_uid: Optional[int] = None  # sheet this tile comes from; None = the primary one
+
+
+@dataclass
+class TilesetInfo:
+    """A tileset def (an image next to the ``.ldtk``)."""
+
+    uid: int
+    rel_path: str
+    px_width: int
+    px_height: int
+    identifier: str = "Tileset"
+
+
+# Sprite picker: (LDtk kind, hint strings) -> (col, row) of the atlas cell, or None.
+SpritePicker = Callable[[str, List[str]], Optional[Tuple[int, int]]]
+
+ENTITY_ATLAS_UID = 90
+ENTITY_ATLAS_IDENTIFIER = "Sprites"
+
+
+@dataclass
+class EntityAtlas:
+    """The sprite atlas used for entity icons (``cells`` are atlas grid cells)."""
+
+    tileset: TilesetInfo
+    tile_size: int = 16
+    kind_defaults: Dict[str, Tuple[int, int]] = field(default_factory=dict)  # kind -> cell
+    pick: Optional[SpritePicker] = None
+
+    def rect(self, cell: Tuple[int, int]) -> Dict[str, int]:
+        ts = self.tile_size
+        return {"tilesetUid": self.tileset.uid, "x": cell[0] * ts, "y": cell[1] * ts, "w": ts, "h": ts}
 
 
 @dataclass
 class AestheticData:
-    """Aesthetic layer payload consumed by ``to_ldtk_dict``."""
+    """Aesthetic layer payload consumed by ``to_ldtk_dict``.
+
+    ``tileset_*`` describe the primary tileset (used by tile entries without a
+    ``tileset_uid``); ``extra_tilesets`` are the further sheets of a
+    multi-theme level.  One Tiles layer is written per tileset that has
+    entries (the primary one always gets a layer).
+    """
 
     tile_entries: List[TileEntry] = field(default_factory=list)
     bg_color: str = "#1a1a2e"
@@ -83,6 +142,9 @@ class AestheticData:
     tileset_rel_path: str = "gldtk_assets/themes/dungeon.png"
     tileset_px_width: int = 80
     tileset_px_height: int = 64
+    tileset_identifier: str = "Tileset"
+    extra_tilesets: List[TilesetInfo] = field(default_factory=list)
+    entity_atlas: Optional[EntityAtlas] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -101,7 +163,7 @@ class LDtkConfig:
     # Layer def UIDs
     collisions_layer_uid: int = 1
     entities_layer_uid: int = 2
-    tiles_layer_uid: int = 3  # visual Tiles layer (aesthetic)
+    tiles_layer_uid: int = 3  # visual Tiles layer (aesthetic); more use 4-9, then 2000+
 
     # IntGrid value codes (must match TileValue enum)
     solid_value: int = int(TileValue.SOLID)
@@ -164,9 +226,9 @@ def _json_text(value: Any) -> str:
 
 
 _JSON_TYPE = {F_INT: "Int", F_STRING: "String", F_TEXT: "String", F_BOOL: "Bool",
-              F_ENTITY_REF: "EntityRef"}
+              F_ENTITY_REF: "EntityRef", F_TILE: "Tile"}
 _WRAPPER = {F_INT: "V_Int", F_BOOL: "V_Bool", F_STRING: "V_String", F_TEXT: "V_String",
-            F_ENUM: "V_String", F_ENTITY_REF: "V_String"}
+            F_ENUM: "V_String", F_ENTITY_REF: "V_String", F_TILE: "V_String"}
 
 
 def field_json_type(fs: FieldSpec) -> str:
@@ -189,6 +251,57 @@ def _editor_value(fs: FieldSpec, raw: Any) -> Optional[Dict[str, Any]]:
     if fs.ftype == F_TEXT:
         raw = escape_string(raw)  # LDtk unescapes F_Text once on load
     return {"id": _WRAPPER[fs.ftype], "params": [raw]}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tile layers  (one per tileset in use)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# IntGrid opacity when it sits under tile art (it still shows through gaps).
+COLLISIONS_OPACITY_UNDER_TILES = 0.5
+_EXTRA_LAYER_UIDS = (4, 5, 6, 7, 8, 9)
+_OVERFLOW_LAYER_UID = 2000
+
+
+@dataclass
+class _TileLayer:
+    identifier: str
+    uid: int
+    tileset: TilesetInfo
+    entries: List[TileEntry]
+
+
+def _primary_tileset(a: AestheticData) -> TilesetInfo:
+    return TilesetInfo(a.tileset_uid, a.tileset_rel_path, a.tileset_px_width,
+                       a.tileset_px_height, a.tileset_identifier)
+
+
+def _tile_layers(a: AestheticData, cfg: LDtkConfig) -> List[_TileLayer]:
+    """The Tiles layers, in draw order: the primary tileset's first, then one
+    per further tileset that has entries.  Layer uids are stable per position."""
+    primary = _primary_tileset(a)
+    sheets: Dict[int, TilesetInfo] = {primary.uid: primary}
+    for ts in a.extra_tilesets:
+        sheets.setdefault(ts.uid, ts)
+    by_uid: Dict[int, List[TileEntry]] = {uid: [] for uid in sheets}
+    for te in a.tile_entries:
+        uid = primary.uid if te.tileset_uid is None else te.tileset_uid
+        if uid not in by_uid:
+            raise ValueError(f"tile entry at ({te.col},{te.row}) uses unknown tileset uid {uid}")
+        by_uid[uid].append(te)
+
+    layers: List[_TileLayer] = []
+    for uid, ts in sheets.items():
+        if uid != primary.uid and not by_uid[uid]:
+            continue
+        i = len(layers)
+        if i == 0:
+            lid, name = cfg.tiles_layer_uid, "Tiles"
+        else:
+            lid = _EXTRA_LAYER_UIDS[i - 1] if i - 1 < len(_EXTRA_LAYER_UIDS) else _OVERFLOW_LAYER_UID + i
+            name = f"Tiles_{ts.identifier}"
+        layers.append(_TileLayer(name, lid, ts, by_uid[uid]))
+    return layers
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -235,9 +348,11 @@ def _layer_def_base(identifier: str, layer_type: str, uid: int) -> Dict[str, Any
     }
 
 
-def _make_layer_def_intgrid(cfg: LDtkConfig, grid_size: int) -> Dict[str, Any]:
+def _make_layer_def_intgrid(cfg: LDtkConfig, grid_size: int, under_tiles: bool = False) -> Dict[str, Any]:
     d = _layer_def_base("Collisions", "IntGrid", cfg.collisions_layer_uid)
     d["gridSize"] = grid_size
+    if under_tiles:
+        d["displayOpacity"] = COLLISIONS_OPACITY_UNDER_TILES
     d["intGridValues"] = [
         {"value": cfg.solid_value, "identifier": "Solid", "color": cfg.solid_color,
          "tile": None, "groupUid": 0},
@@ -253,17 +368,30 @@ def _make_layer_def_entities(cfg: LDtkConfig, grid_size: int) -> Dict[str, Any]:
     return d
 
 
-def _make_layer_def_tiles(cfg: LDtkConfig, tileset_uid: int, grid_size: int) -> Dict[str, Any]:
-    d = _layer_def_base("Tiles", "Tiles", cfg.tiles_layer_uid)
+def _make_layer_def_tiles(layer: "_TileLayer", grid_size: int) -> Dict[str, Any]:
+    d = _layer_def_base(layer.identifier, "Tiles", layer.uid)
     d["gridSize"] = grid_size
-    d["tilesetDefUid"] = tileset_uid
+    d["tilesetDefUid"] = layer.tileset.uid
     return d
 
 
-def _make_field_def(fs: FieldSpec, uid: int) -> Dict[str, Any]:
+def _rect_str(rect: Dict[str, int]) -> str:
+    """LDtk's ``F_Tile`` editor value: ``"x,y,w,h"`` (pixels in the tileset)."""
+    return f"{rect['x']},{rect['y']},{rect['w']},{rect['h']}"
+
+
+def _make_field_def(
+    fs: FieldSpec,
+    uid: int,
+    tile_rect: Optional[Dict[str, int]] = None,
+    tileset_uid: Optional[int] = None,
+) -> Dict[str, Any]:
     default = fs.default
     if fs.ftype == F_ENUM and default is not None:
         default = enum_value_id(default)
+    if fs.ftype == F_TILE:
+        # default tile = the kind's default sprite (only meaningful with an atlas)
+        default = _rect_str(tile_rect) if tile_rect and tileset_uid is not None else None
     default_override = (
         None if fs.is_array or default is None or fs.ftype == F_ENTITY_REF
         else {"id": _WRAPPER[fs.ftype], "params": [default]}
@@ -304,7 +432,7 @@ def _make_field_def(fs: FieldSpec, uid: int) -> Dict[str, Any]:
         "allowedRefs": "Any",
         "allowedRefsEntityUid": None,
         "allowedRefTags": [],
-        "tilesetUid": None,
+        "tilesetUid": tileset_uid if fs.ftype == F_TILE else None,
     }
 
 
@@ -312,8 +440,16 @@ def _kind_size(kind: KindSpec, cfg: LDtkConfig) -> Tuple[int, int]:
     return tuple(cfg.player_px) if kind.kind == "Start" else (kind.width, kind.height)  # type: ignore[return-value]
 
 
-def _make_entity_def(kind: KindSpec, cfg: LDtkConfig) -> Dict[str, Any]:
+def _kind_tile_rect(kind: KindSpec, atlas: Optional[EntityAtlas]) -> Optional[Dict[str, int]]:
+    if atlas is None or kind.kind not in atlas.kind_defaults:
+        return None
+    return atlas.rect(atlas.kind_defaults[kind.kind])
+
+
+def _make_entity_def(kind: KindSpec, cfg: LDtkConfig, atlas: Optional[EntityAtlas] = None) -> Dict[str, Any]:
     width, height = _kind_size(kind, cfg)
+    tile_rect = _kind_tile_rect(kind, atlas)
+    atlas_uid = atlas.tileset.uid if atlas is not None else None
     return {
         "identifier": kind.identifier,
         "uid": kind.uid,
@@ -322,17 +458,19 @@ def _make_entity_def(kind: KindSpec, cfg: LDtkConfig) -> Dict[str, Any]:
         "exportToToc": False,
         "allowOutOfBounds": False,
         "color": kind.color,
-        "renderMode": "Rectangle",
+        "renderMode": "Tile" if tile_rect else "Rectangle",
         "showName": True,
-        "tilesetId": None,
+        "tilesetId": atlas_uid if tile_rect else None,
         "tileRenderMode": "FitInside",
-        "tileRect": None,
+        "tileRect": tile_rect,
         "uiTileRect": None,
         "hollow": False,
         "fillOpacity": 0.4,
         "lineOpacity": 1.0,
         "tileOpacity": 1.0,
-        "fieldDefs": [_make_field_def(f, kind.field_uid(f.name)) for f in kind.all_fields],
+        "fieldDefs": [
+            _make_field_def(f, kind.field_uid(f.name), tile_rect, atlas_uid) for f in kind.all_fields
+        ],
         "maxCount": kind.max_count,
         "limitScope": "PerLevel",
         "limitBehavior": "MoveLastOne",
@@ -363,16 +501,16 @@ def _make_enum_def(e: EnumSpec) -> Dict[str, Any]:
     }
 
 
-def _make_tileset_def(aesthetic: AestheticData, tile_size: int) -> Dict[str, Any]:
+def _make_tileset_def(ts: TilesetInfo, tile_size: int) -> Dict[str, Any]:
     return {
-        "__cWid": aesthetic.tileset_px_width // tile_size,
-        "__cHei": aesthetic.tileset_px_height // tile_size,
-        "identifier": "Tileset",
-        "uid": aesthetic.tileset_uid,
-        "relPath": aesthetic.tileset_rel_path,
+        "__cWid": ts.px_width // tile_size,
+        "__cHei": ts.px_height // tile_size,
+        "identifier": ts.identifier,
+        "uid": ts.uid,
+        "relPath": ts.rel_path,
         "embedAtlas": None,
-        "pxWid": aesthetic.tileset_px_width,
-        "pxHei": aesthetic.tileset_px_height,
+        "pxWid": ts.px_width,
+        "pxHei": ts.px_height,
         "tileGridSize": tile_size,
         "spacing": 0,
         "padding": 0,
@@ -386,14 +524,18 @@ def _make_tileset_def(aesthetic: AestheticData, tile_size: int) -> Dict[str, Any
 
 
 def _make_defs(cfg: LDtkConfig, aesthetic: Optional[AestheticData], tile_size: int) -> Dict[str, Any]:
-    layers = [_make_layer_def_entities(cfg, tile_size), _make_layer_def_intgrid(cfg, tile_size)]
-    tilesets: List[Dict[str, Any]] = []
-    if aesthetic is not None:
-        layers.append(_make_layer_def_tiles(cfg, aesthetic.tileset_uid, tile_size))
-        tilesets.append(_make_tileset_def(aesthetic, tile_size))
+    # Same order as the level's layerInstances (see _make_level).
+    tile_layers = _tile_layers(aesthetic, cfg) if aesthetic is not None else []
+    layers = [_make_layer_def_entities(cfg, tile_size)]
+    layers += [_make_layer_def_tiles(tl, tile_size) for tl in tile_layers]
+    layers.append(_make_layer_def_intgrid(cfg, tile_size, under_tiles=bool(tile_layers)))
+    tilesets: List[Dict[str, Any]] = [_make_tileset_def(tl.tileset, tile_size) for tl in tile_layers]
+    atlas = aesthetic.entity_atlas if aesthetic is not None else None
+    if atlas is not None:
+        tilesets.append(_make_tileset_def(atlas.tileset, tile_size))
     return {
         "layers": layers,
-        "entities": [_make_entity_def(k, cfg) for k in KINDS.values()],
+        "entities": [_make_entity_def(k, cfg, atlas) for k in KINDS.values()],
         "tilesets": tilesets,
         "enums": [_make_enum_def(e) for e in ENUMS.values()],
         "externalEnums": [],
@@ -481,6 +623,20 @@ def _field_instance(fs: FieldSpec, uid: int, value: Any) -> Dict[str, Any]:
     }
 
 
+def _tile_instance(fs: FieldSpec, uid: int, rect: Optional[Dict[str, int]]) -> Dict[str, Any]:
+    """``F_Tile`` field instance: value = the tileset rectangle (``None`` = unset)."""
+    return {
+        "__identifier": fs.name,
+        "__type": field_json_type(fs),
+        "__value": dict(rect) if rect else None,
+        "__tile": dict(rect) if rect else None,
+        "defUid": uid,
+        "realEditorValues": [
+            {"id": _WRAPPER[fs.ftype], "params": [_rect_str(rect)]} if rect else None
+        ],
+    }
+
+
 def _ref_instance(fs: FieldSpec, uid: int, target: Optional[_RefTarget]) -> Dict[str, Any]:
     return {
         "__identifier": fs.name,
@@ -558,6 +714,20 @@ def _jsonable(value: Any) -> Any:
         return str(value)
 
 
+_HINT_FIELDS = ("sprite", "description", "archetype", "pickup_kind", "interactive_kind", "weapon_kind", "name")
+
+
+def _sprite_rect(p: _Prepared, atlas: Optional[EntityAtlas]) -> Optional[Dict[str, int]]:
+    """The atlas tile for one entity: the library sprite its hints match best."""
+    if atlas is None or atlas.pick is None:
+        return None
+    hints = [str(p.values[k]) for k in _HINT_FIELDS if p.values.get(k)]
+    cell = atlas.pick(p.kind.kind, hints)
+    if cell is None and p.kind.kind in atlas.kind_defaults:
+        cell = atlas.kind_defaults[p.kind.kind]
+    return atlas.rect(cell) if cell is not None else None
+
+
 def _make_entity_instance(
     p: _Prepared,
     tile_size: int,
@@ -565,6 +735,7 @@ def _make_entity_instance(
     world_y: int,
     resolve_ref: Any,
     cfg: LDtkConfig,
+    atlas: Optional[EntityAtlas] = None,
 ) -> Dict[str, Any]:
     kind = p.kind
     e = p.entity
@@ -575,20 +746,25 @@ def _make_entity_instance(
     px_x = e.col * tile_size + tile_size // 2
     px_y = e.row * tile_size + tile_size
 
+    sprite_rect = _sprite_rect(p, atlas)
     field_instances = []
     for fs in kind.all_fields:
         uid = kind.field_uid(fs.name)
         if fs.ftype == F_ENTITY_REF:
             field_instances.append(_ref_instance(fs, uid, resolve_ref(p, fs.name)))
+        elif fs.ftype == F_TILE:
+            field_instances.append(_tile_instance(fs, uid, sprite_rect))
         else:
             field_instances.append(_field_instance(fs, uid, p.values.get(fs.name)))
+    # LDtk's own rule: the first field tile, else the def's default tile.
+    tile = sprite_rect or _kind_tile_rect(kind, atlas)
 
     return {
         "__identifier": kind.identifier,
         "__grid": [e.col, e.row],
         "__pivot": [0.5, 1.0],
         "__tags": list(kind.tags),
-        "__tile": None,
+        "__tile": dict(tile) if tile else None,
         "__worldX": px_x + world_x,
         "__worldY": px_y + world_y,
         "__smartColor": kind.color,
@@ -656,15 +832,14 @@ def _make_layer_instance_intgrid(ir: IRLevel, level_uid: int, cfg: LDtkConfig) -
 
 
 def _make_layer_instance_tiles(
-    tile_entries: List[TileEntry],
+    layer: _TileLayer,
     ir: IRLevel,
     level_uid: int,
-    aesthetic: AestheticData,
-    cfg: LDtkConfig,
 ) -> Dict[str, Any]:
-    tiles_per_row = aesthetic.tileset_px_width // ir.tile_size
+    ts = layer.tileset
+    tiles_per_row = max(1, ts.px_width // ir.tile_size)
     grid_tiles = []
-    for te in tile_entries:
+    for te in layer.entries:
         tile_id = (te.src_y // ir.tile_size) * tiles_per_row + (te.src_x // ir.tile_size)
         grid_tiles.append(
             {
@@ -677,13 +852,13 @@ def _make_layer_instance_tiles(
             }
         )
     base = _layer_instance_base(
-        "Tiles", "Tiles", ir.width_tiles, ir.height_tiles, ir.tile_size,
-        cfg.tiles_layer_uid, level_uid,
-        tileset_def_uid=aesthetic.tileset_uid,
-        tileset_rel_path=aesthetic.tileset_rel_path,
+        layer.identifier, "Tiles", ir.width_tiles, ir.height_tiles, ir.tile_size,
+        layer.uid, level_uid,
+        tileset_def_uid=ts.uid,
+        tileset_rel_path=ts.rel_path,
     )
     base["gridTiles"] = grid_tiles
-    base["overrideTilesetUid"] = aesthetic.tileset_uid
+    base["overrideTilesetUid"] = ts.uid
     return base
 
 
@@ -774,17 +949,20 @@ def _make_level(
             return None
         return _RefTarget(target.iid, entities_layer["iid"], level_iid, world_iid)
 
+    atlas = aesthetic.entity_atlas if aesthetic else None
     entities_layer["entityInstances"] = [
-        _make_entity_instance(p, ir.tile_size, world_x, world_y, resolve_ref, cfg)
+        _make_entity_instance(p, ir.tile_size, world_x, world_y, resolve_ref, cfg, atlas)
         for p in prepared
     ]
 
-    # Layer stack (top-most listed first = rendered on top)
+    # Layer stack, top-most first.  Must match defs.layers one to one and in the
+    # same order (see _make_defs): otherwise LDtk re-sorts the instances on load
+    # and marks the level as modified.  Collisions go last, under the tile art.
     layer_instances: List[Dict[str, Any]] = [entities_layer]
-    if aesthetic and aesthetic.tile_entries:
-        layer_instances.append(
-            _make_layer_instance_tiles(aesthetic.tile_entries, ir, level_uid, aesthetic, cfg)
-        )
+    if aesthetic:
+        layer_instances += [
+            _make_layer_instance_tiles(tl, ir, level_uid) for tl in _tile_layers(aesthetic, cfg)
+        ]
     layer_instances.append(_make_layer_instance_intgrid(ir, level_uid, cfg))
 
     values = _level_field_values(ir, level_meta)
@@ -844,7 +1022,10 @@ def to_ldtk_dict_with_warnings(
     uids: List[int] = [cfg.collisions_layer_uid, cfg.entities_layer_uid,
                        cfg.tiles_layer_uid, level_uid, *all_uids()]
     if aesthetic:
-        uids.append(aesthetic.tileset_uid)
+        for tl in _tile_layers(aesthetic, cfg):
+            uids += [tl.uid, tl.tileset.uid]
+        if aesthetic.entity_atlas is not None:
+            uids.append(aesthetic.entity_atlas.tileset.uid)
     next_uid = max(uids) + 1
 
     bg = aesthetic.bg_color if aesthetic else cfg.background_color
@@ -863,7 +1044,9 @@ def to_ldtk_dict_with_warnings(
         },
         "iid": _new_iid(),
         "jsonVersion": cfg.json_version,
-        "appBuildId": 0,
+        # LDtk re-saves ("older version") any project whose build id is below its
+        # own and marks every level modified; an hour stamp is never below it.
+        "appBuildId": int(time.time() // 3600),
         "nextUid": next_uid,
         "identifierStyle": "Capitalize",
         "toc": [],
