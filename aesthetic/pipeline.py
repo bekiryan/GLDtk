@@ -41,6 +41,7 @@ def build_aesthetic_layer(
     seed: int = 42,
     attach_entities: bool = True,
     custom_enemy_types: Optional[List[str]] = None,
+    place_random_entities: bool = True,
 ) -> AestheticBuildResult:
     """Build and optionally attach all Part 4 outputs to an IR level.
 
@@ -56,6 +57,8 @@ def build_aesthetic_layer(
     attach_entities    : append generated entities to ``ir_level.entities``.
     custom_enemy_types : if provided, enemies are drawn from this list instead
                          of the theme's default enemy archetype.
+    place_random_entities : False skips the random coin / enemy placement, so
+                         the level holds only the entities the spec asked for.
 
     Returns
     -------
@@ -64,14 +67,16 @@ def build_aesthetic_layer(
     """
     theme = detect_theme(description, override=theme_override)
     tile_entries = autotile_level(ir_level, theme)
-    entities = place_entities(
-        graph=graph,
-        node_layouts=node_layouts,
-        theme=theme,
-        density=density,
-        seed=seed,
-        custom_enemy_types=custom_enemy_types,
-    )
+    entities: List[IREntity] = []
+    if place_random_entities:
+        entities = place_entities(
+            graph=graph,
+            node_layouts=node_layouts,
+            theme=theme,
+            density=density,
+            seed=seed,
+            custom_enemy_types=custom_enemy_types,
+        )
 
     if attach_entities:
         ir_level.entities.extend(entities)

@@ -25,9 +25,9 @@ import logging
 from fastapi.middleware.cors import CORSMiddleware
 
 from aesthetic import build_aesthetic_layer
-from aesthetic.themes import THEMES
+from aesthetic.themes import THEMES, Theme, detect_theme
 from api.models import GenerateRequest, GenerateResponse, LevelStats
-from layout import LayoutConfig, sugiyama_layout, to_ldtk_dict
+from layout import to_ldtk_dict
 from game.profile import (
     PROFILE_FILENAME,
     GameProfile,
@@ -37,6 +37,7 @@ from game.profile import (
 )
 from llm import LLMController, MaxRetriesExceeded
 from llm.providers import LLMProvider, make_provider
+from pipeline import LevelBuildFailed, build_level
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,10 +106,24 @@ app.add_middleware(
 # ─────────────────────────────────────────────────────────────────────────────
 
 _DIFFICULTY: Dict[str, Dict[str, Any]] = {
-    "easy": {"density": 0.5, "v_step": 3},
-    "medium": {"density": 1.0, "v_step": 4},
-    "hard": {"density": 1.5, "v_step": 5},
+    "easy": {"density": 0.5},
+    "medium": {"density": 1.0},
+    "hard": {"density": 1.5},
 }
+
+
+def section_theme(theme_text: str, description: str, override: str | None = None) -> Theme:
+    """Map a section's free-text theme to a tileset theme.
+
+    The request override wins; otherwise the section theme's keywords, then the
+    level description's keywords, then the default theme.
+    """
+    if override:
+        return detect_theme("", override=override)
+    theme = detect_theme(theme_text)
+    if theme.identifier == "default":
+        theme = detect_theme(description)
+    return theme
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -177,7 +192,6 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     # ── difficulty params ─────────────────────────────────────────────────
     diff_cfg = _DIFFICULTY.get(req.difficulty or "medium", _DIFFICULTY["medium"])
     density: float = diff_cfg["density"]
-    v_step: int = diff_cfg["v_step"]
 
     # ── build constraints block for the LLM ───────────────────────────────
     constraints: Dict[str, Any] = {}
@@ -194,60 +208,60 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     if req.height_tiles:
         constraints["height_tiles"] = req.height_tiles
 
-    # ── LLM spec generation ───────────────────────────────────────────────
+    # ── LLM spec → layout → grid verification → repair ──────────────────
     try:
         controller = LLMController(
             profile=profile,
             provider=provider_factory(req),
             max_retries=req.max_retries,
         )
-        spec = controller.generate_spec(
-            req.description, constraints=constraints or None
+        built = build_level(
+            req.description,
+            controller,
+            profile,
+            constraints=constraints or None,
+            seed=req.seed,
+            size_override=(req.width_tiles, req.height_tiles),
         )
-        graph = spec.to_graph()
     except MaxRetriesExceeded as exc:
         return GenerateResponse(
             success=False, error=str(exc), profile_path=str(profile_path)
+        )
+    except LevelBuildFailed as exc:
+        return GenerateResponse(
+            success=False,
+            error=str(exc),
+            profile_path=str(profile_path),
+            verified=False,
         )
     except Exception as exc:
         return GenerateResponse(
             success=False, error=f"LLM error: {exc}", profile_path=str(profile_path)
         )
 
+    spec = built.spec
+    ir = built.spec_layout.ir
     requirements = [r.text for r in spec.requirements]
-    sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)]
+    ordered_sections = sorted(spec.sections, key=lambda s: s.order)
+    sections = [s.name for s in ordered_sections]
 
-    # ── layout ────────────────────────────────────────────────────────────
+    # ── aesthetic (spec entities only — no random coins / enemies) ───────
     try:
-        width_tiles = req.width_tiles or spec.size.width_tiles
-        height_tiles = req.height_tiles or spec.size.height_tiles
-        layout_kwargs: dict = {
-            "v_step": v_step,
-            "width_tiles": width_tiles,
-            "height_tiles": height_tiles,
-            "baseline_row": height_tiles - 5,
-        }
-        layout_cfg = LayoutConfig(**layout_kwargs)
-        node_layouts, ir = sugiyama_layout(graph, layout_cfg)
-    except Exception as exc:
-        return GenerateResponse(
-            success=False,
-            error=f"Layout error: {exc}",
-            requirements=requirements,
-            sections=sections,
-        )
-
-    # ── aesthetic ─────────────────────────────────────────────────────────
-    try:
+        for band in ir.metadata.get("sections", []):
+            band["mapped_theme"] = section_theme(
+                str(band["theme"]), req.description
+            ).identifier
+        theme = section_theme(ordered_sections[0].theme, req.description, req.theme)
         result = build_aesthetic_layer(
             description=req.description,
-            graph=graph,
-            node_layouts=node_layouts,
+            graph=spec.to_graph(),
+            node_layouts=built.spec_layout.node_layouts,
             ir_level=ir,
-            theme_override=req.theme,
+            theme_override=theme.identifier,
             density=density,
             seed=req.seed,
             custom_enemy_types=req.enemy_types or None,
+            place_random_entities=False,
         )
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Aesthetic error: {exc}")
@@ -267,11 +281,13 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     )
     stats = LevelStats(
         theme=result.theme.display_name,
-        nodes=len(graph.nodes()),
-        edges=len(graph.edges()),
+        nodes=len(spec.nodes),
+        edges=len(spec.edges),
         entities=dict(entity_counts),
+        layout_retries=built.stats["layout_retries"],
+        grid_repairs=built.stats["grid_repairs"],
     )
-    preview = ir.ascii_render({"Start": "S", "Exit": "E"})
+    preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 
     return GenerateResponse(
         success=True,
@@ -281,6 +297,8 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         requirements=requirements,
         sections=sections,
         profile_path=str(profile_path.resolve()),
+        verified=built.report.ok,
+        warnings=built.warnings,
     )
 
 

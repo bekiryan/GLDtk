@@ -182,3 +182,40 @@ def test_generate_explicit_profile_path_missing_uses_defaults(
     assert body["success"], body.get("error")
     assert body["profile_path"] == str(missing.resolve())
     assert not missing.exists()  # generate never writes a profile
+
+
+# ── Layout v2 (Part 3) ───────────────────────────────────────────────────────
+
+
+def test_generate_is_verified_and_counts_spec_entities(client, monkeypatch, tmp_path, load_fixture):
+    from collections import Counter
+
+    raw = load_fixture("valid_two_sections.json")
+    monkeypatch.setattr(server, "provider_factory", lambda req: FakeProvider([raw]))
+    out = tmp_path / "level.ldtk"
+    body = client.post(
+        "/generate", json={"description": "A meadow then a dungeon.", "output_path": str(out)}
+    ).json()
+    assert body["success"], body.get("error")
+    assert body["verified"] is True
+    assert isinstance(body["warnings"], list)
+    assert body["stats"]["layout_retries"] == 0
+    assert body["stats"]["grid_repairs"] == 0
+    expected = Counter(e["kind"] for e in json.loads(raw)["entities"])
+    assert body["stats"]["entities"] == dict(expected)  # no random coins / enemies
+
+    doc = json.loads(out.read_text(encoding="utf-8"))  # loads as JSON
+    layer = next(l for l in doc["levels"][0]["layerInstances"] if l["__type"] == "Entities")
+    assert len(layer["entityInstances"]) == sum(expected.values())
+
+
+def test_generate_reports_unverifiable_level(client, monkeypatch, tmp_path, load_fixture):
+    bad = load_fixture("grid_unrepairable_tunnel.json")
+    monkeypatch.setattr(server, "provider_factory", lambda req: FakeProvider([bad] * 3))
+    out = tmp_path / "level.ldtk"
+    body = client.post(
+        "/generate", json={"description": "tunnel", "output_path": str(out)}
+    ).json()
+    assert not body["success"] and body["verified"] is False
+    assert "NO_GRID_PATH" in body["error"]
+    assert not out.exists()  # never write an unverified level

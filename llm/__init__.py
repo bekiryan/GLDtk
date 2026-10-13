@@ -13,7 +13,12 @@ from .validator import (
     validate_spec,
 )
 from .patcher import AbilityAssignPatch, PatchResult, SymbolicPatcher, TerminalEntityPatch
-from .prompt import SYSTEM_PROMPT, build_generate_messages, build_repair_messages
+from .prompt import (
+    SYSTEM_PROMPT,
+    build_generate_messages,
+    build_grid_repair_messages,
+    build_repair_messages,
+)
 from .providers import FakeProvider, ProviderError, make_provider
 
 __all__ = [
@@ -35,6 +40,7 @@ __all__ = [
     "TerminalEntityPatch",
     "SYSTEM_PROMPT",
     "build_generate_messages",
+    "build_grid_repair_messages",
     "build_repair_messages",
     "FakeProvider",
     "ProviderError",

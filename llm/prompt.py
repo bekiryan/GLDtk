@@ -258,3 +258,32 @@ def build_repair_messages(
         {"role": "assistant", "content": bad_json},
         {"role": "user", "content": correction_request},
     ]
+
+
+def build_grid_repair_messages(
+    description: str,
+    spec_json: str,
+    errors: List[str],
+    prior_messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Ask for a corrected LevelSpec after the *final tile grid* failed verification.
+
+    The spec itself was valid; laying it out on the tile grid and re-checking
+    physics with collisions found the listed problems (named by spec node ids).
+    """
+    numbered = "\n".join(f"  {i + 1}. {e}" for i, e in enumerate(errors))
+    correction_request = (
+        f'GRID VERIFICATION FAILED for: "{description}"\n\n'
+        "Your LevelSpec was laid out on the tile grid and the physics was re-checked "
+        "with the player's hitbox and tile collisions. It failed:\n"
+        f"{numbered}\n\n"
+        "Output a corrected LevelSpec that fixes every listed problem (move the named "
+        "nodes, add Platform nodes, keep ceilings out of jump arcs) while still matching "
+        "the original design description (keep all sections, entities and requirements). "
+        "Output ONLY the JSON object."
+    )
+    return [
+        *prior_messages,
+        {"role": "assistant", "content": spec_json},
+        {"role": "user", "content": correction_request},
+    ]

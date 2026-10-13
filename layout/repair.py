@@ -1,0 +1,338 @@
+"""Deterministic grid repair — fix what ``verify_grid`` found, without the LLM.
+
+``repair_grid`` runs at most ``MAX_ROUNDS`` rounds of repair → re-rasterise →
+re-place entities → verify.  Each round fixes the path first (a level without
+a path makes reachability-based entity fixes premature), then entities:
+
+* START_BLOCKED / blocked hop / blocked entity cell: clear the headroom or the
+  arc by nudging the *blocking* platform (never the hop's own nodes) to the
+  nearest conflict-free row that keeps the swept cells empty;
+* NO_GRID_PATH / WALL_MISSING: if no nudge clears the hop, insert a 3-tile
+  stepping stone (new node ``stoneN`` in the section that owns its column) in
+  the gap, at the position nearest the hop's midpoint that the collision-aware
+  oracle accepts from both ends (or, failing that, from the source end and
+  closer to the target — the next round continues from it);
+* ENTITY_UNREACHABLE / ENTITY_BLOCKED / KEY_LOCK_ORDER: move the entity to the
+  nearest reachable non-hazard platform in its section (warning
+  "moved X from A to B").
+
+The layout is mutated in place and returned.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Dict, List, Optional, Set, Tuple
+
+from game.profile import GameProfile
+from spec.level_spec import LevelSpec
+from symbolic.extractor import move_between, span_point_pairs
+from symbolic.physics import ABILITY_ORDER, ability_enabled, trajectory_candidates
+
+from .ir import TileValue
+from .spec_entities import place_spec_entities
+from .spec_layout import Rect, SpecLayout
+from .sugiyama import NodeLayout
+from .verify import GridError, GridReport, verify_grid
+
+MAX_ROUNDS = 5
+STONE_WIDTH = 3
+_MAX_BLOCKER_CANDIDATES = 48
+_MAX_STONE_CANDIDATES = 500
+
+Cell = Tuple[int, int]  # (col, row)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _swept_cells(layout: SpecLayout, samples, hitbox: Tuple[float, float]) -> Set[Cell]:
+    """Every in-grid cell the hitbox covers along *samples*."""
+    ts = layout.tile_size
+    height, width = layout.height, layout.width
+    w, h = hitbox
+    cells: Set[Cell] = set()
+    for x, y in samples:
+        c0 = int(math.floor((x - w / 2 + 0.01) / ts))
+        c1 = int(math.floor((x + w / 2 - 0.01) / ts))
+        r_bottom = height - 2 - int(math.floor((y + 0.01) / ts))
+        r_top = height - 2 - int(math.floor((y + h - 0.01) / ts))
+        for r in range(max(0, r_top), min(height - 1, r_bottom) + 1):
+            for c in range(max(0, c0), min(width - 1, c1) + 1):
+                cells.add((c, r))
+    return cells
+
+
+def _nudge(
+    layout: SpecLayout, node_id: str, avoid: Set[Cell], reason: str, applied: List[str]
+) -> bool:
+    nl = layout.node_layouts[node_id]
+    # Move away from the cells to keep clear: down if they are mostly above.
+    prefer_down = bool(avoid) and sum(r for _c, r in avoid) / len(avoid) <= nl.row
+    row = layout.nearest_free_row(node_id, prefer_down=prefer_down, avoid=avoid, exclude_current=True)
+    if row is None:
+        return False
+    old = nl.row
+    nl.row = row
+    applied.append(
+        f"nudged '{node_id}' {'up' if row < old else 'down'} {abs(row - old)} tile(s) "
+        f"to {reason}"
+    )
+    return True
+
+
+def _centre(layout: SpecLayout, rect: Rect) -> Tuple[float, float]:
+    return ((rect[1] + rect[2] + 1) / 2.0, float(rect[0]))
+
+
+def _dist(a: Tuple[float, float], b: Tuple[float, float]) -> float:
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fixes
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _clear_headroom(
+    layout: SpecLayout, col: int, row: int, height: int, protect: Set[str], applied: List[str]
+) -> bool:
+    """Nudge whatever occupies ``(col, row-height+1 .. row)`` out of the way."""
+    cells = {(col, r) for r in range(row - height + 1, row + 1) if r >= 0}
+    blockers = {layout.node_at(c, r) for c, r in cells} - {None}
+    if not blockers or blockers & protect:
+        return False
+    return all(
+        _nudge(layout, b, cells, f"clear headroom at column {col}", applied)  # type: ignore[arg-type]
+        for b in sorted(blockers)  # type: ignore[arg-type]
+    )
+
+
+def _nudge_hop_blockers(
+    layout: SpecLayout, profile: GameProfile, a: str, b: str, applied: List[str]
+) -> bool:
+    """Move the platforms blocking the hop a → b (never a or b themselves)."""
+    grid = layout.ir.grid
+    ts = float(layout.tile_size)
+    hitbox = (profile.player.width_px, profile.player.height_px)
+    ra, rb = layout.rect(a), layout.rect(b)
+    scale = layout.gravity_scale_at((ra[1] + ra[2]) // 2)
+    golden = set(layout.golden_path)
+    abilities = [None] + [x for x in ABILITY_ORDER if ability_enabled(profile, x)]
+    best: Optional[Tuple[Tuple[int, int], Set[str], Set[Cell]]] = None
+    tried = 0
+    for p1, p2 in span_point_pairs(ra, rb, layout.height, ts, hitbox[0]):
+        for ability in abilities:
+            for samples in trajectory_candidates(grid, p1, p2, profile, scale, ability):
+                tried += 1
+                if tried > _MAX_BLOCKER_CANDIDATES:
+                    break
+                swept = _swept_cells(layout, samples, hitbox)
+                if any(c < 0 or c >= layout.width for c, _ in swept):
+                    continue
+                blockers: Set[str] = set()
+                ok = True
+                for c, r in swept:
+                    if grid[r][c] == TileValue.EMPTY:
+                        continue
+                    if r == rb[0] and rb[1] <= c <= rb[2]:
+                        continue  # landing on the target
+                    nid = layout.node_at(c, r)
+                    if nid is None or nid in (a, b):
+                        ok = False
+                        break
+                    blockers.add(nid)
+                if not ok or not blockers:
+                    continue
+                key = (len(blockers & golden), len(blockers))
+                if best is None or key < best[0]:
+                    best = (key, blockers, swept)
+    if best is None:
+        return False
+    _key, blockers, swept = best
+    snapshot = {n: layout.node_layouts[n].row for n in blockers}
+    local: List[str] = []
+    for nid in sorted(blockers):
+        if not _nudge(layout, nid, swept, f"clear the hop '{a}'→'{b}'", local):
+            for n, row in snapshot.items():
+                layout.node_layouts[n].row = row
+            return False
+    applied += local
+    return True
+
+
+def _insert_stepping_stone(
+    layout: SpecLayout, profile: GameProfile, spec: LevelSpec, a: str, b: str, applied: List[str]
+) -> bool:
+    grid = layout.ir.grid
+    ra, rb = layout.rect(a), layout.rect(b)
+    height, width = layout.height, layout.width
+    min_row = layout.player_tiles[1]
+    target = _centre(layout, rb)
+    mid = ((_centre(layout, ra)[0] + target[0]) / 2.0, (ra[0] + rb[0]) / 2.0)
+    r_lo = max(min_row, min(ra[0], rb[0]) - 2)
+    r_hi = min(height - 1, max(ra[0], rb[0]) + 4)
+    c_lo = max(0, min(ra[1], rb[1]) - 2)
+    c_hi = min(width - STONE_WIDTH, max(ra[2], rb[2]) + 2)
+    cands = [(r, c) for r in range(r_lo, r_hi + 1) for c in range(c_lo, c_hi + 1)]
+    cands.sort(key=lambda rc: (_dist((rc[1] + STONE_WIDTH / 2.0, rc[0]), mid), rc[0], rc[1]))
+
+    stone_id = "stone1"
+    k = 1
+    while stone_id in layout.node_layouts:
+        k += 1
+        stone_id = f"stone{k}"
+    scale_a = layout.gravity_scale_at((ra[1] + ra[2]) // 2)
+    base = _dist(_centre(layout, ra), target)
+    partial: Optional[Tuple[float, int, int]] = None
+
+    layout.node_kinds[stone_id] = "Platform"
+    layout.node_layouts[stone_id] = NodeLayout(stone_id, 0, 0, STONE_WIDTH, 1)
+    chosen: Optional[Tuple[int, int]] = None
+    try:
+        for row, col in cands[:_MAX_STONE_CANDIDATES]:
+            layout.node_layouts[stone_id].row = row
+            layout.node_layouts[stone_id].col = col
+            if not layout.row_is_free(stone_id, row):
+                continue
+            stone: Rect = (row, col, col + STONE_WIDTH - 1)
+            saved = grid[row][col : col + STONE_WIDTH]
+            grid[row][col : col + STONE_WIDTH] = [TileValue.SOLID] * STONE_WIDTH
+            try:
+                if move_between(grid, ra, stone, profile, scale_a) is None:
+                    continue
+                scale_s = layout.gravity_scale_at(col + 1)
+                if move_between(grid, stone, rb, profile, scale_s) is not None:
+                    chosen = (row, col)
+                    break
+                d = _dist(_centre(layout, stone), target)
+                if d < base - 2 and (partial is None or d < partial[0]):
+                    partial = (d, row, col)
+            finally:
+                grid[row][col : col + STONE_WIDTH] = saved
+    finally:
+        del layout.node_layouts[stone_id]
+        del layout.node_kinds[stone_id]
+
+    if chosen is None and partial is not None:
+        chosen = (partial[1], partial[2])
+    if chosen is None:
+        return False
+    row, col = chosen
+    layout.node_layouts[stone_id] = NodeLayout(stone_id, col, row, STONE_WIDTH, 1)
+    layout.node_kinds[stone_id] = "Platform"
+    section = layout.section_at(col + STONE_WIDTH // 2).id
+    layout.node_sections[stone_id] = section
+    layout.added_nodes.append(stone_id)
+    path = layout.golden_path
+    if b in path:
+        path.insert(path.index(b), stone_id)
+    applied.append(
+        f"inserted stepping stone '{stone_id}' at column {col}, row {row} (section "
+        f"'{section}') between '{a}' and '{b}'"
+    )
+    return True
+
+
+def _move_entity(
+    layout: SpecLayout,
+    spec: LevelSpec,
+    entity_id: str,
+    allowed: Set[str],
+    applied: List[str],
+) -> bool:
+    ent = next((e for e in spec.entities if e.id == entity_id), None)
+    if ent is None or ent.kind in ("Start", "Exit"):
+        return False
+    current = layout.entity_anchors.get(ent.id, ent.anchor)
+    if current not in layout.node_layouts:
+        return False
+    here = _centre(layout, layout.rect(current))
+    pool = [
+        n
+        for n in sorted(allowed)
+        if n != current and layout.standable(n) and layout.node_kinds.get(n) != "Exit"
+    ]
+    same = [n for n in pool if layout.node_sections.get(n) == ent.section]
+    pool = same or pool
+    if not pool:
+        return False
+    new = min(pool, key=lambda n: (_dist(_centre(layout, layout.rect(n)), here), n))
+    layout.entity_anchors[ent.id] = new
+    applied.append(f"moved {ent.id} from {current} to {new}")
+    return True
+
+
+def _repair_round(
+    layout: SpecLayout, report: GridReport, profile: GameProfile, spec: LevelSpec
+) -> List[str]:
+    applied: List[str] = []
+    by_code: Dict[str, List[GridError]] = {}
+    for err in report.errors:
+        by_code.setdefault(err.code, []).append(err)
+
+    for err in by_code.get("START_BLOCKED", []):
+        start = next((e for e in layout.ir.entities if e.entity_type == "Start"), None)
+        if start is not None:
+            _clear_headroom(
+                layout, start.col, start.row, layout.player_tiles[1],
+                set(err.node_ids), applied,
+            )
+
+    path_errors = by_code.get("NO_GRID_PATH", []) + by_code.get("WALL_MISSING", [])
+    for err in path_errors[:1]:
+        if len(err.node_ids) == 2 and err.node_ids[0] != err.node_ids[1]:
+            a, b = err.node_ids
+            if not _nudge_hop_blockers(layout, profile, a, b, applied):
+                _insert_stepping_stone(layout, profile, spec, a, b, applied)
+    if path_errors:
+        return applied  # entity fixes wait until the path is sound
+
+    for err in by_code.get("ENTITY_BLOCKED", []):
+        for sid in err.entity_ids:
+            ent = next((e for e in layout.ir.entities if e.metadata.get("spec_id") == sid), None)
+            if ent is not None and _clear_headroom(
+                layout, ent.col, ent.row, 1, set(layout.golden_path), applied
+            ):
+                continue
+            _move_entity(layout, spec, sid, report.reachable_nodes, applied)
+    for err in by_code.get("ENTITY_UNREACHABLE", []):
+        for sid in err.entity_ids:
+            _move_entity(layout, spec, sid, report.reachable_nodes, applied)
+    for err in by_code.get("KEY_LOCK_ORDER", []):
+        for sid in err.entity_ids[:1]:
+            _move_entity(layout, spec, sid, report.pre_exit_nodes, applied)
+    return applied
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Entry point
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def repair_grid(
+    spec_layout: SpecLayout,
+    report: GridReport,
+    profile: Optional[GameProfile],
+    spec: LevelSpec,
+) -> Tuple[SpecLayout, List[str]]:
+    """Repair *spec_layout* until it verifies or ``MAX_ROUNDS`` rounds pass.
+
+    Returns ``(spec_layout, applied)`` — the (mutated) layout and a description
+    of every repair, in order.  Call ``verify_grid`` again for the final report.
+    """
+    profile = profile or GameProfile()
+    applied: List[str] = []
+    for _ in range(MAX_ROUNDS):
+        if report.ok:
+            break
+        done = _repair_round(spec_layout, report, profile, spec)
+        if not done:
+            break
+        applied += done
+        spec_layout.rasterise()
+        place_spec_entities(spec, spec_layout)
+        report = verify_grid(spec_layout, profile, spec)
+    return spec_layout, applied

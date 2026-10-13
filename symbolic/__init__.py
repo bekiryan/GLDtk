@@ -17,8 +17,9 @@ from .physics import (
     gravity_for,
     reachable,
     required_launch_velocity,
+    trajectory_clear,
 )
-from .extractor import extract_graph
+from .extractor import extract_graph, move_between, span_point_pairs
 
 __all__ = [
     "AbstractLevelGraph",
@@ -37,5 +38,8 @@ __all__ = [
     "reachable",
     "fall_time",
     "required_launch_velocity",
+    "trajectory_clear",
     "extract_graph",
+    "move_between",
+    "span_point_pairs",
 ]

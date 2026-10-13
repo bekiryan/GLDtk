@@ -33,7 +33,12 @@ from spec.level_spec import TILE_SIZE, LevelSpec, parse_graph
 from symbolic.physics import ability_enabled, best_ability, max_jump_height, reachable
 from symbolic.schema import AbstractLevelGraph, EdgeType, NodeType
 
-from .prompt import SYSTEM_PROMPT, build_generate_messages, build_repair_messages
+from .prompt import (
+    SYSTEM_PROMPT,
+    build_generate_messages,
+    build_grid_repair_messages,
+    build_repair_messages,
+)
 from .providers import (
     _DEFAULT_PROVIDER_MODELS,
     LLMProvider,
@@ -647,8 +652,36 @@ class LLMController:
             If no valid spec could be produced within *max_retries* attempts.
             ``exc.stats`` / ``self.stats`` hold the run's bookkeeping.
         """
-        self.stats = stats = GenerationStats()
         messages = build_generate_messages(description, constraints, self._profile)
+        return self._run(description, messages)
+
+    def repair_spec(
+        self,
+        description: str,
+        spec: LevelSpec,
+        errors: List[str],
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> LevelSpec:
+        """Re-prompt the LLM with grid-verification *errors* for a previous *spec*.
+
+        The conversation is the original request, the previous spec as the
+        assistant turn, and a GRID VERIFICATION FAILED message listing *errors*
+        (which name spec node ids).  The answer goes through the same
+        validate → patch → repair loop as :meth:`generate_spec`; ``self.stats``
+        is reset for this call.
+
+        Raises
+        ------
+        MaxRetriesExceeded
+        """
+        messages = build_generate_messages(description, constraints, self._profile)
+        spec_json = json.dumps(spec.model_dump(by_alias=True))
+        messages = build_grid_repair_messages(description, spec_json, errors, messages)
+        return self._run(description, messages)
+
+    def _run(self, description: str, messages: List[Dict[str, Any]]) -> LevelSpec:
+        """Provider call → validate → patch → LLM repair, up to max_retries."""
+        self.stats = stats = GenerationStats()
         result: Optional[ValidationResult] = None
 
         for attempt in range(self._max_retries):

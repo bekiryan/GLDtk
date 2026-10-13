@@ -19,10 +19,11 @@ Heights and reaches scale with 1 / gravity_scale (g_eff = g · gravity_scale).
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
-from typing import List, Union
+from typing import List, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from symbolic.physics import (
@@ -91,6 +92,8 @@ class Abilities(_ProfileModel):
 class Player(_ProfileModel):
     description: str = ""
     sprite: str = ""
+    width_px: float = Field(12.0, gt=0, description="Player hitbox width, px.")
+    height_px: float = Field(24.0, gt=0, description="Player hitbox height, px.")
 
 
 class GameProfile(_ProfileModel):
@@ -100,6 +103,19 @@ class GameProfile(_ProfileModel):
     physics: Physics = Field(default_factory=Physics)
     abilities: Abilities = Field(default_factory=Abilities)
     player: Player = Field(default_factory=Player)
+
+    @field_validator("tile_size")
+    @classmethod
+    def _only_16px_tiles(cls, v: int) -> int:
+        # The tilesets, the prompt and spec.level_spec.TILE_SIZE all assume 16 px.
+        if v != 16:
+            raise ValueError("only 16 px tiles are supported for now")
+        return v
+
+    def player_tiles(self) -> Tuple[int, int]:
+        """Player hitbox size in whole tiles ``(width, height)``, rounded up."""
+        ts = self.tile_size
+        return (math.ceil(self.player.width_px / ts), math.ceil(self.player.height_px / ts))
 
     # ------------------------------------------------------------------
     # Prompt summary

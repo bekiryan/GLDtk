@@ -38,7 +38,9 @@ class LevelStats(BaseModel):
     theme: str
     nodes: int
     edges: int
-    entities: Dict[str, int]  # {"Coin": 5, "Enemy": 2, ...}
+    entities: Dict[str, int]  # spec kinds: {"Enemy": 2, "Pickup": 5, ...}
+    layout_retries: int = 0  # LLM re-prompts after grid verification failed
+    grid_repairs: int = 0  # deterministic grid repairs applied
 
 
 class GenerateResponse(BaseModel):
@@ -50,3 +52,5 @@ class GenerateResponse(BaseModel):
     requirements: List[str] = Field(default_factory=list)  # requirement texts
     sections: List[str] = Field(default_factory=list)  # section names, in order
     profile_path: Optional[str] = None  # the Game Profile path that was used
+    verified: bool = False  # the final tile grid was proven beatable
+    warnings: List[str] = Field(default_factory=list)  # layout / entity / repair notes
