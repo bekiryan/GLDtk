@@ -12,7 +12,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 3 | Layout v2 (+ physics re-verification on the final grid) | strong | ✅ | see git log |
 | 4 | Entity catalog + full LDtk export | medium | ✅ | see git log |
 | **M1** | **User review: prompt → detailed level end to end** | | ⏳ waiting for user | |
-| 7 | Fidelity report | strong | ⬜ | |
+| 7 | Fidelity report + completeness loop | strong | ✅ | see git log |
 | 9 | Sidebar UI (Haxe) | medium | ⬜ | |
 | **M2** | **User review in LDtk** | | ⬜ | |
 | 5 | Asset library | light | ✅ (pulled forward) | see git log |
@@ -38,6 +38,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   3. LDtk marks the level modified (`Level_0*`) as soon as it is opened, so it is changing something on load. Find out what.
   4. The sidebar file label says "No project open" until Generate is clicked. (Part 9)
   5. Platforms are 3 tiles wide, and entities crowd onto one platform (coin, enemy and checkpoint together). Needs prompt and layout guidance.
+
+- 2026-10-13: Part 7 done ([spec](parts/07-fidelity.md)); 248 tests pass. `Requirement.check` is a flat, nullable object (`type`: entity_count, start_item, section, ability, size, gravity or none). `fidelity/` holds the checker, the report and the deterministic fill; the loop is in `pipeline/completeness.py`. The fill adds missing entities, start items and size; then there is **at most one** LLM re-prompt (`complete_spec`) for whatever it cannot fill. Score = (satisfied + 0.5·approximated) / checkable items, or None when nothing is checkable. `GenerateResponse.fidelity` carries the report. The fill runs again after every grid re-prompt. Open: overlapping requirements can be met by the same entities; the fill can overcrowd small sections (placement handles it with warnings); the new prompt and layout guidance has not been tried on a real LLM; the report is not stored in the `.ldtk` yet (Part 8/9).
 
 ## Next steps (resume here)
 1. **Part 7 (fidelity report + completeness loop):** spec written: [parts/07-fidelity.md](parts/07-fidelity.md). Next, dispatch it in a worktree (strong model).
