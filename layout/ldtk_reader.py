@@ -224,6 +224,8 @@ def _read_entity(
             elif include_defaults:
                 meta[name] = None
             continue
+        if name == "sprite_tile":
+            continue  # derived from the sprite / description hints on export
         if name == "gldtk_meta":
             raw = _raw_values(fi, fs)
             parsed = _loads_lenient(raw[0] if raw else None)

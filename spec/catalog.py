@@ -12,13 +12,17 @@ Field names follow ``spec.level_spec.SpecEntity`` (``pickup_kind``,
 * ``spec_id``, ``section``, ``anchor`` (F_String) — GLDtk bookkeeping that
   lets Part 8 map LDtk entities back to the spec;
 * ``gldtk_meta`` (F_Text) — a JSON object with every other metadata key the
-  IR entity carried, so nothing is lost in the round trip.
+  IR entity carried, so nothing is lost in the round trip;
+* ``sprite_tile`` (F_Tile, shown as the entity's tile) — the library sprite
+  picked for this instance; derived on export, never read back.
 
 Uids
 ----
 Entity defs: 10–49 (Start = 10, Exit = 11; 19–49 are free for new kinds).
 Enum defs: 500+.  Level fields: 900+.  Entity fields: ``def_uid * 100 + i``
-(Start → 1000…, Key → 1800…).  Layers use 1–3 and the tileset 100.
+(Start → 1000…, Key → 1800…).  Layers use 1–9 (Entities 2, Collisions 1,
+Tiles 3 and 4–9 for further per-theme Tiles layers), the entity sprite atlas
+tileset 90 and the theme tilesets 100+.
 
 Enum values are capitalised in LDtk (``walker`` → ``Walker``) because the
 editor's default identifier style (``Capitalize``) looks enum values up in
@@ -82,6 +86,7 @@ F_INT = "F_Int"
 F_BOOL = "F_Bool"
 F_ENUM = "F_Enum"
 F_ENTITY_REF = "F_EntityRef"
+F_TILE = "F_Tile"
 
 
 @dataclass(frozen=True)
@@ -107,9 +112,11 @@ COMMON_FIELDS: Tuple[FieldSpec, ...] = (
     FieldSpec("section", F_STRING, None, doc="GLDtk: section id."),
     FieldSpec("anchor", F_STRING, None, doc="GLDtk: platform node the entity stands on."),
     FieldSpec("gldtk_meta", F_TEXT, None, doc="GLDtk: extra metadata (JSON object)."),
+    FieldSpec("sprite_tile", F_TILE, None, display="EntityTile",
+              doc="GLDtk: library sprite shown for this entity (a tile of the sprite atlas)."),
 )
 
-INTERNAL_FIELDS = frozenset({"spec_id", "section", "anchor", "gldtk_meta"})
+INTERNAL_FIELDS = frozenset({"spec_id", "section", "anchor", "gldtk_meta", "sprite_tile"})
 REF_FIELDS = frozenset({"linked_to", "opens"})
 
 
@@ -328,6 +335,7 @@ __all__ = [
     "ENUMS",
     "EnumSpec",
     "FieldSpec",
+    "F_TILE",
     "GLDTK_VERSION",
     "INTERNAL_FIELDS",
     "KIND_BY_UID",

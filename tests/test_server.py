@@ -222,3 +222,45 @@ def test_generate_reports_unverifiable_level(client, monkeypatch, tmp_path, load
     assert not body["success"] and body["verified"] is False
     assert "NO_GRID_PATH" in body["error"]
     assert not out.exists()  # never write an unverified level
+
+
+def test_generate_writes_per_section_tilesets_and_sprite_atlas(client, monkeypatch, tmp_path, load_fixture):
+    from PIL import Image
+
+    monkeypatch.setattr(server, "provider_factory",
+                        lambda req: FakeProvider([load_fixture("valid_two_sections.json")]))
+    out = tmp_path / "gen" / "level.ldtk"
+    body = client.post("/generate", json={"description": "A meadow then a dungeon.",
+                                          "output_path": str(out)}).json()
+    assert body["success"], body.get("error")
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    level = doc["levels"][0]
+
+    # meadow -> forest, dungeon -> dungeon: one Tiles layer each, Collisions at the bottom
+    assert [d["identifier"] for d in doc["defs"]["layers"]] == [
+        "Entities", "Tiles", "Tiles_Dungeon", "Collisions"]
+    assert [li["layerDefUid"] for li in level["layerInstances"]] == [
+        d["uid"] for d in doc["defs"]["layers"]]
+    tiled = {li["__tilesetRelPath"]: li["gridTiles"] for li in level["layerInstances"]
+             if li["__type"] == "Tiles"}
+    assert set(tiled) == {"gldtk_assets/themes/forest.png", "gldtk_assets/themes/dungeon.png"}
+    assert all(tiled.values())
+
+    # every tileset def points at a file that exists with the declared size
+    assert any(t["relPath"] == "gldtk_assets/sprites.png" for t in doc["defs"]["tilesets"])
+    for t in doc["defs"]["tilesets"]:
+        assert Image.open(out.parent / t["relPath"]).size == (t["pxWid"], t["pxHei"]), t["relPath"]
+    assert all(d["renderMode"] == "Tile" for d in doc["defs"]["entities"])
+
+
+def test_generate_request_theme_overrides_every_section(client, monkeypatch, tmp_path, load_fixture):
+    monkeypatch.setattr(server, "provider_factory",
+                        lambda req: FakeProvider([load_fixture("valid_two_sections.json")]))
+    out = tmp_path / "level.ldtk"
+    body = client.post("/generate", json={"description": "x", "output_path": str(out),
+                                          "theme": "lava"}).json()
+    assert body["success"], body.get("error")
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert [d["identifier"] for d in doc["defs"]["layers"]] == ["Entities", "Tiles", "Collisions"]
+    assert {t["relPath"] for t in doc["defs"]["tilesets"]} == {
+        "gldtk_assets/themes/lava.png", "gldtk_assets/sprites.png"}

@@ -15,6 +15,7 @@ dependencies = [
 server = [
     "fastapi[standard]>=0.111",
     "uvicorn[standard]>=0.29",
+    "pillow>=10",  # entity sprite atlas
 ]
 art = [
     "pillow>=10",

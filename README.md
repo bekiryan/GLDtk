@@ -436,7 +436,7 @@ The first three signals are free and deterministic. You can build a fully superv
 
 **LDtk tileset is blank / pink**
 - The `tileset_rel_path` in the theme must point to a PNG file **relative to the `.ldtk` file's location**
-- Create a placeholder PNG at that path (e.g. `tilesets/dungeon.png`) matching the 256×256 tileset layout described in `aesthetic/themes.py`
+- Create a placeholder PNG at that path (e.g. `gldtk_assets/themes/dungeon.png`) matching the 80×64 theme sheet layout described in `aesthetic/themes.py`
 - The tile positions are documented in the tileset layout convention comment at the top of `aesthetic/themes.py`
 
 **Level not solvable after extraction**

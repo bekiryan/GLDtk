@@ -20,13 +20,18 @@ The 16 possible masks map cleanly to TileRole values, covering:
 
 Hazard tiles always receive TileRole.HAZARD_TILE regardless of neighbours.
 
+Per-section themes: the mask only looks at the grid, never at the theme, so a
+platform that crosses a section seam keeps the roles of one continuous
+platform (no cap at the seam); each cell just takes its tile from the sheet of
+the theme owning its column (``theme_for_col``).
+
 The resulting TileEntry list is consumed by ``layout.ldtk_adapter.to_ldtk_dict``
 when an AestheticData payload is provided.
 """
 
 from __future__ import annotations
 
-from typing import List
+from typing import Callable, List, Optional
 
 from layout.ir import IRLevel, TileValue
 from layout.ldtk_adapter import TileEntry
@@ -77,7 +82,8 @@ def _neighbour_mask(ir: IRLevel, col: int, row: int, tile_val: TileValue) -> int
 
 def _role_to_entry(col: int, row: int, role: TileRole, theme: Theme) -> TileEntry:
     addr = theme.tile_for(role, col, row)  # variants chosen deterministically
-    return TileEntry(col=col, row=row, src_x=addr.src_x, src_y=addr.src_y)
+    return TileEntry(col=col, row=row, src_x=addr.src_x, src_y=addr.src_y,
+                     tileset_uid=theme.tileset_uid)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +91,11 @@ def _role_to_entry(col: int, row: int, role: TileRole, theme: Theme) -> TileEntr
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def autotile_level(ir: IRLevel, theme: Theme) -> List[TileEntry]:
+def autotile_level(
+    ir: IRLevel,
+    theme: Theme,
+    theme_for_col: Optional[Callable[[int], Theme]] = None,
+) -> List[TileEntry]:
     """Generate a TileEntry list for every non-empty cell in *ir*.
 
     Each cell receives the tile that visually matches its neighbourhood:
@@ -95,12 +105,15 @@ def autotile_level(ir: IRLevel, theme: Theme) -> List[TileEntry]:
     ----------
     ir    : rasterised level grid.
     theme : active theme supplying the tile address lookup.
+    theme_for_col : optional per-column theme (sections); defaults to *theme*.
+                    Every entry records its theme's ``tileset_uid``.
 
     Returns
     -------
     List[TileEntry] ready to be stored in ``AestheticData.tile_entries``.
     """
     entries: List[TileEntry] = []
+    base_theme = theme
 
     for row in range(ir.height_tiles):
         for col in range(ir.width_tiles):
@@ -108,6 +121,7 @@ def autotile_level(ir: IRLevel, theme: Theme) -> List[TileEntry]:
 
             if cell == TileValue.EMPTY:
                 continue
+            theme = theme_for_col(col) if theme_for_col else base_theme
 
             if cell == TileValue.HAZARD:
                 entries.append(_role_to_entry(col, row, TileRole.HAZARD_TILE, theme))
