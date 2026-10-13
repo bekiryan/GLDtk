@@ -28,7 +28,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 DEFAULT_ROOT = Path(__file__).resolve().parent.parent / "assets"
 MANIFEST_NAME = "manifest.json"
@@ -62,7 +62,24 @@ class SourceEntry(BaseModel):
     license: str = "CC0-1.0"
 
 
-class ThemeEntry(BaseModel):
+class _QualityMixin(BaseModel):
+    """Optional ``quality`` dict (generated assets: seam scores, pixel scale...).
+
+    It is omitted from the JSON when unset, so manifests written before Part 6
+    round-trip byte-identically.
+    """
+
+    quality: Optional[Dict[str, Any]] = None
+
+    @model_serializer(mode="wrap")
+    def _drop_unset_quality(self, handler):
+        data = handler(self)
+        if isinstance(data, dict) and data.get("quality") is None:
+            data.pop("quality", None)
+        return data
+
+
+class ThemeEntry(_QualityMixin):
     id: str
     display_name: str
     keywords: List[str] = Field(default_factory=list)
@@ -77,7 +94,7 @@ class ThemeEntry(BaseModel):
     enemy_rate: float = 0.5
 
 
-class SpriteEntry(BaseModel):
+class SpriteEntry(_QualityMixin):
     id: str
     kind: SpriteKind
     tags: List[str] = Field(default_factory=list)
@@ -263,6 +280,7 @@ def add_theme(
     enemy_rate: float = 0.5,
     overwrite: bool = False,
     root: Union[str, Path, None] = None,
+    quality: Optional[Dict[str, Any]] = None,
 ) -> ThemeEntry:
     """Write ``themes/<theme_id>.png`` and its manifest entry (PNG first)."""
     if not _ID_RE.match(theme_id):
@@ -288,6 +306,7 @@ def add_theme(
         generated=generated,
         enemy_type=enemy_type,
         enemy_rate=enemy_rate,
+        quality=quality,
     )
     old = next((t for t in manifest.themes if t.id == theme_id), None)
     if old is not None:
@@ -310,6 +329,7 @@ def add_sprite(
     generated: bool = True,
     overwrite: bool = False,
     root: Union[str, Path, None] = None,
+    quality: Optional[Dict[str, Any]] = None,
 ) -> SpriteEntry:
     """Write ``sprites/<sprite_id>.png`` and its manifest entry (PNG first)."""
     if not _ID_RE.match(sprite_id):
@@ -329,6 +349,7 @@ def add_sprite(
         size=(w, h),
         source=source,
         generated=generated,
+        quality=quality,
     )
     old = next((s for s in manifest.sprites if s.id == sprite_id), None)
     if old is not None:
