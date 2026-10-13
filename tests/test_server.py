@@ -46,6 +46,9 @@ def test_generate_with_fake_provider_writes_ldtk(client, monkeypatch, tmp_path, 
     assert level["pxWid"] == 60 * 16
     assert level["pxHei"] == 20 * 16
     assert level["layerInstances"]
+    # the theme sheet is copied next to the .ldtk at the path it references
+    rel = doc["defs"]["tilesets"][0]["relPath"]
+    assert (out.parent / rel).is_file()
 
 
 def test_generate_request_size_overrides_spec(client, monkeypatch, tmp_path, load_fixture):

@@ -15,7 +15,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 7 | Fidelity report | strong | ⬜ | |
 | 9 | Sidebar UI (Haxe) | medium | ⬜ | |
 | **M2** | **User review in LDtk** | | ⬜ | |
-| 5 | Asset library | light | ⏳ running (worktree, pulled forward) | |
+| 5 | Asset library | light | ✅ (pulled forward) | see git log |
 | 8 | Regional editing + undo | strong | ⬜ | |
 | **M3** | **User review** | | ⬜ | |
 | 10 | Evaluation harness | light | ⬜ | |
@@ -28,3 +28,4 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 - 2026-10-13: Part 2 done ([spec](parts/02-game-profile.md)). 99 offline tests pass. The double-jump oracle is exact and closed-form; the orchestrator checked it against a brute-force τ search (20k random cases, no mismatches). Open items for Part 3: Fall edges are not yet capped by `run_speed`; `TILE_SIZE = 16` is fixed in `spec/level_spec.py` and the prompt, while the profile has its own `tile_size`; wall-jump edges must be checked for a real wall on the final grid; `SteppingStonePatch` ignores abilities.
 - 2026-10-13: Part 3 done ([spec](parts/03-layout-v2.md)). 136 offline tests pass. The layout keeps the LLM's coordinates (`col=round(x/16)`, `row=H-1-round(y/16)`) and section order. The final grid is verified with hitbox-swept trajectories (12×24 px, 6 px samples), repaired deterministically (stepping stones, nudges), and the LLM is re-prompted only as a last resort. A 300×100 level with 87 nodes builds in about 1.6 s; the 50-seed property test verified 50/50. Open: the gravity scale of the starting section applies to the whole arc; walking under a low ceiling along one span is not checked; wall-jump paths are approximate; the server writes no `.ldtk` when verification fails.
 - 2026-10-13: The user asked for independent parts to run in parallel. Parts 4 and 5 run at the same time in separate git worktrees (they edit disjoint files), and the orchestrator merges them and does the server wiring. Milestone review points are unchanged.
+- 2026-10-13: Part 5 done ([spec](parts/05-asset-library.md)). Three Kenney CC0 packs (Tiny Dungeon, Tiny Town, 1-Bit), 8 themes and 25 sprites in `assets/manifest.json`, about 250 KB. Six of the themes use derived edge tiles (texture plus outline and top band), because the packs have no platformer edge sets; only forest and castle use real 3×3 blocks. The orchestrator reviewed `assets/preview.png` and had cave and sky redone. The server copies the theme sheet to `<ldtk_dir>/gldtk_assets/themes/`. Still to do: delete `tilesets/` once the default in `ldtk_adapter.AestheticData` (Part 4) no longer references it; use `find_sprite` for entity sprites when wiring Part 4.

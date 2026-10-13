@@ -25,7 +25,7 @@ import logging
 from fastapi.middleware.cors import CORSMiddleware
 
 from aesthetic import build_aesthetic_layer
-from aesthetic.themes import THEMES, Theme, detect_theme
+from aesthetic.themes import THEMES, Theme, copy_theme_assets, detect_theme
 from api.models import GenerateRequest, GenerateResponse, LevelStats
 from layout import to_ldtk_dict
 from game.profile import (
@@ -268,9 +268,11 @@ def generate(req: GenerateRequest) -> GenerateResponse:
 
     # ── serialise ─────────────────────────────────────────────────────────
     try:
-        doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
         out = Path(req.output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
+        # The .ldtk references the theme sheet relative to itself.
+        copy_theme_assets(result.theme, out.parent)
+        doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
         out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Serialisation error: {exc}")
