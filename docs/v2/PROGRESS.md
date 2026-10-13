@@ -38,3 +38,13 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   3. LDtk marks the level modified (`Level_0*`) as soon as it is opened, so it is changing something on load. Find out what.
   4. The sidebar file label says "No project open" until Generate is clicked. (Part 9)
   5. Platforms are 3 tiles wide, and entities crowd onto one platform (coin, enemy and checkpoint together). Needs prompt and layout guidance.
+
+## Next steps (resume here)
+1. **Part 7 (fidelity report + completeness loop):** a deterministic check of requirements against the spec runs before layout, and missing items go back to the LLM. Write `parts/07-fidelity.md`, then run it in a worktree.
+2. **In parallel, "M1 fixes"** (worktree; touches export and layout only):
+   - app-test bugs 2, 3 and 5 above;
+   - library sprites as LDtk entity icons;
+   - per-section tilesets.
+3. Then **Part 9** (sidebar), including app-test bugs 1 and 4. Then M2.
+- Merged worktree branches can be deleted: `worktree-agent-a4c95…` (Part 5), `aa72ba…` (Part 4), `ae8be5…` (Part 6).
+- App testing: Playwright `_electron` with `args: ['.']`, `cwd = ldtk-src/app`. Open a level by stubbing `dialog.showOpenDialog` in the main process, then clicking `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`.
