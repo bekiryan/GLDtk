@@ -15,6 +15,7 @@ from .validator import (
 from .patcher import AbilityAssignPatch, PatchResult, SymbolicPatcher, TerminalEntityPatch
 from .prompt import (
     SYSTEM_PROMPT,
+    build_completeness_messages,
     build_generate_messages,
     build_grid_repair_messages,
     build_repair_messages,
@@ -39,6 +40,7 @@ __all__ = [
     "SymbolicPatcher",
     "TerminalEntityPatch",
     "SYSTEM_PROMPT",
+    "build_completeness_messages",
     "build_generate_messages",
     "build_grid_repair_messages",
     "build_repair_messages",

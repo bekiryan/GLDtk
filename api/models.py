@@ -41,6 +41,30 @@ class LevelStats(BaseModel):
     entities: Dict[str, int]  # spec kinds: {"Enemy": 2, "Pickup": 5, ...}
     layout_retries: int = 0  # LLM re-prompts after grid verification failed
     grid_repairs: int = 0  # deterministic grid repairs applied
+    completeness_reprompts: int = 0  # LLM re-prompts for unmet requirements (0 or 1)
+    entities_filled: int = 0  # entities the deterministic completeness fill added
+
+
+class FidelityItemModel(BaseModel):
+    id: str  # requirement id ("R1")
+    text: str
+    category: str
+    status: str  # satisfied | approximated | impossible | missing | unchecked
+    reason: str
+    auto_filled: bool = False  # the completeness fill added entities for it
+
+
+class FidelityModel(BaseModel):
+    """Mirror of ``fidelity.FidelityReport`` (see ``fidelity/report.py``).
+
+    ``score`` = (satisfied + 0.5 · approximated) / checkable items (all but
+    unchecked); None when nothing is checkable.
+    """
+
+    score: Optional[float] = None
+    verified: Optional[bool] = None
+    counts: Dict[str, int] = Field(default_factory=dict)  # status → item count
+    items: List[FidelityItemModel] = Field(default_factory=list)
 
 
 class GenerateResponse(BaseModel):
@@ -54,3 +78,4 @@ class GenerateResponse(BaseModel):
     profile_path: Optional[str] = None  # the Game Profile path that was used
     verified: bool = False  # the final tile grid was proven beatable
     warnings: List[str] = Field(default_factory=list)  # layout / entity / repair notes
+    fidelity: Optional[FidelityModel] = None  # per-requirement report on the final level

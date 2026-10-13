@@ -54,6 +54,9 @@ InteractiveKind = Literal["chest", "door", "lever", "switch", "sign"]
 RequirementCategory = Literal[
     "size", "section", "layout", "entity", "ability", "style", "other"
 ]
+CheckType = Literal[
+    "entity_count", "start_item", "section", "ability", "size", "gravity", "none"
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,10 +143,50 @@ class SpecEntity(_SpecModel):
     opens: Optional[str] = Field(None, description="Entity id this key opens.")
 
 
+class RequirementCheck(_SpecModel):
+    """Machine-checkable form of a requirement (``fidelity/`` runs it).
+
+    Flat on purpose (like ``SpecEntity``): ``type`` says which fields matter,
+    every other field is null.
+
+    * ``entity_count`` — at least ``min_count`` (null = 1) entities of
+      ``entity_kind``, of ``subkind`` when set (the archetype, pickup_kind,
+      interactive_kind or weapon_kind value), in ``section`` (null = anywhere).
+    * ``start_item``   — the player starts with ``subkind`` (the Start
+      entity's starting_weapon or one of its starting_items).
+    * ``section``      — a section with id ``section`` exists.
+    * ``ability``      — the Game Profile has ``ability`` (free text, so an
+      unsupported ability such as "fly" can still be stated).
+    * ``size``         — the level is at least ``min_width_tiles`` ×
+      ``min_height_tiles`` (either may be null).
+    * ``gravity``      — ``section`` (null = any section) has gravity scale
+      ``gravity_scale``.
+    * ``none``         — no structured check (style, other); reported as
+      unchecked.
+    """
+
+    type: CheckType
+    entity_kind: Optional[EntityKind] = None
+    subkind: Optional[str] = Field(
+        None, description="archetype / pickup_kind / interactive_kind / weapon_kind, or the start item."
+    )
+    min_count: Optional[int] = Field(None, ge=0, description="Minimum entity count (null = 1).")
+    section: Optional[str] = Field(None, description="Section.id it applies to; null = anywhere.")
+    ability: Optional[str] = Field(
+        None, description='"double_jump", "dash", "wall_jump", or the ability named in the prompt.'
+    )
+    min_width_tiles: Optional[int] = None
+    min_height_tiles: Optional[int] = None
+    gravity_scale: Optional[float] = None
+
+
 class Requirement(_SpecModel):
     id: str = Field(..., description='"R1", "R2", ...')
     text: str = Field(..., description="One atomic, checkable statement taken from the prompt.")
     category: RequirementCategory
+    check: Optional[RequirementCheck] = Field(
+        None, description="Structured check; null when the requirement cannot be checked."
+    )
 
 
 class LevelSpec(_SpecModel):

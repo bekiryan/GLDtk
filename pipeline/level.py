@@ -5,25 +5,34 @@ beatable (``report.ok``), or raises :class:`LevelBuildFailed`.  It never
 returns an unverified level.
 
     1. ``controller.generate_spec``                       (LLM + spec validation)
-    2. ``layout_spec`` → ``place_spec_entities`` → ``verify_grid``
+    2. completeness (``pipeline/completeness.py``): deterministic fill of
+       missing requirements, then at most one ``controller.complete_spec``
+       re-prompt for what the fill cannot meet
+    3. ``layout_spec`` → ``place_spec_entities`` → ``verify_grid``
        → ``repair_grid`` (deterministic, bounded) → ``verify_grid``
-    3. still failing → ``controller.repair_spec`` with the grid errors
-       (named by spec node ids) and back to 2, at most ``max_layout_retries``
-       times
-    4. then :class:`LevelBuildFailed` with the last report
+    4. still failing → ``controller.repair_spec`` with the grid errors
+       (named by spec node ids), deterministic fill again, and back to 3, at
+       most ``max_layout_retries`` times
+    5. then :class:`LevelBuildFailed` with the last report
+
+A built level carries a :class:`~fidelity.FidelityReport` from ``check_level``
+on the final layout (entities as actually placed).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
+from fidelity import FidelityReport, check_level, fill_missing
 from game.profile import GameProfile
 from layout.repair import repair_grid
 from layout.spec_entities import place_spec_entities
 from layout.spec_layout import SpecLayout, grid_to_spec, layout_spec
 from layout.verify import GridReport, verify_grid
 from spec.level_spec import LevelSpec, SpecNode
+
+from .completeness import ensure_complete
 
 
 @dataclass
@@ -33,6 +42,7 @@ class BuiltLevel:
     report: GridReport
     warnings: List[str] = field(default_factory=list)
     stats: Dict[str, Any] = field(default_factory=dict)
+    fidelity: Optional[FidelityReport] = None  # check_level on the final layout
 
 
 class LevelBuildFailed(RuntimeError):
@@ -88,8 +98,13 @@ def build_level(
     """Generate, lay out, verify and repair a level (see the module docstring).
 
     *controller* is an ``LLMController`` (anything with ``generate_spec``,
-    ``repair_spec`` and ``stats``).  *size_override* ``(width, height)`` in
-    tiles replaces ``spec.size`` (either may be None).
+    ``repair_spec``, ``stats`` and optionally ``complete_spec``).
+    *size_override* ``(width, height)`` in tiles replaces ``spec.size``
+    (either may be None); it is applied after the completeness fill, so it
+    wins over a size requirement.
+
+    ``stats`` adds ``completeness_reprompts`` (0 or 1) and ``entities_filled``
+    (entities the deterministic fill added, over all fills).
 
     Raises ``MaxRetriesExceeded`` (LLM) or :class:`LevelBuildFailed` (grid).
     """
@@ -99,6 +114,8 @@ def build_level(
         "patches_applied": [],
         "layout_retries": 0,
         "grid_repairs": 0,
+        "completeness_reprompts": 0,
+        "entities_filled": 0,
     }
 
     def absorb_llm_stats() -> None:
@@ -115,9 +132,25 @@ def build_level(
         return spec.model_copy(update={"size": size})
 
     try:
-        spec = resize(controller.generate_spec(description, constraints))
+        spec = controller.generate_spec(description, constraints)
     finally:
         absorb_llm_stats()
+
+    # ── completeness: deterministic fill, then at most one LLM re-prompt ──
+    complete_spec = getattr(controller, "complete_spec", None)
+
+    def reprompt(current: LevelSpec, missing: List[str]) -> LevelSpec:
+        try:
+            return complete_spec(description, current, missing, constraints)
+        finally:
+            absorb_llm_stats()
+
+    done = ensure_complete(spec, profile, reprompt if complete_spec else None)
+    spec = resize(done.spec)
+    stats["completeness_reprompts"] = done.reprompts
+    stats["entities_filled"] = done.entities_added
+    filled: Set[str] = set(done.filled)
+    notes: List[str] = list(done.notes)
 
     repairs: List[str] = []
     report: Optional[GridReport] = None
@@ -128,27 +161,38 @@ def build_level(
         if report.ok:
             stats["verify"] = report.stats
             warnings = (
-                list(spec_layout.adjustments)
+                notes
+                + list(spec_layout.adjustments)
                 + list(spec_layout.entity_warnings)
                 + repairs
                 + list(report.warnings)
             )
+            final = _with_added_nodes(spec, spec_layout)
             return BuiltLevel(
-                spec=_with_added_nodes(spec, spec_layout),
+                spec=final,
                 spec_layout=spec_layout,
                 report=report,
                 warnings=warnings,
                 stats=stats,
+                fidelity=check_level(
+                    final, spec_layout.ir, profile, verified=report.ok, auto_filled=filled
+                ),
             )
         if attempt == max_layout_retries:
             break
         stats["layout_retries"] += 1
         try:
-            spec = resize(
-                controller.repair_spec(description, spec, report.error_messages(), constraints)
+            repaired = controller.repair_spec(
+                description, spec, report.error_messages(), constraints
             )
         finally:
             absorb_llm_stats()
+        # The repaired spec may drop auto-filled entities: fill again (no LLM).
+        fill = fill_missing(repaired)
+        stats["entities_filled"] += fill.entities_added
+        filled |= set(fill.filled)
+        notes += fill.notes
+        spec = resize(fill.spec)
 
     assert report is not None
     codes = [e.code for e in report.errors]

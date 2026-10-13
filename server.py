@@ -300,6 +300,8 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         entities=dict(entity_counts),
         layout_retries=built.stats["layout_retries"],
         grid_repairs=built.stats["grid_repairs"],
+        completeness_reprompts=built.stats.get("completeness_reprompts", 0),
+        entities_filled=built.stats.get("entities_filled", 0),
     )
     preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 
@@ -313,6 +315,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         profile_path=str(profile_path.resolve()),
         verified=built.report.ok,
         warnings=built.warnings + export_warnings,
+        fidelity=built.fidelity.to_dict() if built.fidelity else None,
     )
 
 

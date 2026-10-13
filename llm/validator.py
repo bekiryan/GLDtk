@@ -35,6 +35,7 @@ from symbolic.schema import AbstractLevelGraph, EdgeType, NodeType
 
 from .prompt import (
     SYSTEM_PROMPT,
+    build_completeness_messages,
     build_generate_messages,
     build_grid_repair_messages,
     build_repair_messages,
@@ -677,6 +678,29 @@ class LLMController:
         messages = build_generate_messages(description, constraints, self._profile)
         spec_json = json.dumps(spec.model_dump(by_alias=True))
         messages = build_grid_repair_messages(description, spec_json, errors, messages)
+        return self._run(description, messages)
+
+    def complete_spec(
+        self,
+        description: str,
+        spec: LevelSpec,
+        missing: List[str],
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> LevelSpec:
+        """Re-prompt the LLM with the requirements a valid *spec* still misses.
+
+        Like :meth:`repair_spec`, but the user turn is a COMPLETENESS CHECK
+        FAILED message listing *missing* (one line per unmet requirement).
+        The answer goes through the same validate → patch → repair loop;
+        ``self.stats`` is reset for this call.
+
+        Raises
+        ------
+        MaxRetriesExceeded
+        """
+        messages = build_generate_messages(description, constraints, self._profile)
+        spec_json = json.dumps(spec.model_dump(by_alias=True))
+        messages = build_completeness_messages(description, spec_json, missing, messages)
         return self._run(description, messages)
 
     def _run(self, description: str, messages: List[Dict[str, Any]]) -> LevelSpec:

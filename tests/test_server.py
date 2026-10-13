@@ -222,3 +222,34 @@ def test_generate_reports_unverifiable_level(client, monkeypatch, tmp_path, load
     assert not body["success"] and body["verified"] is False
     assert "NO_GRID_PATH" in body["error"]
     assert not out.exists()  # never write an unverified level
+
+
+# ── Fidelity (Part 7) ────────────────────────────────────────────────────────
+
+
+def test_generate_returns_fidelity_report(client, monkeypatch, tmp_path, load_fixture):
+    fake = FakeProvider([load_fixture("completeness_fill.json")])
+    monkeypatch.setattr(server, "provider_factory", lambda req: fake)
+    out = tmp_path / "level.ldtk"
+    body = client.post(
+        "/generate", json={"description": "coins and a boss", "output_path": str(out)}
+    ).json()
+    assert body["success"], body.get("error")
+    assert len(fake.calls) == 1
+    fid = body["fidelity"]
+    assert fid["score"] == 1.0 and fid["verified"] is True
+    assert fid["counts"]["satisfied"] == 5 and fid["counts"]["unchecked"] == 1
+    r3 = next(i for i in fid["items"] if i["id"] == "R3")
+    assert r3 == {
+        "id": "R3",
+        "text": "The meadow has 3 coins.",
+        "category": "entity",
+        "status": "satisfied",
+        "reason": r3["reason"],
+        "auto_filled": True,
+    }
+    assert body["requirements"][2] == "The meadow has 3 coins."  # still plain strings
+    assert body["stats"]["entities_filled"] == 4
+    assert body["stats"]["completeness_reprompts"] == 0
+    assert body["stats"]["entities"]["Pickup"] == 3
+    assert body["stats"]["entities"]["Enemy"] == 1

@@ -83,9 +83,23 @@ of requirements extracted from the description. Output nothing else — no markd
   "id"      — unique string, no spaces
   "type"    — "Start" | "Exit" | "Platform" | "Hazard"
   "x", "y"  — pixels (see coordinate system)
-  "w"       — width in pixels (recommended 48)
+  "w"       — width in pixels: a multiple of 16, 48..160 (3..10 tiles) — vary it
   "h"       — 16
   "section" — id of the section the node belongs to
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ LAYOUT GUIDANCE  (makes the level fun and leaves room for entities)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Vary platform widths between 3 and 10 tiles (48..160 px): wide ground stretches and
+    narrow ledges, not every platform 3 tiles wide.
+  • Use the vertical space of the level: place platforms from near the bottom up to about
+    two thirds of height_tiles·16 (climbs, drops, upper and lower routes), not all on one
+    row band.
+  • Scale the platform count with the level: roughly one Platform node per 5–8 tiles of
+    width, more for tall levels, and at least 3 per section.
+  • Spread entities over several platforms: at most 2–3 entities per platform, and never
+    more entities on one platform than its width in tiles. Patrolling enemies suit wide
+    platforms.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  EDGES  (how the player moves between nodes)
@@ -142,7 +156,10 @@ of requirements extracted from the description. Output nothing else — no markd
   Rules:
     • Exactly ONE entity of kind "Start" (the player spawn), anchored on the Start node.
     • At least one entity of kind "Exit", anchored on an Exit node.
-    • Include EVERY entity the description mentions, with the count it asks for.
+    • Include EVERY entity the description mentions, with the count it asks for:
+      "5 coins" is five Pickup entities, "some bats" is at least two. Every entity_count
+      requirement (see REQUIREMENTS) must be matched by at least min_count entities of that
+      kind and subkind in that section; the output is checked and gaps are reported.
     • A concept with no matching kind maps to the nearest kind (a "trampoline" → Interactive,
       a "ghost" → Enemy flyer, a "heart" → Pickup health); keep the original wording in
       "description".
@@ -152,7 +169,24 @@ of requirements extracted from the description. Output nothing else — no markd
  REQUIREMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Extract one requirement per atomic, checkable claim in the description:
-    {"id": "R1", "text": "...", "category": "size"|"section"|"layout"|"entity"|"ability"|"style"|"other"}
+    {"id": "R1", "text": "...", "category": "size"|"section"|"layout"|"entity"|"ability"|"style"|"other",
+     "check": {...} or null}
+  "check" makes the requirement machine-checkable. All its keys are always present; set the
+  ones its "type" uses and null for the rest:
+    "type"             — "entity_count" | "start_item" | "section" | "ability" | "size" |
+                         "gravity" | "none"
+    "entity_kind"      — entity_count: the entity kind ("Enemy", "Pickup", ...)
+    "subkind"          — entity_count: the archetype / pickup_kind / interactive_kind /
+                         weapon_kind, or null for any; for a concept with no matching value
+                         (a "ghost") write the concept itself. start_item: the item ("sword").
+    "min_count"        — entity_count: how many (null = 1; "some" / "several" → 2 or 3)
+    "section"          — the section id it applies to (entity_count, section, gravity);
+                         null = anywhere in the level
+    "ability"          — ability: "double_jump" | "dash" | "wall_jump", or the ability named
+                         in the description ("fly") when it is none of those
+    "min_width_tiles", "min_height_tiles" — size: the minimum level size asked for
+    "gravity_scale"    — gravity: the section's gravity scale (e.g. 0.5 for "low gravity")
+  Use type "none" (or a null check) for style, music, mood and anything else not listed.
   • Split compound claims ("3 coins and a boss" → two requirements).
   • Include claims you cannot fully satisfy (e.g. "the player can fly", "music plays") —
     they are reported to the user, never silently dropped.
@@ -165,11 +199,12 @@ of requirements extracted from the description. Output nothing else — no markd
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  EXAMPLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Description: "A grassy meadow with coins, then a dungeon with a spike pit, a skeleton guard and a treasure chest. The player starts with a sword."
-(null kind-specific fields and null edge "ability" omitted here for brevity — in your output,
-set them to null. The velocities are illustrative — use the GAME PROFILE values.)
+Description: "A grassy meadow with coins, then a dungeon with a spike pit, a skeleton guard and a treasure chest. The player starts with a sword and can double jump."
+(null kind-specific fields, null edge "ability" and null "check" fields omitted here for
+brevity — in your output, set them to null. The velocities are illustrative — use the GAME
+PROFILE values. A real level of this size has more platforms; this one is kept short.)
 
-{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee"},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section"},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section"},{"id":"R3","text":"The meadow contains coins.","category":"entity"},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity"},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity"},{"id":"R6","text":"The player starts with a sword.","category":"entity"}]}
+{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee"},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section","check":{"type":"section","section":"meadow"}},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section","check":{"type":"section","section":"dungeon"}},{"id":"R3","text":"The meadow contains coins.","category":"entity","check":{"type":"entity_count","entity_kind":"Pickup","subkind":"coin","min_count":2,"section":"meadow"}},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity","check":{"type":"entity_count","entity_kind":"Enemy","subkind":"walker","min_count":1,"section":"dungeon"}},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity","check":{"type":"entity_count","entity_kind":"Interactive","subkind":"chest","min_count":1,"section":"dungeon"}},{"id":"R6","text":"The player starts with a sword.","category":"entity","check":{"type":"start_item","subkind":"sword"}},{"id":"R7","text":"The player can double jump.","category":"ability","check":{"type":"ability","ability":"double_jump"}}]}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
@@ -256,6 +291,36 @@ def build_repair_messages(
     return [
         *prior_messages,
         {"role": "assistant", "content": bad_json},
+        {"role": "user", "content": correction_request},
+    ]
+
+
+def build_completeness_messages(
+    description: str,
+    spec_json: str,
+    missing: List[str],
+    prior_messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Ask for a LevelSpec that also meets the requirements it still *misses*.
+
+    Sent at most once per generation, after the deterministic completeness
+    fill (``fidelity.fill``) could not meet them, e.g. a requirement names a
+    section the spec does not have.  *missing* lines name the requirement id,
+    its text and the checker's reason.
+    """
+    numbered = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(missing))
+    correction_request = (
+        f'COMPLETENESS CHECK FAILED for: "{description}"\n\n'
+        "Your LevelSpec is valid, but the level does not meet these requirements you "
+        f"extracted:\n{numbered}\n\n"
+        "Output a corrected LevelSpec that meets every listed requirement (add the missing "
+        "sections, nodes and entities, and keep each requirement's \"check\" consistent with "
+        "the level) while keeping everything else: all sections, entities and requirements, "
+        "and a valid Start→Exit path. Output ONLY the JSON object."
+    )
+    return [
+        *prior_messages,
+        {"role": "assistant", "content": spec_json},
         {"role": "user", "content": correction_request},
     ]
 
