@@ -11,6 +11,11 @@ Patch application order
 3. SteppingStonePatch   — insert intermediate platform for impossible jumps
 4. DefaultTerminalsPatch— add missing Start or Exit at sensible default positions
 
+Spec-level patch (applied by the controller after the graph patches)
+---------------------------------------------------------------------
+TerminalEntityPatch — add / re-anchor the Start and Exit *entities* so they
+                      stand on the Start / Exit nodes.
+
 The patcher stops and returns success as soon as the graph passes validation.
 If any patch is applied the result is a *copy* — the original graph is never
 mutated.
@@ -24,6 +29,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
+from spec.level_spec import LevelSpec, SpecEntity
 from symbolic.physics import check_jump_arc, fall_time, required_launch_velocity
 from symbolic.schema import (
     AbstractLevelGraph,
@@ -365,6 +371,83 @@ class DefaultTerminalsPatch(Patch):
             changed = True
 
         return changed
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Spec-level patch — Start / Exit entities
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TerminalEntityPatch:
+    """Make the spec carry exactly one Start entity on the Start node and at
+    least one Exit entity on an Exit node.
+
+    • Start: keep the first Start entity (re-anchored onto the Start node),
+      drop any extras; create one if none exists.
+    • Exit: if no Exit entity stands on an Exit node, re-anchor the first Exit
+      entity onto the first Exit node, or create one.
+    """
+
+    name = "TerminalEntityPatch"
+    _TARGET_CODES = {"START_ENTITY_MISMATCH", "EXIT_ENTITY_MISMATCH"}
+
+    def applies_to(self, errors: List[ValidationError]) -> bool:
+        return any(e.code in self._TARGET_CODES for e in errors)
+
+    def apply_to_spec(self, spec: LevelSpec) -> LevelSpec:
+        nodes = {n.id: n for n in spec.nodes}
+        start_node = next((n for n in spec.nodes if n.type == "Start"), None)
+        exit_nodes = [n for n in spec.nodes if n.type == "Exit"]
+        entities = [e.model_copy() for e in spec.entities]
+        taken = {e.id for e in entities}
+
+        def fresh_id(base: str) -> str:
+            candidate, i = base, 1
+            while candidate in taken:
+                i += 1
+                candidate = f"{base}_{i}"
+            taken.add(candidate)
+            return candidate
+
+        if start_node is not None:
+            starts = [e for e in entities if e.kind == "Start"]
+            if starts:
+                keep = starts[0]
+                keep.anchor, keep.section = start_node.id, start_node.section
+                entities = [e for e in entities if e.kind != "Start" or e is keep]
+            else:
+                entities.insert(
+                    0,
+                    SpecEntity(
+                        id=fresh_id("player_start"),
+                        kind="Start",
+                        anchor=start_node.id,
+                        section=start_node.section,
+                        description="Player spawn (auto-added)",
+                        facing="right",
+                    ),
+                )
+
+        if exit_nodes:
+            exit_ids = {n.id for n in exit_nodes}
+            exits = [e for e in entities if e.kind == "Exit"]
+            if not any(e.anchor in exit_ids for e in exits):
+                target = exit_nodes[0]
+                if exits:
+                    exits[0].anchor, exits[0].section = target.id, target.section
+                else:
+                    entities.append(
+                        SpecEntity(
+                            id=fresh_id("level_exit"),
+                            kind="Exit",
+                            anchor=target.id,
+                            section=nodes[target.id].section,
+                            description="Level exit (auto-added)",
+                            requires_key=False,
+                        )
+                    )
+
+        return spec.model_copy(update={"entities": entities})
 
 
 # ─────────────────────────────────────────────────────────────────────────────

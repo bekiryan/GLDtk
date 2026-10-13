@@ -16,7 +16,17 @@ server = [
     "fastapi[standard]>=0.111",
     "uvicorn[standard]>=0.29",
 ]
+dev = [
+    "pytest>=8",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*"]
+include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*", "spec*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: real-provider calls (network, API keys); run with `pytest -m e2e`",
+]
+addopts = "-m 'not e2e'"

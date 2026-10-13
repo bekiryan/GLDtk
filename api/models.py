@@ -16,17 +16,17 @@ class GenerateRequest(BaseModel):
     difficulty: Optional[str] = Field(None, description="easy | medium | hard")
     platform_count: Optional[int] = Field(None, ge=2, le=30)
     width_tiles: Optional[int] = Field(
-        None, ge=20, le=300, description="Level width in tiles"
+        None, ge=30, le=300, description="Level width in tiles"
     )
     height_tiles: Optional[int] = Field(
-        None, ge=10, le=100, description="Level height in tiles"
+        None, ge=15, le=100, description="Level height in tiles"
     )
     output_path: str = Field("level.ldtk", description="Path to write the .ldtk file")
     seed: int = Field(42)
     provider: str = Field(
-        "ollama", description="anthropic | openai | deepseek | ollama"
+        "gemini", description="gemini | anthropic | ollama | openai | deepseek"
     )
-    model: Optional[str] = Field("llama3.1")
+    model: Optional[str] = Field(None, description="None = provider default model")
     max_retries: int = Field(3, ge=1, le=10)
 
 
@@ -43,3 +43,5 @@ class GenerateResponse(BaseModel):
     stats: Optional[LevelStats] = None
     output_path: Optional[str] = None
     error: Optional[str] = None
+    requirements: List[str] = Field(default_factory=list)  # requirement texts
+    sections: List[str] = Field(default_factory=list)  # section names, in order
