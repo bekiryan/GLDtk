@@ -24,7 +24,7 @@ from urllib.request import Request, urlopen
 
 import anthropic
 
-from symbolic.physics import check_jump_arc, fall_time, required_launch_velocity
+from symbolic.physics import check_jump_arc
 from symbolic.schema import (
     AbstractLevelGraph,
     EdgeType,
@@ -40,11 +40,12 @@ from .prompt import SYSTEM_PROMPT, build_generate_messages, build_repair_message
 # Data types
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class PhysicsParams:
     gravity: float = 980.0
-    jump_v:  float = 600.0
-    max_horizontal_speed: Optional[float] = None   # None = unconstrained
+    jump_v: float = 600.0
+    max_horizontal_speed: Optional[float] = None  # None = unconstrained
 
 
 LLMProvider = Literal["anthropic", "openai", "deepseek", "ollama"]
@@ -146,7 +147,9 @@ def _http_json_post(
             f"LLM API HTTP error {err.code} when calling {url}: {err_body}"
         ) from err
     except URLError as err:
-        raise RuntimeError(f"LLM API connection error when calling {url}: {err}") from err
+        raise RuntimeError(
+            f"LLM API connection error when calling {url}: {err}"
+        ) from err
 
 
 def _extract_openai_message_text(content: Any) -> str:
@@ -169,17 +172,17 @@ def _extract_openai_message_text(content: Any) -> str:
 
 @dataclass
 class ValidationError:
-    code: str                              # machine-readable tag
-    message: str                           # human/LLM-readable description
+    code: str  # machine-readable tag
+    message: str  # human/LLM-readable description
     node_ids: List[str] = field(default_factory=list)
-    edge: Optional[Tuple[str, str]] = None # (source_id, target_id) if edge error
+    edge: Optional[Tuple[str, str]] = None  # (source_id, target_id) if edge error
 
 
 @dataclass
 class ValidationResult:
     valid: bool
     errors: List[ValidationError]
-    graph: Optional[AbstractLevelGraph]    # None only when JSON parse fails
+    graph: Optional[AbstractLevelGraph]  # None only when JSON parse fails
 
 
 class MaxRetriesExceeded(RuntimeError):
@@ -191,10 +194,10 @@ class MaxRetriesExceeded(RuntimeError):
 # ─────────────────────────────────────────────────────────────────────────────
 
 _NODE_TYPE_MAP: Dict[str, NodeType] = {
-    "start":    NodeType.START,
-    "exit":     NodeType.EXIT,
+    "start": NodeType.START,
+    "exit": NodeType.EXIT,
     "platform": NodeType.PLATFORM,
-    "hazard":   NodeType.HAZARD,
+    "hazard": NodeType.HAZARD,
 }
 
 _EDGE_TYPE_MAP: Dict[str, EdgeType] = {
@@ -210,7 +213,7 @@ def _extract_json(raw: str) -> str:
     stripped = re.sub(r"```(?:json)?\s*", "", raw).replace("```", "").strip()
     # Find the outermost { … }
     start = stripped.find("{")
-    end   = stripped.rfind("}") + 1
+    end = stripped.rfind("}") + 1
     if start == -1 or end == 0:
         raise ValueError("No JSON object found in LLM output.")
     return stripped[start:end]
@@ -239,18 +242,22 @@ def _parse_graph(data: Dict[str, Any]) -> AbstractLevelGraph:
 
         src = graph.get_node(str(raw_edge["from"]))
         dst = graph.get_node(str(raw_edge["to"]))
-        dx  = dst.surface.x - src.surface.x
-        dy  = dst.surface.y - src.surface.y     # derived, not trusted from LLM
+        dx = dst.surface.x - src.surface.x
+        dy = dst.surface.y - src.surface.y  # derived, not trusted from LLM
 
-        graph.add_edge(LevelEdge(
-            source_id=src.id,
-            target_id=dst.id,
-            edge_type=edge_type,
-            dx=dx,
-            dy=dy,
-            v_launch=(float(raw_edge.get("vx", 0.0)),
-                      float(raw_edge.get("vy", 0.0))),
-        ))
+        graph.add_edge(
+            LevelEdge(
+                source_id=src.id,
+                target_id=dst.id,
+                edge_type=edge_type,
+                dx=dx,
+                dy=dy,
+                v_launch=(
+                    float(raw_edge.get("vx", 0.0)),
+                    float(raw_edge.get("vy", 0.0)),
+                ),
+            )
+        )
 
     return graph
 
@@ -259,43 +266,53 @@ def _parse_graph(data: Dict[str, Any]) -> AbstractLevelGraph:
 # Structural validation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _validate_structure(graph: AbstractLevelGraph) -> List[ValidationError]:
     errors: List[ValidationError] = []
 
     starts = graph.nodes_by_type(NodeType.START)
-    exits  = graph.nodes_by_type(NodeType.EXIT)
+    exits = graph.nodes_by_type(NodeType.EXIT)
 
     if len(starts) == 0:
-        errors.append(ValidationError(
-            code="MISSING_START",
-            message="The graph has no 'Start' node. Add exactly one.",
-        ))
+        errors.append(
+            ValidationError(
+                code="MISSING_START",
+                message="The graph has no 'Start' node. Add exactly one.",
+            )
+        )
     elif len(starts) > 1:
-        errors.append(ValidationError(
-            code="MULTIPLE_STARTS",
-            message=f"Found {len(starts)} 'Start' nodes; exactly one is required.",
-            node_ids=[n.id for n in starts],
-        ))
+        errors.append(
+            ValidationError(
+                code="MULTIPLE_STARTS",
+                message=f"Found {len(starts)} 'Start' nodes; exactly one is required.",
+                node_ids=[n.id for n in starts],
+            )
+        )
 
     if len(exits) == 0:
-        errors.append(ValidationError(
-            code="MISSING_EXIT",
-            message="The graph has no 'Exit' node. Add at least one.",
-        ))
+        errors.append(
+            ValidationError(
+                code="MISSING_EXIT",
+                message="The graph has no 'Exit' node. Add at least one.",
+            )
+        )
 
     # Connectivity: every Start must reach every Exit
     for s in starts:
         for e in exits:
             import networkx as nx
+
             if not nx.has_path(graph.nx_graph, s.id, e.id):
-                errors.append(ValidationError(
-                    code="NO_PATH",
-                    message=(
-                        f"No traversal path from '{s.id}' (Start) to '{e.id}' (Exit). "
-                        "Add edges that connect them."
-                    ),
-                    node_ids=[s.id, e.id],
-                ))
+                errors.append(
+                    ValidationError(
+                        code="NO_PATH",
+                        message=(
+                            f"No traversal path from '{s.id}' (Start) to '{e.id}' (Exit). "
+                            "Add edges that connect them."
+                        ),
+                        node_ids=[s.id, e.id],
+                    )
+                )
 
     return errors
 
@@ -303,6 +320,7 @@ def _validate_structure(graph: AbstractLevelGraph) -> List[ValidationError]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Physics validation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _validate_physics(
     graph: AbstractLevelGraph,
@@ -313,61 +331,70 @@ def _validate_physics(
     for edge in graph.edges():
         src = graph.get_node(edge.source_id)
         dst = graph.get_node(edge.target_id)
-        p1  = (src.surface.x, src.surface.y)
-        p2  = (dst.surface.x, dst.surface.y)
+        p1 = (src.surface.x, src.surface.y)
+        p2 = (dst.surface.x, dst.surface.y)
 
         if edge.edge_type == EdgeType.JUMP:
-            if edge.dy < -1e-6:          # target below source → should be FALL
-                errors.append(ValidationError(
-                    code="JUMP_GOES_DOWN",
-                    message=(
-                        f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Jump' "
-                        f"but target is {abs(edge.dy):.0f} px BELOW source (Δy={edge.dy:.0f}). "
-                        "Change the edge type to 'Fall'."
-                    ),
-                    edge=(edge.source_id, edge.target_id),
-                ))
+            if edge.dy < -1e-6:  # target below source → should be FALL
+                errors.append(
+                    ValidationError(
+                        code="JUMP_GOES_DOWN",
+                        message=(
+                            f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Jump' "
+                            f"but target is {abs(edge.dy):.0f} px BELOW source (Δy={edge.dy:.0f}). "
+                            "Change the edge type to 'Fall'."
+                        ),
+                        edge=(edge.source_id, edge.target_id),
+                    )
+                )
                 continue
 
-            if not check_jump_arc(p1, p2, physics.gravity, physics.jump_v,
-                                  physics.max_horizontal_speed):
-                apex = physics.jump_v ** 2 / (2 * physics.gravity)
-                errors.append(ValidationError(
-                    code="IMPOSSIBLE_JUMP",
-                    message=(
-                        f"Edge '{edge.source_id}'→'{edge.target_id}': "
-                        f"Jump is physically impossible. "
-                        f"Δy={edge.dy:.0f} px exceeds the max apex of {apex:.0f} px "
-                        f"(gravity={physics.gravity}, jump_v={physics.jump_v}). "
-                        "Reduce the vertical gap or add an intermediate Platform node."
-                    ),
-                    edge=(edge.source_id, edge.target_id),
-                ))
+            if not check_jump_arc(
+                p1, p2, physics.gravity, physics.jump_v, physics.max_horizontal_speed
+            ):
+                apex = physics.jump_v**2 / (2 * physics.gravity)
+                errors.append(
+                    ValidationError(
+                        code="IMPOSSIBLE_JUMP",
+                        message=(
+                            f"Edge '{edge.source_id}'→'{edge.target_id}': "
+                            f"Jump is physically impossible. "
+                            f"Δy={edge.dy:.0f} px exceeds the max apex of {apex:.0f} px "
+                            f"(gravity={physics.gravity}, jump_v={physics.jump_v}). "
+                            "Reduce the vertical gap or add an intermediate Platform node."
+                        ),
+                        edge=(edge.source_id, edge.target_id),
+                    )
+                )
 
         elif edge.edge_type == EdgeType.FALL:
-            if edge.dy > 1e-6:           # target above source → should be JUMP
-                errors.append(ValidationError(
-                    code="FALL_GOES_UP",
-                    message=(
-                        f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Fall' "
-                        f"but target is {edge.dy:.0f} px ABOVE source. "
-                        "Change the edge type to 'Jump'."
-                    ),
-                    edge=(edge.source_id, edge.target_id),
-                ))
+            if edge.dy > 1e-6:  # target above source → should be JUMP
+                errors.append(
+                    ValidationError(
+                        code="FALL_GOES_UP",
+                        message=(
+                            f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Fall' "
+                            f"but target is {edge.dy:.0f} px ABOVE source. "
+                            "Change the edge type to 'Jump'."
+                        ),
+                        edge=(edge.source_id, edge.target_id),
+                    )
+                )
 
         elif edge.edge_type == EdgeType.WALK:
             if abs(edge.dy) > 8.0:
-                errors.append(ValidationError(
-                    code="WALK_HEIGHT_MISMATCH",
-                    message=(
-                        f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Walk' "
-                        f"but nodes differ by {abs(edge.dy):.0f} px vertically "
-                        "(Walk requires |Δy| ≤ 8 px). "
-                        "Use 'Jump' or 'Fall' instead, or align the platform heights."
-                    ),
-                    edge=(edge.source_id, edge.target_id),
-                ))
+                errors.append(
+                    ValidationError(
+                        code="WALK_HEIGHT_MISMATCH",
+                        message=(
+                            f"Edge '{edge.source_id}'→'{edge.target_id}' is typed 'Walk' "
+                            f"but nodes differ by {abs(edge.dy):.0f} px vertically "
+                            "(Walk requires |Δy| ≤ 8 px). "
+                            "Use 'Jump' or 'Fall' instead, or align the platform heights."
+                        ),
+                        edge=(edge.source_id, edge.target_id),
+                    )
+                )
 
     return errors
 
@@ -375,6 +402,7 @@ def _validate_physics(
 # ─────────────────────────────────────────────────────────────────────────────
 # Combined validation entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def validate_graph(
     graph: AbstractLevelGraph,
@@ -391,19 +419,21 @@ def parse_and_validate(
     """Parse raw LLM output and run full validation. Never raises."""
     try:
         json_str = _extract_json(raw)
-        data     = json.loads(json_str)
-        graph    = _parse_graph(data)
+        data = json.loads(json_str)
+        graph = _parse_graph(data)
     except Exception as exc:
         return ValidationResult(
             valid=False,
-            errors=[ValidationError(
-                code="INVALID_JSON",
-                message=(
-                    f"Could not parse your output as a valid level graph JSON. "
-                    f"Parser error: {exc}. "
-                    "Output ONLY a JSON object matching the schema."
-                ),
-            )],
+            errors=[
+                ValidationError(
+                    code="INVALID_JSON",
+                    message=(
+                        f"Could not parse your output as a valid level graph JSON. "
+                        f"Parser error: {exc}. "
+                        "Output ONLY a JSON object matching the schema."
+                    ),
+                )
+            ],
             graph=None,
         )
 
@@ -413,6 +443,7 @@ def parse_and_validate(
 # ─────────────────────────────────────────────────────────────────────────────
 # LLM Controller
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class LLMController:
     """Generate→Validate→Patch→Repair loop.
@@ -452,15 +483,14 @@ class LLMController:
 
         if self._provider == "anthropic":
             self._client = (
-                anthropic.Anthropic(api_key=self._api_key)
-                if self._api_key
-                else None
+                anthropic.Anthropic(api_key=self._api_key) if self._api_key else None
             )
         else:
             self._client = None
 
         # Import here to avoid circular imports at module load time
         from .patcher import SymbolicPatcher
+
         self._patcher = SymbolicPatcher(self._physics)
 
     # ------------------------------------------------------------------
@@ -490,7 +520,7 @@ class LLMController:
 
         for attempt in range(self._max_retries):
             last_raw = self._call_llm(messages)
-            result   = parse_and_validate(last_raw, self._physics)
+            result = parse_and_validate(last_raw, self._physics)
 
             if result.valid:
                 return result.graph  # type: ignore[return-value]
@@ -506,7 +536,7 @@ class LLMController:
             # ── LLM repair re-prompt ──
             if attempt < self._max_retries - 1:
                 error_msgs = [e.message for e in result.errors]
-                messages   = build_repair_messages(
+                messages = build_repair_messages(
                     description, last_raw, error_msgs, messages
                 )
 

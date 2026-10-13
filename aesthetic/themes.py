@@ -22,33 +22,35 @@ code needs no changes.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tile roles
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TileRole(str, Enum):
     """Semantic role of a tile within a platform or hazard region."""
+
     # Thin horizontal platform (height = 1 tile)
-    SINGLE     = "single"      # isolated, no neighbours
-    CAP_LEFT   = "cap_left"    # left end of platform (has east neighbour)
-    CAP_RIGHT  = "cap_right"   # right end            (has west neighbour)
-    FILL       = "fill"        # interior             (has east + west)
+    SINGLE = "single"  # isolated, no neighbours
+    CAP_LEFT = "cap_left"  # left end of platform (has east neighbour)
+    CAP_RIGHT = "cap_right"  # right end            (has west neighbour)
+    FILL = "fill"  # interior             (has east + west)
     # Rectangular platform corners (height ≥ 2 tiles)
-    CORNER_TL  = "corner_tl"
-    CORNER_TR  = "corner_tr"
-    CORNER_BL  = "corner_bl"
-    CORNER_BR  = "corner_br"
+    CORNER_TL = "corner_tl"
+    CORNER_TR = "corner_tr"
+    CORNER_BL = "corner_bl"
+    CORNER_BR = "corner_br"
     # Rectangular platform edges
-    EDGE_T     = "edge_t"
-    EDGE_B     = "edge_b"
-    EDGE_L     = "edge_l"
-    EDGE_R     = "edge_r"
-    CENTER     = "center"
+    EDGE_T = "edge_t"
+    EDGE_B = "edge_b"
+    EDGE_L = "edge_l"
+    EDGE_R = "edge_r"
+    CENTER = "center"
     # Hazard overlay
     HAZARD_TILE = "hazard_tile"
 
@@ -57,9 +59,11 @@ class TileRole(str, Enum):
 # Theme data
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TileAddress:
     """Pixel-level source position inside the tileset image."""
+
     src_x: int
     src_y: int
 
@@ -69,37 +73,38 @@ def _region(base_x: int, tile_size: int = 16) -> Dict[TileRole, TileAddress]:
     b = base_x
     s = tile_size
     return {
-        TileRole.CORNER_TL:  TileAddress(b + 0*s, 0*s),
-        TileRole.EDGE_T:     TileAddress(b + 1*s, 0*s),
-        TileRole.CORNER_TR:  TileAddress(b + 2*s, 0*s),
-        TileRole.CAP_LEFT:   TileAddress(b + 3*s, 0*s),
-        TileRole.CAP_RIGHT:  TileAddress(b + 4*s, 0*s),
-        TileRole.EDGE_L:     TileAddress(b + 0*s, 1*s),
-        TileRole.CENTER:     TileAddress(b + 1*s, 1*s),
-        TileRole.EDGE_R:     TileAddress(b + 2*s, 1*s),
-        TileRole.FILL:       TileAddress(b + 3*s, 1*s),
-        TileRole.SINGLE:     TileAddress(b + 4*s, 1*s),
-        TileRole.CORNER_BL:  TileAddress(b + 0*s, 2*s),
-        TileRole.EDGE_B:     TileAddress(b + 1*s, 2*s),
-        TileRole.CORNER_BR:  TileAddress(b + 2*s, 2*s),
-        TileRole.HAZARD_TILE: TileAddress(b + 3*s, 2*s),
+        TileRole.CORNER_TL: TileAddress(b + 0 * s, 0 * s),
+        TileRole.EDGE_T: TileAddress(b + 1 * s, 0 * s),
+        TileRole.CORNER_TR: TileAddress(b + 2 * s, 0 * s),
+        TileRole.CAP_LEFT: TileAddress(b + 3 * s, 0 * s),
+        TileRole.CAP_RIGHT: TileAddress(b + 4 * s, 0 * s),
+        TileRole.EDGE_L: TileAddress(b + 0 * s, 1 * s),
+        TileRole.CENTER: TileAddress(b + 1 * s, 1 * s),
+        TileRole.EDGE_R: TileAddress(b + 2 * s, 1 * s),
+        TileRole.FILL: TileAddress(b + 3 * s, 1 * s),
+        TileRole.SINGLE: TileAddress(b + 4 * s, 1 * s),
+        TileRole.CORNER_BL: TileAddress(b + 0 * s, 2 * s),
+        TileRole.EDGE_B: TileAddress(b + 1 * s, 2 * s),
+        TileRole.CORNER_BR: TileAddress(b + 2 * s, 2 * s),
+        TileRole.HAZARD_TILE: TileAddress(b + 3 * s, 2 * s),
     }
 
 
 @dataclass
 class Theme:
     """Complete visual identity for a level."""
-    identifier:      str
-    display_name:    str
-    keywords:        List[str]
+
+    identifier: str
+    display_name: str
+    keywords: List[str]
     background_color: str
-    tileset_uid:     int
+    tileset_uid: int
     tileset_rel_path: str
-    tileset_px_width:  int
+    tileset_px_width: int
     tileset_px_height: int
-    tile_map:        Dict[TileRole, TileAddress]
-    enemy_type:      str   # enemy archetype label stored in entity metadata
-    enemy_rate:      float # enemies per golden-path node (0–1 scale factor)
+    tile_map: Dict[TileRole, TileAddress]
+    enemy_type: str  # enemy archetype label stored in entity metadata
+    enemy_rate: float  # enemies per golden-path node (0–1 scale factor)
 
     def tile(self, role: TileRole) -> TileAddress:
         """Return the address for *role*, falling back to SINGLE if missing."""
@@ -115,8 +120,18 @@ THEMES: Dict[str, Theme] = {
         identifier="dungeon",
         display_name="Dungeon",
         keywords=[
-            "dungeon", "cave", "underground", "dark", "stone", "castle",
-            "crypt", "tomb", "skeleton", "bone", "cursed", "ancient",
+            "dungeon",
+            "cave",
+            "underground",
+            "dark",
+            "stone",
+            "castle",
+            "crypt",
+            "tomb",
+            "skeleton",
+            "bone",
+            "cursed",
+            "ancient",
         ],
         background_color="#0d0d1a",
         tileset_uid=100,
@@ -127,13 +142,24 @@ THEMES: Dict[str, Theme] = {
         enemy_type="Skeleton",
         enemy_rate=0.6,
     ),
-
     "forest": Theme(
         identifier="forest",
         display_name="Forest",
         keywords=[
-            "forest", "jungle", "nature", "grass", "tree", "wood", "green",
-            "moss", "vine", "leaf", "garden", "grove", "outdoor", "wildlife",
+            "forest",
+            "jungle",
+            "nature",
+            "grass",
+            "tree",
+            "wood",
+            "green",
+            "moss",
+            "vine",
+            "leaf",
+            "garden",
+            "grove",
+            "outdoor",
+            "wildlife",
         ],
         background_color="#0a1f0a",
         tileset_uid=101,
@@ -144,13 +170,23 @@ THEMES: Dict[str, Theme] = {
         enemy_type="Slime",
         enemy_rate=0.4,
     ),
-
     "sky": Theme(
         identifier="sky",
         display_name="Sky",
         keywords=[
-            "sky", "cloud", "aerial", "floating", "heaven", "wind", "air",
-            "blue", "high", "above", "celestial", "aurora", "storm",
+            "sky",
+            "cloud",
+            "aerial",
+            "floating",
+            "heaven",
+            "wind",
+            "air",
+            "blue",
+            "high",
+            "above",
+            "celestial",
+            "aurora",
+            "storm",
         ],
         background_color="#1a2e4a",
         tileset_uid=102,
@@ -182,6 +218,7 @@ THEMES["default"] = Theme(
 # ─────────────────────────────────────────────────────────────────────────────
 # Keyword-based theme detection
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def detect_theme(description: str, override: Optional[str] = None) -> Theme:
     """Return the best-matching theme for *description*.

@@ -124,6 +124,7 @@ OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
 # Message builders
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def build_generate_messages(
     description: str,
     constraints: Optional[Dict[str, Any]] = None,
@@ -148,13 +149,15 @@ def build_generate_messages(
             lines.append(f"- Enemy types: {types} (use only these, no substitution)")
         if constraints.get("platform_count"):
             n = constraints["platform_count"]
-            lines.append(f"- Target platform count: {n} (aim for this many Platform nodes)")
+            lines.append(
+                f"- Target platform count: {n} (aim for this many Platform nodes)"
+            )
         if constraints.get("difficulty"):
             d = constraints["difficulty"]
             notes = {
-                "easy":   "few jumps, many coins, rare enemies",
+                "easy": "few jumps, many coins, rare enemies",
                 "medium": "balanced jumps, coins, and enemies",
-                "hard":   "many jumps, fewer coins, frequent enemies",
+                "hard": "many jumps, fewer coins, frequent enemies",
             }
             lines.append(f"- Difficulty: {d} ({notes.get(d, d)})")
         if lines:
@@ -173,9 +176,9 @@ def build_repair_messages(
     Keeps the full conversation history so the model sees exactly what it
     produced and what was wrong — far more informative than a fresh prompt.
     """
-    numbered = "\n".join(f"  {i+1}. {e}" for i, e in enumerate(errors))
+    numbered = "\n".join(f"  {i + 1}. {e}" for i, e in enumerate(errors))
     correction_request = (
-        f"VALIDATION FAILED for: \"{description}\"\n\n"
+        f'VALIDATION FAILED for: "{description}"\n\n'
         f"Your output contained the following errors:\n{numbered}\n\n"
         "Output a corrected graph that fixes every listed error while still "
         "matching the original design description. "
@@ -184,5 +187,5 @@ def build_repair_messages(
     return [
         *prior_messages,
         {"role": "assistant", "content": bad_json},
-        {"role": "user",      "content": correction_request},
+        {"role": "user", "content": correction_request},
     ]

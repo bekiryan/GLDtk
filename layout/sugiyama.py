@@ -15,8 +15,7 @@ central spine; off-path nodes are inserted around it.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
 import networkx as nx
@@ -29,21 +28,22 @@ from .ir import IREntity, IRLevel, TileValue
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LayoutConfig:
     """All sizing and spacing parameters for the layout engine."""
 
     # Level canvas
-    width_tiles: int  = 60
+    width_tiles: int = 60
     height_tiles: int = 20
-    tile_size: int    = 16
+    tile_size: int = 16
 
     # Per-platform dimensions (solid tiles)
-    platform_width: int  = 5   # tiles wide
-    platform_height: int = 1   # tiles tall (always 1 for flat platforms)
+    platform_width: int = 5  # tiles wide
+    platform_height: int = 1  # tiles tall (always 1 for flat platforms)
 
     # Spacing
-    h_gap: int = 5   # empty tile columns between platform columns
+    h_gap: int = 5  # empty tile columns between platform columns
     v_step: int = 4  # row shift per JUMP edge along the golden path
 
     # Baseline row (row index of the "floor" platforms, measured from top)
@@ -64,13 +64,15 @@ class LayoutConfig:
 # Internal data types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NodeLayout:
     """Resolved tile-grid position for one AbstractLevelGraph node."""
+
     node_id: str
-    col: int     # tile column of platform top-left corner
-    row: int     # tile row  of platform top-left corner
-    width: int   # in tiles
+    col: int  # tile column of platform top-left corner
+    row: int  # tile row  of platform top-left corner
+    width: int  # in tiles
     height: int  # in tiles
 
 
@@ -78,11 +80,12 @@ class NodeLayout:
 # Phase helpers
 # ---------------------------------------------------------------------------
 
+
 def _remove_back_edges(dag: nx.DiGraph) -> nx.DiGraph:
     """Return a copy of *dag* with DFS back-edges removed."""
     result = dag.copy()
     visited: Set[str] = set()
-    stack:   Set[str] = set()
+    stack: Set[str] = set()
     back_edges: List[Tuple[str, str]] = []
 
     def dfs(v: str) -> None:
@@ -109,7 +112,7 @@ def _find_golden_path(
 ) -> List[str]:
     """Shortest (fewest hops) path from any Start node to any Exit node."""
     starts = graph.nodes_by_type(NodeType.START)
-    exits  = graph.nodes_by_type(NodeType.EXIT)
+    exits = graph.nodes_by_type(NodeType.EXIT)
 
     best: List[str] = []
     for s in starts:
@@ -148,7 +151,7 @@ def _assign_layers(
         if nid in layers:
             continue
         preds = [p for p in dag.predecessors(nid) if p in layers]
-        succs = [s for s in dag.successors(nid)  if s in layers]
+        succs = [s for s in dag.successors(nid) if s in layers]
         if preds:
             layers[nid] = max(layers[p] for p in preds) + 1
         elif succs:
@@ -157,8 +160,8 @@ def _assign_layers(
             layers[nid] = 0
 
     # Normalise so the minimum layer index is 0
-    min_l = min(layers.values(), default=0)
-    return {nid: l - min_l for nid, l in layers.items()}
+    min_layer = min(layers.values(), default=0)
+    return {nid: layer_idx - min_layer for nid, layer_idx in layers.items()}
 
 
 def _assign_rows_golden_path(
@@ -185,9 +188,9 @@ def _assign_rows_golden_path(
             etype = EdgeType.WALK
 
         if etype == EdgeType.JUMP:
-            row = prev_row - config.v_step       # visually higher → smaller row
+            row = prev_row - config.v_step  # visually higher → smaller row
         elif etype == EdgeType.FALL:
-            row = prev_row + config.v_step       # visually lower  → larger row
+            row = prev_row + config.v_step  # visually lower  → larger row
         else:
             row = prev_row
 
@@ -237,7 +240,9 @@ def _assign_rows_off_path(
         )
         # Find the golden-path row at this layer (if one exists); use baseline
         # as default
-        golden_at_layer = [golden_rows[n] for n in golden_path if layers.get(n) == layer_idx]
+        golden_at_layer = [
+            golden_rows[n] for n in golden_path if layers.get(n) == layer_idx
+        ]
         center_row = golden_at_layer[0] if golden_at_layer else config.baseline_row
 
         # Spread off-path nodes above / below the center
@@ -254,6 +259,7 @@ def _assign_rows_off_path(
 # IR builder
 # ---------------------------------------------------------------------------
 
+
 def _build_ir(
     graph: AbstractLevelGraph,
     node_layouts: Dict[str, NodeLayout],
@@ -268,10 +274,10 @@ def _build_ir(
     )
 
     _entity_types = {
-        NodeType.START:  ("Start",  TileValue.SOLID),
-        NodeType.EXIT:   ("Exit",   TileValue.SOLID),
-        NodeType.PLATFORM: (None,   TileValue.SOLID),
-        NodeType.HAZARD:  (None,    TileValue.HAZARD),
+        NodeType.START: ("Start", TileValue.SOLID),
+        NodeType.EXIT: ("Exit", TileValue.SOLID),
+        NodeType.PLATFORM: (None, TileValue.SOLID),
+        NodeType.HAZARD: (None, TileValue.HAZARD),
     }
 
     for nid, nl in node_layouts.items():
@@ -298,6 +304,7 @@ def _build_ir(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 def sugiyama_layout(
     graph: AbstractLevelGraph,
     config: Optional[LayoutConfig] = None,
@@ -314,9 +321,9 @@ def sugiyama_layout(
     raw_dag = _remove_back_edges(graph.nx_graph)
 
     golden_path = _find_golden_path(graph, raw_dag)
-    layers      = _assign_layers(raw_dag, golden_path)
+    layers = _assign_layers(raw_dag, golden_path)
     golden_rows = _assign_rows_golden_path(graph, golden_path, cfg)
-    all_rows    = _assign_rows_off_path(raw_dag, layers, golden_path, golden_rows, cfg)
+    all_rows = _assign_rows_off_path(raw_dag, layers, golden_path, golden_rows, cfg)
 
     node_layouts: Dict[str, NodeLayout] = {}
     for nid, layer in layers.items():

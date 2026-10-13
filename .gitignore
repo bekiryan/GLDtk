@@ -48,3 +48,11 @@ coverage.xml
 *.py,cover
 
 
+
+# Secrets
+.env
+
+# OS / scratch
+.DS_Store
+test.ldtk
+package-lock.json

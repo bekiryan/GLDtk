@@ -48,14 +48,15 @@ class LevelNode:
 
     id: str
     node_type: NodeType
-    position: Vec2          # world-space top-left corner (pixels or tiles)
-    size: Vec2              # width × height
+    position: Vec2  # world-space top-left corner (pixels or tiles)
+    size: Vec2  # width × height
     metadata: Dict[str, object] = field(default_factory=dict)
 
     @property
     def center(self) -> Vec2:
-        return Vec2(self.position.x + self.size.x / 2.0,
-                    self.position.y + self.size.y / 2.0)
+        return Vec2(
+            self.position.x + self.size.x / 2.0, self.position.y + self.size.y / 2.0
+        )
 
     @property
     def surface(self) -> Vec2:
@@ -92,9 +93,9 @@ class LevelEdge:
     source_id: str
     target_id: str
     edge_type: EdgeType
-    dx: float               # Δx: target.surface.x − source.surface.x
-    dy: float               # Δy: target.surface.y − source.surface.y  (up = positive)
-    v_launch: Tuple[float, float] = (0.0, 0.0)   # (vx, vy) at launch
+    dx: float  # Δx: target.surface.x − source.surface.x
+    dy: float  # Δy: target.surface.y − source.surface.y  (up = positive)
+    v_launch: Tuple[float, float] = (0.0, 0.0)  # (vx, vy) at launch
     metadata: Dict[str, object] = field(default_factory=dict)
 
     @property
@@ -160,11 +161,7 @@ class AbstractLevelGraph:
         exits = self.nodes_by_type(NodeType.EXIT)
         if not starts or not exits:
             return False
-        return all(
-            nx.has_path(self._g, s.id, e.id)
-            for s in starts
-            for e in exits
-        )
+        return all(nx.has_path(self._g, s.id, e.id) for s in starts for e in exits)
 
     def remove_edge(self, source_id: str, target_id: str) -> None:
         self._g.remove_edge(source_id, target_id)

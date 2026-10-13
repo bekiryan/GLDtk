@@ -35,7 +35,6 @@ which positions the entity visually on top of the platform.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 import networkx as nx
@@ -50,10 +49,11 @@ from .themes import Theme
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _find_golden_path(graph: AbstractLevelGraph) -> List[str]:
     """Shortest-hop path from any Start node to any Exit node."""
     starts = graph.nodes_by_type(NodeType.START)
-    exits  = graph.nodes_by_type(NodeType.EXIT)
+    exits = graph.nodes_by_type(NodeType.EXIT)
     best: List[str] = []
     for s in starts:
         for e in exits:
@@ -108,6 +108,7 @@ def _spread_cols(col_start: int, width: int, count: int) -> List[int]:
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def place_entities(
     graph: AbstractLevelGraph,
     node_layouts: Dict[str, NodeLayout],
@@ -133,7 +134,9 @@ def place_entities(
     List[IREntity] to be appended to ``IRLevel.entities`` before serialisation.
     """
     rng = random.Random(seed)
-    _enemy_pool: List[str] = custom_enemy_types if custom_enemy_types else [theme.enemy_type]
+    _enemy_pool: List[str] = (
+        custom_enemy_types if custom_enemy_types else [theme.enemy_type]
+    )
     golden_path = _find_golden_path(graph)
     if not golden_path:
         return []
@@ -163,7 +166,7 @@ def place_entities(
         if nid not in node_layouts:
             continue
 
-        nl   = node_layouts[nid]
+        nl = node_layouts[nid]
         node = graph.get_node(nid)
         diff = difficulties.get(nid, 0.0)
 
@@ -175,47 +178,55 @@ def place_entities(
             n_coins = max(1, int(nl.width // 2 * density))
             n_coins = min(n_coins, 3)
             for col in _spread_cols(nl.col, nl.width, n_coins):
-                entities.append(IREntity(
-                    entity_type="Coin",
-                    col=col,
-                    row=entity_row,
-                    metadata={"value": 1, "difficulty": round(diff, 2)},
-                ))
+                entities.append(
+                    IREntity(
+                        entity_type="Coin",
+                        col=col,
+                        row=entity_row,
+                        metadata={"value": 1, "difficulty": round(diff, 2)},
+                    )
+                )
 
         # ── Key ───────────────────────────────────────────────────────────
         if nid == key_target and node.node_type != NodeType.HAZARD:
             center_col = nl.col + nl.width // 2
-            entities.append(IREntity(
-                entity_type="Key",
-                col=center_col,
-                row=entity_row,
-                metadata={"unlocks": "exit"},
-            ))
+            entities.append(
+                IREntity(
+                    entity_type="Key",
+                    col=center_col,
+                    row=entity_row,
+                    metadata={"unlocks": "exit"},
+                )
+            )
 
         # ── Enemy ─────────────────────────────────────────────────────────
         if node.node_type == NodeType.PLATFORM and diff > 0.35:
             spawn_prob = min(diff * theme.enemy_rate * density, 1.0)
             if rng.random() < spawn_prob:
                 center_col = nl.col + nl.width // 2
-                entities.append(IREntity(
-                    entity_type="Enemy",
-                    col=center_col,
-                    row=entity_row,
-                    metadata={
-                        "difficulty": round(diff, 2),
-                        "patrol": True,
-                        "archetype": rng.choice(_enemy_pool),
-                    },
-                ))
+                entities.append(
+                    IREntity(
+                        entity_type="Enemy",
+                        col=center_col,
+                        row=entity_row,
+                        metadata={
+                            "difficulty": round(diff, 2),
+                            "patrol": True,
+                            "archetype": rng.choice(_enemy_pool),
+                        },
+                    )
+                )
 
         # ── Checkpoint ────────────────────────────────────────────────────
         if nid == checkpoint_target and node.node_type != NodeType.HAZARD:
             center_col = nl.col + nl.width // 2
-            entities.append(IREntity(
-                entity_type="Checkpoint",
-                col=center_col,
-                row=entity_row,
-                metadata={"difficulty": round(diff, 2)},
-            ))
+            entities.append(
+                IREntity(
+                    entity_type="Checkpoint",
+                    col=center_col,
+                    row=entity_row,
+                    metadata={"difficulty": round(diff, 2)},
+                )
+            )
 
     return entities

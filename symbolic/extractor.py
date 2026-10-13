@@ -63,7 +63,7 @@ class _Span:
     tile_type: int
     row: int
     col_start: int
-    col_end: int        # inclusive
+    col_end: int  # inclusive
 
     @property
     def width_tiles(self) -> int:
@@ -73,6 +73,7 @@ class _Span:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def extract_graph(
     grid: Grid,
@@ -116,6 +117,7 @@ def extract_graph(
 # ---------------------------------------------------------------------------
 # Pass 1 — collect horizontal spans
 # ---------------------------------------------------------------------------
+
 
 def _collect_spans(grid: Grid, height: int, width: int) -> List[_Span]:
     spans: List[_Span] = []
@@ -177,8 +179,11 @@ def _spans_to_nodes(
             node_type=_TILE_TO_NODE_TYPE[span.tile_type],
             position=position,
             size=size,
-            metadata={"row": span.row, "col_start": span.col_start,
-                       "col_end": span.col_end},
+            metadata={
+                "row": span.row,
+                "col_start": span.col_start,
+                "col_end": span.col_end,
+            },
         )
         nodes[node_id] = node
     return nodes
@@ -187,6 +192,7 @@ def _spans_to_nodes(
 # ---------------------------------------------------------------------------
 # Pass 3 — classify and add edges
 # ---------------------------------------------------------------------------
+
 
 def _surface_point(node: LevelNode) -> Tuple[float, float]:
     """Top-center standing point of a node."""
@@ -247,6 +253,7 @@ def _classify_edge(
     # --- Jump (destination is above, or lateral with upward arc) ---
     if check_jump_arc(p1, p2, gravity, jump_v, max_horizontal_speed):
         from .physics import required_launch_velocity
+
         vel = required_launch_velocity(p1, p2, gravity, jump_v)
         v_launch: Tuple[float, float] = vel if vel is not None else (0.0, jump_v)
         return LevelEdge(

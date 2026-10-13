@@ -22,7 +22,7 @@ import math
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from symbolic.physics import check_jump_arc, fall_time, required_launch_velocity
 from symbolic.schema import (
@@ -40,16 +40,18 @@ from .validator import PhysicsParams, ValidationError, validate_graph
 # Result type
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class PatchResult:
     success: bool
-    graph: AbstractLevelGraph   # patched copy (or original if not success)
-    applied: List[str] = field(default_factory=list)   # names of applied patches
+    graph: AbstractLevelGraph  # patched copy (or original if not success)
+    applied: List[str] = field(default_factory=list)  # names of applied patches
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Abstract base
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class Patch(ABC):
     """A single, focused fix strategy."""
@@ -74,6 +76,7 @@ class Patch(ABC):
 # Patch 1 — recalculate wrong launch velocities
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class VelocityPatch(Patch):
     """Recompute v_launch for every edge using the physics oracle.
 
@@ -86,7 +89,7 @@ class VelocityPatch(Patch):
     _DEFAULT_WALK_SPEED = 200.0
 
     def applies_to(self, errors: List[ValidationError]) -> bool:
-        return True   # always worth running
+        return True  # always worth running
 
     def apply(
         self,
@@ -98,15 +101,15 @@ class VelocityPatch(Patch):
         for edge in list(graph.edges()):
             src = graph.get_node(edge.source_id)
             dst = graph.get_node(edge.target_id)
-            p1  = (src.surface.x, src.surface.y)
-            p2  = (dst.surface.x, dst.surface.y)
+            p1 = (src.surface.x, src.surface.y)
+            p2 = (dst.surface.x, dst.surface.y)
 
             new_v: Tuple[float, float]
 
             if edge.edge_type == EdgeType.JUMP:
                 vel = required_launch_velocity(p1, p2, physics.gravity, physics.jump_v)
                 if vel is None:
-                    continue   # impossible jump — SteppingStonePatch will handle it
+                    continue  # impossible jump — SteppingStonePatch will handle it
                 new_v = vel
 
             elif edge.edge_type == EdgeType.FALL:
@@ -114,26 +117,28 @@ class VelocityPatch(Patch):
                 ft = fall_time(dy, physics.gravity, initial_vy=0.0)
                 if ft is None or ft <= 0.0:
                     continue
-                dx  = dst.surface.x - src.surface.x
-                vx  = dx / ft
+                dx = dst.surface.x - src.surface.x
+                vx = dx / ft
                 new_v = (vx, 0.0)
 
             else:  # WALK
-                dx    = dst.surface.x - src.surface.x
+                dx = dst.surface.x - src.surface.x
                 speed = self._DEFAULT_WALK_SPEED
                 new_v = (math.copysign(speed, dx), 0.0)
 
             if new_v != edge.v_launch:
                 # Replace the edge with corrected velocity
                 graph.remove_edge(edge.source_id, edge.target_id)
-                graph.add_edge(LevelEdge(
-                    source_id=edge.source_id,
-                    target_id=edge.target_id,
-                    edge_type=edge.edge_type,
-                    dx=edge.dx,
-                    dy=edge.dy,
-                    v_launch=new_v,
-                ))
+                graph.add_edge(
+                    LevelEdge(
+                        source_id=edge.source_id,
+                        target_id=edge.target_id,
+                        edge_type=edge.edge_type,
+                        dx=edge.dx,
+                        dy=edge.dy,
+                        v_launch=new_v,
+                    )
+                )
                 changed = True
 
         return changed
@@ -142,6 +147,7 @@ class VelocityPatch(Patch):
 # ─────────────────────────────────────────────────────────────────────────────
 # Patch 2 — reclassify mis-typed edges (Jump↔Fall)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class EdgeReclassifyPatch(Patch):
     """Fix edges whose direction contradicts their type.
@@ -174,20 +180,22 @@ class EdgeReclassifyPatch(Patch):
 
             if err.code == "JUMP_GOES_DOWN":
                 new_type = EdgeType.FALL
-                new_vy   = 0.0
+                new_vy = 0.0
             else:
                 new_type = EdgeType.JUMP
-                new_vy   = physics.jump_v
+                new_vy = physics.jump_v
 
             graph.remove_edge(src_id, dst_id)
-            graph.add_edge(LevelEdge(
-                source_id=edge.source_id,
-                target_id=edge.target_id,
-                edge_type=new_type,
-                dx=edge.dx,
-                dy=edge.dy,
-                v_launch=(edge.v_launch[0], new_vy),
-            ))
+            graph.add_edge(
+                LevelEdge(
+                    source_id=edge.source_id,
+                    target_id=edge.target_id,
+                    edge_type=new_type,
+                    dx=edge.dx,
+                    dy=edge.dy,
+                    v_launch=(edge.v_launch[0], new_vy),
+                )
+            )
             changed = True
 
         return changed
@@ -196,6 +204,7 @@ class EdgeReclassifyPatch(Patch):
 # ─────────────────────────────────────────────────────────────────────────────
 # Patch 3 — insert stepping stone for impossible jumps
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class SteppingStonePatch(Patch):
     """Split an impossible jump into two feasible jumps via a midpoint platform.
@@ -225,9 +234,10 @@ class SteppingStonePatch(Patch):
                 continue
             src_id, dst_id = err.edge
             try:
-                edge = graph.get_edge(src_id, dst_id)
-                src  = graph.get_node(src_id)
-                dst  = graph.get_node(dst_id)
+                # Get edge details if needed in the future, or to verify it exists
+                _edge = graph.get_edge(src_id, dst_id)
+                src = graph.get_node(src_id)
+                dst = graph.get_node(dst_id)
             except KeyError:
                 continue
 
@@ -244,43 +254,61 @@ class SteppingStonePatch(Patch):
                 metadata={"auto_patched": True},
             )
 
-            p_src   = (src.surface.x,   src.surface.y)
-            p_stone = (stone.surface.x,  stone.surface.y)
-            p_dst   = (dst.surface.x,   dst.surface.y)
+            p_src = (src.surface.x, src.surface.y)
+            p_stone = (stone.surface.x, stone.surface.y)
+            p_dst = (dst.surface.x, dst.surface.y)
 
-            arc1_ok = check_jump_arc(p_src,   p_stone, physics.gravity, physics.jump_v,
-                                     physics.max_horizontal_speed)
-            arc2_ok = check_jump_arc(p_stone, p_dst,   physics.gravity, physics.jump_v,
-                                     physics.max_horizontal_speed)
+            arc1_ok = check_jump_arc(
+                p_src,
+                p_stone,
+                physics.gravity,
+                physics.jump_v,
+                physics.max_horizontal_speed,
+            )
+            arc2_ok = check_jump_arc(
+                p_stone,
+                p_dst,
+                physics.gravity,
+                physics.jump_v,
+                physics.max_horizontal_speed,
+            )
 
             if not (arc1_ok and arc2_ok):
                 # Midpoint still too far; cannot patch automatically
                 continue
 
-            vel1 = required_launch_velocity(p_src, p_stone, physics.gravity, physics.jump_v)
-            vel2 = required_launch_velocity(p_stone, p_dst,  physics.gravity, physics.jump_v)
+            vel1 = required_launch_velocity(
+                p_src, p_stone, physics.gravity, physics.jump_v
+            )
+            vel2 = required_launch_velocity(
+                p_stone, p_dst, physics.gravity, physics.jump_v
+            )
             if vel1 is None or vel2 is None:
                 continue
 
             # Commit: remove original impossible edge, add stone + two edges
             graph.remove_edge(src_id, dst_id)
             graph.add_node(stone)
-            graph.add_edge(LevelEdge(
-                source_id=src_id,
-                target_id=stone.id,
-                edge_type=EdgeType.JUMP,
-                dx=p_stone[0] - p_src[0],
-                dy=p_stone[1] - p_src[1],
-                v_launch=vel1,
-            ))
-            graph.add_edge(LevelEdge(
-                source_id=stone.id,
-                target_id=dst_id,
-                edge_type=EdgeType.JUMP,
-                dx=p_dst[0] - p_stone[0],
-                dy=p_dst[1] - p_stone[1],
-                v_launch=vel2,
-            ))
+            graph.add_edge(
+                LevelEdge(
+                    source_id=src_id,
+                    target_id=stone.id,
+                    edge_type=EdgeType.JUMP,
+                    dx=p_stone[0] - p_src[0],
+                    dy=p_stone[1] - p_src[1],
+                    v_launch=vel1,
+                )
+            )
+            graph.add_edge(
+                LevelEdge(
+                    source_id=stone.id,
+                    target_id=dst_id,
+                    edge_type=EdgeType.JUMP,
+                    dx=p_dst[0] - p_stone[0],
+                    dy=p_dst[1] - p_stone[1],
+                    v_launch=vel2,
+                )
+            )
             changed = True
 
         return changed
@@ -289,6 +317,7 @@ class SteppingStonePatch(Patch):
 # ─────────────────────────────────────────────────────────────────────────────
 # Patch 4 — add missing terminals
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class DefaultTerminalsPatch(Patch):
     """Add a default Start or Exit node when one is missing.
@@ -342,6 +371,7 @@ class DefaultTerminalsPatch(Patch):
 # Public patcher
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class SymbolicPatcher:
     """Apply a prioritised sequence of patches to a graph copy.
 
@@ -353,9 +383,9 @@ class SymbolicPatcher:
     """
 
     _PIPELINE: List[type] = [
-        EdgeReclassifyPatch,    # cheapest: only retype an edge
-        VelocityPatch,          # recalculate velocities on valid topology
-        SteppingStonePatch,     # topology change: add a node
+        EdgeReclassifyPatch,  # cheapest: only retype an edge
+        VelocityPatch,  # recalculate velocities on valid topology
+        SteppingStonePatch,  # topology change: add a node
         DefaultTerminalsPatch,  # structural: add Start or Exit
     ]
 

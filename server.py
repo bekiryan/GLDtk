@@ -17,17 +17,27 @@ from typing import Any, Dict, List
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 from aesthetic import build_aesthetic_layer
 from aesthetic.themes import THEMES
 from api.models import GenerateRequest, GenerateResponse, LevelStats
 from layout import LayoutConfig, sugiyama_layout, to_ldtk_dict
 from llm import LLMController, MaxRetriesExceeded, PhysicsParams
-from llm.validator import LLMProviderConfig
 
 app = FastAPI(title="GLDtk Companion", version="0.1.0")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    logging.error(f"VALIDATION ERROR: {exc.errors()}")
+    body = await request.body()
+    logging.error(f"BODY: {body}")
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,15 +51,16 @@ app.add_middleware(
 # ─────────────────────────────────────────────────────────────────────────────
 
 _DIFFICULTY: Dict[str, Dict[str, Any]] = {
-    "easy":   {"density": 0.5,  "v_step": 3},
-    "medium": {"density": 1.0,  "v_step": 4},
-    "hard":   {"density": 1.5,  "v_step": 5},
+    "easy": {"density": 0.5, "v_step": 3},
+    "medium": {"density": 1.0, "v_step": 4},
+    "hard": {"density": 1.5, "v_step": 5},
 }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 def health() -> Dict[str, str]:
@@ -66,7 +77,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     # ── difficulty params ─────────────────────────────────────────────────
     diff_cfg = _DIFFICULTY.get(req.difficulty or "medium", _DIFFICULTY["medium"])
     density: float = diff_cfg["density"]
-    v_step: int    = diff_cfg["v_step"]
+    v_step: int = diff_cfg["v_step"]
 
     # ── build constraints block for the LLM ───────────────────────────────
     constraints: Dict[str, Any] = {}

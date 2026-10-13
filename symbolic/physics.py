@@ -61,7 +61,7 @@ def check_jump_arc(
     dy: float = p2[1] - p1[1]
 
     # Discriminant of the vertical quadratic.
-    discriminant: float = jump_v ** 2 - 2.0 * gravity * dy
+    discriminant: float = jump_v**2 - 2.0 * gravity * dy
 
     if discriminant < 0.0:
         # Apex is below the target height; physically unreachable.
@@ -70,8 +70,8 @@ def check_jump_arc(
     sqrt_d: float = math.sqrt(discriminant)
 
     # Two candidate flight times from the quadratic formula.
-    t1: float = (jump_v - sqrt_d) / gravity   # earlier (ascending phase)
-    t2: float = (jump_v + sqrt_d) / gravity   # later   (descending phase)
+    t1: float = (jump_v - sqrt_d) / gravity  # earlier (ascending phase)
+    t2: float = (jump_v + sqrt_d) / gravity  # later   (descending phase)
 
     for t in (t1, t2):
         if t <= 0.0:
@@ -118,7 +118,7 @@ def required_launch_velocity(
     dx: float = p2[0] - p1[0]
     dy: float = p2[1] - p1[1]
 
-    discriminant: float = jump_v ** 2 - 2.0 * gravity * dy
+    discriminant: float = jump_v**2 - 2.0 * gravity * dy
     if discriminant < 0.0:
         return None
 
@@ -155,7 +155,7 @@ def fall_time(
         raise ValueError(f"gravity must be positive, got {gravity}")
 
     # ½g*t² − initial_vy*t + dy = 0
-    discriminant: float = initial_vy ** 2 - 2.0 * gravity * dy
+    discriminant: float = initial_vy**2 - 2.0 * gravity * dy
     if discriminant < 0.0:
         return None
 

@@ -38,22 +38,22 @@ from .themes import Theme, TileRole
 # ─────────────────────────────────────────────────────────────────────────────
 
 _BITMASK_TO_ROLE: dict[int, TileRole] = {
-    0b0000: TileRole.SINGLE,      # isolated
-    0b0001: TileRole.CAP_RIGHT,   # W only    → right end of platform
-    0b0010: TileRole.CAP_LEFT,    # E only    → left  end of platform
-    0b0011: TileRole.FILL,        # E + W     → interior of thin platform
-    0b0100: TileRole.SINGLE,      # S only    → top of single-column pillar
-    0b0101: TileRole.CORNER_TR,   # S + W     → top-right corner of block
-    0b0110: TileRole.CORNER_TL,   # S + E     → top-left  corner of block
-    0b0111: TileRole.EDGE_T,      # S + E + W → top edge of wide block
-    0b1000: TileRole.SINGLE,      # N only    → bottom of single-column pillar
-    0b1001: TileRole.CORNER_BR,   # N + W     → bottom-right corner
-    0b1010: TileRole.CORNER_BL,   # N + E     → bottom-left  corner
-    0b1011: TileRole.EDGE_B,      # N + E + W → bottom edge of wide block
-    0b1100: TileRole.FILL,        # N + S     → column middle (no EW)
-    0b1101: TileRole.EDGE_R,      # N + S + W → right edge of tall block
-    0b1110: TileRole.EDGE_L,      # N + S + E → left  edge of tall block
-    0b1111: TileRole.CENTER,      # all four  → interior of filled block
+    0b0000: TileRole.SINGLE,  # isolated
+    0b0001: TileRole.CAP_RIGHT,  # W only    → right end of platform
+    0b0010: TileRole.CAP_LEFT,  # E only    → left  end of platform
+    0b0011: TileRole.FILL,  # E + W     → interior of thin platform
+    0b0100: TileRole.SINGLE,  # S only    → top of single-column pillar
+    0b0101: TileRole.CORNER_TR,  # S + W     → top-right corner of block
+    0b0110: TileRole.CORNER_TL,  # S + E     → top-left  corner of block
+    0b0111: TileRole.EDGE_T,  # S + E + W → top edge of wide block
+    0b1000: TileRole.SINGLE,  # N only    → bottom of single-column pillar
+    0b1001: TileRole.CORNER_BR,  # N + W     → bottom-right corner
+    0b1010: TileRole.CORNER_BL,  # N + E     → bottom-left  corner
+    0b1011: TileRole.EDGE_B,  # N + E + W → bottom edge of wide block
+    0b1100: TileRole.FILL,  # N + S     → column middle (no EW)
+    0b1101: TileRole.EDGE_R,  # N + S + W → right edge of tall block
+    0b1110: TileRole.EDGE_L,  # N + S + E → left  edge of tall block
+    0b1111: TileRole.CENTER,  # all four  → interior of filled block
 }
 
 
@@ -61,15 +61,17 @@ _BITMASK_TO_ROLE: dict[int, TileRole] = {
 # Core helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _neighbour_mask(ir: IRLevel, col: int, row: int, tile_val: TileValue) -> int:
     """Return the 4-bit NSEW mask for cell (col, row) checking same *tile_val*."""
+
     def same(c: int, r: int) -> bool:
         return ir.in_bounds(c, r) and ir.get_tile(c, r) == tile_val
 
-    n = same(col,     row - 1)
-    s = same(col,     row + 1)
-    e = same(col + 1, row    )
-    w = same(col - 1, row    )
+    n = same(col, row - 1)
+    s = same(col, row + 1)
+    e = same(col + 1, row)
+    w = same(col - 1, row)
     return (n << 3) | (s << 2) | (e << 1) | w
 
 
@@ -81,6 +83,7 @@ def _role_to_entry(col: int, row: int, role: TileRole, theme: Theme) -> TileEntr
 # ─────────────────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def autotile_level(ir: IRLevel, theme: Theme) -> List[TileEntry]:
     """Generate a TileEntry list for every non-empty cell in *ir*.
