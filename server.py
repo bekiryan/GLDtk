@@ -8,6 +8,10 @@ POST /generate  — run the pipeline and write a .ldtk file.
 GET  /providers — LLM provider names and their default models.
 GET  /profile   — read the project's Game Profile (defaults if missing).
 PUT  /profile   — validate and write the project's Game Profile.
+POST /edit/region, /edit/section, /edit/entities — regional edits (Part 8).
+POST /edit/locate — text location → rect (writes nothing).
+POST /undo      — restore the newest history snapshot.
+GET  /history   — the snapshots of a .ldtk file.
 """
 
 from __future__ import annotations
@@ -28,7 +32,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
 from aesthetic.themes import THEMES, Theme, detect_theme
 from api import art_routes
-from api.models import GenerateRequest, GenerateResponse, LevelStats
+from api.models import (
+    EditInfo,
+    EditResponse,
+    EntityEditRequest,
+    GenerateRequest,
+    GenerateResponse,
+    HistoryEntry,
+    HistoryResponse,
+    LevelStats,
+    LocateRequest,
+    LocateResponse,
+    PathRequest,
+    RectModel,
+    RegionEditRequest,
+    SectionEditRequest,
+    UndoResponse,
+)
+from edit import history as edit_history
+from edit.context import Rect
+from edit.entities import edit_entities
+from edit.locate import locate as locate_text
+from edit.outcome import EditOutcome
+from edit.region import edit_region, edit_section
 from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
 from game.profile import (
     PROFILE_FILENAME,
@@ -78,11 +104,12 @@ load_env_file(Path(__file__).resolve().parent / ".env")
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def default_provider_factory(req: GenerateRequest) -> LLMProvider:
+def default_provider_factory(req: Any) -> LLMProvider:
+    """*req* is any request with ``provider`` and ``model`` (generate or edit)."""
     return make_provider(req.provider, model=req.model)
 
 
-provider_factory: Callable[[GenerateRequest], LLMProvider] = default_provider_factory
+provider_factory: Callable[[Any], LLMProvider] = default_provider_factory
 
 
 app = FastAPI(title="GLDtk Companion", version="0.1.0")
@@ -288,6 +315,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         out.parent.mkdir(parents=True, exist_ok=True)
         # The .ldtk references the theme sheets and the sprite atlas relative to itself.
         copy_aesthetic_assets(result, out.parent)
+        edit_history.snapshot(out, edit_history.make_label("generate", req.description))
         level_meta = LevelMeta(
             prompt=req.description,
             requirements=list(spec.requirements),
@@ -332,6 +360,112 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         warnings=built.warnings + export_warnings,
         fidelity=built.fidelity.to_dict() if built.fidelity else None,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Regional editing + history (Part 8)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _rect(r: RectModel) -> Rect:
+    return Rect(r.col, r.row, r.w, r.h)
+
+
+def _rect_model(r: Rect | None) -> RectModel | None:
+    return RectModel(**r.as_dict()) if r is not None else None
+
+
+def edit_response(out: EditOutcome, path: str) -> EditResponse:
+    """An edit outcome in the GenerateResponse shape, plus ``edit``."""
+    info = EditInfo(mode=out.mode, region=_rect_model(out.rect), snapshot=out.snapshot)
+    if not out.success:
+        return EditResponse(success=False, error=out.error, warnings=out.warnings, edit=info,
+                            output_path=str(Path(path)))
+    spec, ir = out.spec, out.ir
+    stats = LevelStats(
+        theme=out.theme,
+        nodes=out.nodes,
+        edges=out.edges,
+        entities=out.entity_counts,
+        layout_retries=out.stats.get("layout_retries", 0),
+        grid_repairs=out.stats.get("grid_repairs", 0),
+    )
+    sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)] if spec else []
+    return EditResponse(
+        success=True,
+        preview_ascii=ir.ascii_render({"Start": "S", "Exit": "X"}) if ir else None,
+        stats=stats,
+        output_path=str(Path(path).resolve()),
+        requirements=[r.text for r in spec.requirements] if spec else [],
+        sections=sections,
+        profile_path=out.profile_path,
+        verified=out.verified,
+        warnings=out.warnings,
+        fidelity=out.fidelity.to_dict() if out.fidelity else None,
+        edit=info,
+    )
+
+
+def _provider_or_error(req: Any):
+    try:
+        return provider_factory(req), None
+    except Exception as exc:
+        return None, f"LLM provider error: {exc}"
+
+
+@app.post("/edit/region", response_model=EditResponse)
+def edit_region_route(req: RegionEditRequest) -> EditResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
+    out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries)
+    return edit_response(out, req.path)
+
+
+@app.post("/edit/section", response_model=EditResponse)
+def edit_section_route(req: SectionEditRequest) -> EditResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return edit_response(EditOutcome(False, "section", error=err), req.path)
+    out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries)
+    return edit_response(out, req.path)
+
+
+@app.post("/edit/entities", response_model=EditResponse)
+def edit_entities_route(req: EntityEditRequest) -> EditResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return edit_response(EditOutcome(False, "entities", error=err), req.path)
+    out = edit_entities(
+        req.path, req.prompt, provider,
+        rect=_rect(req.rect) if req.rect else None,
+        entity_iids=req.entity_iids or None,
+        max_retries=req.max_retries,
+    )
+    return edit_response(out, req.path)
+
+
+@app.post("/edit/locate", response_model=LocateResponse)
+def edit_locate_route(req: LocateRequest) -> LocateResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return LocateResponse(success=False, error=err)
+    out = locate_text(req.path, req.text, provider, max_retries=req.max_retries)
+    return LocateResponse(success=out.success, rect=_rect_model(out.rect),
+                          explanation=out.explanation, error=out.error)
+
+
+@app.post("/undo", response_model=UndoResponse)
+def undo_route(req: PathRequest) -> UndoResponse:
+    res = edit_history.undo(req.path)
+    return UndoResponse(success=res.success, restored_from=res.restored_from,
+                        remaining=res.remaining, error=res.error)
+
+
+@app.get("/history", response_model=HistoryResponse)
+def history_route(path: str = Query(..., description=".ldtk path")) -> HistoryResponse:
+    snaps = edit_history.list_snapshots(path)
+    return HistoryResponse(snapshots=[HistoryEntry(**s.as_dict()) for s in reversed(snaps)])
 
 
 # ─────────────────────────────────────────────────────────────────────────────

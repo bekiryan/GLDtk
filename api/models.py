@@ -84,3 +84,87 @@ class GenerateResponse(BaseModel):
     verified: bool = False  # the final tile grid was proven beatable
     warnings: List[str] = Field(default_factory=list)  # layout / entity / repair notes
     fidelity: Optional[FidelityModel] = None  # per-requirement report on the final level
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Regional editing + history (Part 8)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class RectModel(BaseModel):
+    """A tile rectangle; row 0 is the top of the level."""
+
+    col: int = Field(..., ge=0)
+    row: int = Field(..., ge=0)
+    w: int = Field(..., ge=1)
+    h: int = Field(..., ge=1)
+
+
+class EditRequestBase(BaseModel):
+    path: str = Field(..., description="Absolute path of the .ldtk file")
+    provider: str = Field("gemini", description="gemini | anthropic | ollama | openai | deepseek")
+    model: Optional[str] = Field(None, description="None = provider default model")
+    seed: int = Field(42)
+    max_retries: int = Field(3, ge=1, le=10)
+
+
+class RegionEditRequest(EditRequestBase):
+    rect: RectModel
+    prompt: str
+
+
+class SectionEditRequest(EditRequestBase):
+    section_id: str
+    prompt: str
+
+
+class EntityEditRequest(EditRequestBase):
+    prompt: str
+    rect: Optional[RectModel] = None
+    entity_iids: Optional[List[str]] = None  # wins over rect when both are given
+
+
+class LocateRequest(BaseModel):
+    path: str
+    text: str
+    provider: str = Field("gemini")
+    model: Optional[str] = None
+    max_retries: int = Field(3, ge=1, le=10)
+
+
+class EditInfo(BaseModel):
+    mode: str  # region | section | entities
+    region: Optional[RectModel] = None  # the edited rect (None for a whole-level entity edit)
+    snapshot: Optional[str] = None  # history snapshot taken before the write
+
+
+class EditResponse(GenerateResponse):
+    edit: Optional[EditInfo] = None
+
+
+class LocateResponse(BaseModel):
+    success: bool
+    rect: Optional[RectModel] = None
+    explanation: str = ""
+    error: Optional[str] = None
+
+
+class PathRequest(BaseModel):
+    path: str
+
+
+class UndoResponse(BaseModel):
+    success: bool
+    restored_from: Optional[str] = None
+    remaining: int = 0
+    error: Optional[str] = None
+
+
+class HistoryEntry(BaseModel):
+    file: str
+    timestamp: str  # ISO 8601 UTC, sorts chronologically
+    label: str
+
+
+class HistoryResponse(BaseModel):
+    snapshots: List[HistoryEntry] = Field(default_factory=list)  # newest first

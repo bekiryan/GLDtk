@@ -889,26 +889,28 @@ def _make_layer_instance_intgrid(ir: IRLevel, level_uid: int, cfg: LDtkConfig) -
     return base
 
 
+def grid_tile_json(te: TileEntry, tile_size: int, width_tiles: int, tileset_px_width: int) -> Dict[str, Any]:
+    """One ``gridTiles`` entry of a Tiles layer instance."""
+    tiles_per_row = max(1, tileset_px_width // tile_size)
+    return {
+        "px": [te.col * tile_size, te.row * tile_size],
+        "src": [te.src_x, te.src_y],
+        "f": (1 if te.flip_x else 0) | (2 if te.flip_y else 0),
+        "t": (te.src_y // tile_size) * tiles_per_row + (te.src_x // tile_size),
+        "a": 1.0,
+        "d": [te.row * width_tiles + te.col],
+    }
+
+
 def _make_layer_instance_tiles(
     layer: _TileLayer,
     ir: IRLevel,
     level_uid: int,
 ) -> Dict[str, Any]:
     ts = layer.tileset
-    tiles_per_row = max(1, ts.px_width // ir.tile_size)
-    grid_tiles = []
-    for te in layer.entries:
-        tile_id = (te.src_y // ir.tile_size) * tiles_per_row + (te.src_x // ir.tile_size)
-        grid_tiles.append(
-            {
-                "px": [te.col * ir.tile_size, te.row * ir.tile_size],
-                "src": [te.src_x, te.src_y],
-                "f": (1 if te.flip_x else 0) | (2 if te.flip_y else 0),
-                "t": tile_id,
-                "a": 1.0,
-                "d": [te.row * ir.width_tiles + te.col],
-            }
-        )
+    grid_tiles = [
+        grid_tile_json(te, ir.tile_size, ir.width_tiles, ts.px_width) for te in layer.entries
+    ]
     base = _layer_instance_base(
         layer.identifier, "Tiles", ir.width_tiles, ir.height_tiles, ir.tile_size,
         layer.uid, level_uid,
