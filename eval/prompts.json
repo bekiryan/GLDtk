@@ -1,0 +1,352 @@
+{
+ "version": 1,
+ "prompts": [
+  {
+   "id": "single-forest",
+   "tags": [
+    "single",
+    "horizontal",
+    "simple"
+   ],
+   "prompt": "A short forest level with grassy platforms, a few coins and an exit flag."
+  },
+  {
+   "id": "single-cave-hazards",
+   "tags": [
+    "single",
+    "horizontal",
+    "hazard"
+   ],
+   "prompt": "A cave level with spike pits between rocky platforms and a single exit."
+  },
+  {
+   "id": "two-sections",
+   "tags": [
+    "multi",
+    "horizontal",
+    "pickup",
+    "enemy",
+    "interactive"
+   ],
+   "prompt": "Start in a sunny meadow with 3 coins, then enter a dark dungeon with a skeleton guard and a treasure chest before the exit.",
+   "expect": {
+    "min_sections": 2,
+    "entity_kinds": [
+     "Pickup",
+     "Enemy",
+     "Interactive"
+    ]
+   }
+  },
+  {
+   "id": "three-sections",
+   "tags": [
+    "multi",
+    "horizontal",
+    "enemy",
+    "checkpoint",
+    "pickup"
+   ],
+   "prompt": "Three areas: a snowy mountain with 5 coins, an ice cave with a checkpoint halfway, and a castle ending with a boss before the exit.",
+   "expect": {
+    "min_sections": 3,
+    "entity_kinds": [
+     "Checkpoint",
+     "Enemy",
+     "Pickup"
+    ]
+   }
+  },
+  {
+   "id": "vertical-tower",
+   "tags": [
+    "single",
+    "vertical"
+   ],
+   "prompt": "A tall vertical tower to climb: the player starts at the bottom and the exit is at the very top, with platforms zig-zagging upward.",
+   "expect": {
+    "min_height_tiles": 40
+   }
+  },
+  {
+   "id": "vertical-shaft-multi",
+   "tags": [
+    "multi",
+    "vertical",
+    "pickup"
+   ],
+   "prompt": "A deep mine shaft that goes up in two sections: a damp lower mine with 4 gems and a crystal cavern on top with the exit.",
+   "expect": {
+    "min_sections": 2,
+    "min_height_tiles": 40
+   }
+  },
+  {
+   "id": "enemy-walker",
+   "tags": [
+    "single",
+    "enemy",
+    "entity-kinds"
+   ],
+   "prompt": "A graveyard level with three walking zombies patrolling platforms.",
+   "expect": {
+    "entity_kinds": [
+     "Enemy"
+    ]
+   }
+  },
+  {
+   "id": "enemy-flyer-turret",
+   "tags": [
+    "single",
+    "enemy",
+    "entity-kinds"
+   ],
+   "prompt": "A sky fortress with two flying bats and a turret that shoots at the player.",
+   "expect": {
+    "entity_kinds": [
+     "Enemy"
+    ]
+   }
+  },
+  {
+   "id": "pickup-kinds",
+   "tags": [
+    "single",
+    "pickup",
+    "entity-kinds"
+   ],
+   "prompt": "A treasure level with 6 coins, 2 gems, a health potion and some ammo to find.",
+   "expect": {
+    "entity_kinds": [
+     "Pickup"
+    ]
+   }
+  },
+  {
+   "id": "weapon",
+   "tags": [
+    "single",
+    "weapon",
+    "entity-kinds"
+   ],
+   "prompt": "A beginner dungeon where the player starts with a sword and finds a bow lying on a platform.",
+   "expect": {
+    "entity_kinds": [
+     "Weapon",
+     "Start"
+    ]
+   }
+  },
+  {
+   "id": "interactive",
+   "tags": [
+    "single",
+    "interactive",
+    "entity-kinds"
+   ],
+   "prompt": "A temple with a lever that opens a door, a chest and a sign near the start.",
+   "expect": {
+    "entity_kinds": [
+     "Interactive"
+    ]
+   }
+  },
+  {
+   "id": "npc",
+   "tags": [
+    "single",
+    "npc",
+    "entity-kinds"
+   ],
+   "prompt": "A village level with two friendly villagers to talk to and a coin on each rooftop.",
+   "expect": {
+    "entity_kinds": [
+     "NPC",
+     "Pickup"
+    ]
+   }
+  },
+  {
+   "id": "key-door",
+   "tags": [
+    "single",
+    "key",
+    "interactive",
+    "entity-kinds"
+   ],
+   "prompt": "A locked-door puzzle: the player must collect a golden key and carry it to the exit door.",
+   "expect": {
+    "entity_kinds": [
+     "Key"
+    ]
+   }
+  },
+  {
+   "id": "checkpoints",
+   "tags": [
+    "multi",
+    "checkpoint",
+    "entity-kinds"
+   ],
+   "prompt": "A long level in two sections with a checkpoint at the start of each section.",
+   "expect": {
+    "min_sections": 2,
+    "entity_kinds": [
+     "Checkpoint"
+    ]
+   }
+  },
+  {
+   "id": "boss-arena",
+   "tags": [
+    "multi",
+    "enemy",
+    "boss"
+   ],
+   "prompt": "A volcano climb followed by a boss arena with a fire boss guarding the exit.",
+   "expect": {
+    "min_sections": 2,
+    "entity_kinds": [
+     "Enemy"
+    ]
+   }
+  },
+  {
+   "id": "ability-has-run-jump",
+   "tags": [
+    "single",
+    "ability-has"
+   ],
+   "prompt": "A platformer that needs only running and normal jumps across moderately wide gaps."
+  },
+  {
+   "id": "ability-lacks-double-jump",
+   "tags": [
+    "single",
+    "ability-lacks",
+    "impossible"
+   ],
+   "prompt": "The player has a double jump and must use it to cross two very wide gaps."
+  },
+  {
+   "id": "ability-lacks-dash-wall",
+   "tags": [
+    "multi",
+    "ability-lacks",
+    "impossible"
+   ],
+   "prompt": "A level in two parts: the first needs a mid-air dash to cross a chasm, the second needs wall jumping up a narrow shaft.",
+   "expect": {
+    "min_sections": 2
+   }
+  },
+  {
+   "id": "gravity-low",
+   "tags": [
+    "multi",
+    "gravity"
+   ],
+   "prompt": "A level with a normal opening section followed by a low-gravity moon section where jumps are floaty.",
+   "expect": {
+    "min_sections": 2
+   }
+  },
+  {
+   "id": "gravity-high",
+   "tags": [
+    "multi",
+    "gravity"
+   ],
+   "prompt": "A heavy-gravity swamp section with short jumps, then a normal-gravity meadow with the exit.",
+   "expect": {
+    "min_sections": 2
+   }
+  },
+  {
+   "id": "explicit-size",
+   "tags": [
+    "single",
+    "size"
+   ],
+   "prompt": "A 120 tiles wide and 30 tiles tall desert level with a few cacti hazards and 4 coins.",
+   "expect": {
+    "min_width_tiles": 120
+   }
+  },
+  {
+   "id": "explicit-small",
+   "tags": [
+    "single",
+    "size"
+   ],
+   "prompt": "A tiny level exactly 30 by 15 tiles: one jump, one coin, one exit."
+  },
+  {
+   "id": "vague-fun",
+   "tags": [
+    "single",
+    "vague"
+   ],
+   "prompt": "Make something fun."
+  },
+  {
+   "id": "vague-spooky",
+   "tags": [
+    "single",
+    "vague"
+   ],
+   "prompt": "spooky"
+  },
+  {
+   "id": "impossible-fly-music",
+   "tags": [
+    "single",
+    "impossible"
+   ],
+   "prompt": "The player can fly freely and background music plays a jazz tune in every section.",
+   "expect": {
+    "min_impossible": 1
+   }
+  },
+  {
+   "id": "impossible-online",
+   "tags": [
+    "single",
+    "impossible"
+   ],
+   "prompt": "A level with 4-player online multiplayer and a leaderboard shown on screen.",
+   "expect": {
+    "min_impossible": 1
+   }
+  },
+  {
+   "id": "long-detailed",
+   "tags": [
+    "multi",
+    "horizontal",
+    "long",
+    "enemy",
+    "pickup",
+    "interactive",
+    "checkpoint",
+    "key",
+    "npc",
+    "weapon"
+   ],
+   "prompt": "Create a long adventure in four sections. Section one is a sunny forest village where the player, who starts with a wooden sword, can talk to an old villager and collect 5 coins. Section two is a spooky cave with 3 bats, 2 spike pits, a checkpoint and a golden key hidden on a high ledge. Section three is a frozen cliff with low-ish gravity, 2 yeti walkers and a chest containing treasure. Section four is a castle throne room with a boss, a lever that opens the exit door, and a final checkpoint before it. The level should be at least 150 tiles wide.",
+   "expect": {
+    "min_sections": 4,
+    "min_width_tiles": 150,
+    "entity_kinds": [
+     "NPC",
+     "Pickup",
+     "Enemy",
+     "Checkpoint",
+     "Key",
+     "Interactive"
+    ]
+   }
+  }
+ ]
+}
