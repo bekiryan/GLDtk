@@ -119,5 +119,7 @@ def write_sprite_atlas(atlas: SpriteAtlas, ldtk_dir: Union[str, Path]) -> str:
     """Write the atlas to ``<ldtk_dir>/<atlas.rel_path>``; returns the relative path."""
     dest = Path(ldtk_dir) / atlas.rel_path
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(atlas.png)
+    # Unchanged bytes are not rewritten, so LDtk does not hot-reload the image.
+    if not (dest.is_file() and dest.read_bytes() == atlas.png):
+        dest.write_bytes(atlas.png)
     return atlas.rel_path

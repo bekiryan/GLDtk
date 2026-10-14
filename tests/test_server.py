@@ -101,6 +101,17 @@ def test_load_env_file(tmp_path, monkeypatch):
         monkeypatch.delenv(k)
 
 
+def test_providers_lists_default_models(client):
+    from llm.providers import _DEFAULT_PROVIDER_MODELS
+
+    body = client.get("/providers").json()
+    assert body["default"] == "gemini"
+    names = [p["name"] for p in body["providers"]]
+    assert set(names) == {"gemini", "anthropic", "ollama", "openai", "deepseek"}
+    for p in body["providers"]:
+        assert p["default_model"] == _DEFAULT_PROVIDER_MODELS[p["name"]]
+
+
 # ── Game Profile ─────────────────────────────────────────────────────────────
 
 

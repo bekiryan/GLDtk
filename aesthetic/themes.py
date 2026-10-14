@@ -24,6 +24,7 @@ references (``Theme.tileset_rel_path``).
 
 from __future__ import annotations
 
+import filecmp
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -206,7 +207,10 @@ def copy_theme_assets(theme: Theme, ldtk_dir: Union[str, Path]) -> str:
         raise FileNotFoundError(f"theme {theme.identifier!r} has no sheet on disk")
     dest = Path(ldtk_dir) / theme.tileset_rel_path
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(theme.sheet_path, dest)
+    # An unchanged sheet is left alone: LDtk watches it and would hot-reload the
+    # tileset, which marks every level as modified.
+    if not (dest.is_file() and filecmp.cmp(theme.sheet_path, dest, shallow=False)):
+        shutil.copyfile(theme.sheet_path, dest)
     return theme.tileset_rel_path
 
 

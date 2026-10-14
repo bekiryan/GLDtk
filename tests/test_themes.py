@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -61,6 +62,33 @@ def test_copy_theme_assets_returns_working_relative_path(tmp_path: Path):
     copied = tmp_path / rel
     assert copied.exists() and copied.read_bytes() == theme.sheet_path.read_bytes()
     copy_theme_assets(theme, tmp_path)  # idempotent
+
+
+def test_copy_theme_assets_leaves_unchanged_sheet_alone(tmp_path: Path):
+    # LDtk hot-reloads a rewritten tileset image and marks the level modified.
+    theme = THEMES["forest"]
+    copied = tmp_path / copy_theme_assets(theme, tmp_path)
+    os.utime(copied, ns=(1, 1))
+    copy_theme_assets(theme, tmp_path)
+    assert copied.stat().st_mtime_ns == 1
+
+    copied.write_bytes(b"stale")
+    copy_theme_assets(theme, tmp_path)
+    assert copied.read_bytes() == theme.sheet_path.read_bytes()
+
+
+def test_write_sprite_atlas_skips_identical_bytes(tmp_path: Path):
+    from aesthetic.sprites import SpriteAtlas, write_sprite_atlas
+
+    atlas = SpriteAtlas(png=b"png-bytes", width=16, height=16, tile_size=16)
+    dest = tmp_path / write_sprite_atlas(atlas, tmp_path)
+    os.utime(dest, ns=(1, 1))
+    write_sprite_atlas(atlas, tmp_path)
+    assert dest.stat().st_mtime_ns == 1
+
+    atlas.png = b"new-bytes"
+    write_sprite_atlas(atlas, tmp_path)
+    assert dest.read_bytes() == b"new-bytes"
 
 
 def test_autotile_uses_variants_deterministically():

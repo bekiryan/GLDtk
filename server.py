@@ -5,6 +5,7 @@ Run:
 
 The GLDtk panel inside LDtk sends requests to this server.
 POST /generate  — run the pipeline and write a .ldtk file.
+GET  /providers — LLM provider names and their default models.
 GET  /profile   — read the project's Game Profile (defaults if missing).
 PUT  /profile   — validate and write the project's Game Profile.
 """
@@ -37,7 +38,7 @@ from game.profile import (
     save_profile,
 )
 from llm import LLMController, MaxRetriesExceeded
-from llm.providers import LLMProvider, make_provider
+from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider
 from pipeline import LevelBuildFailed, build_level
 
 
@@ -141,6 +142,18 @@ def health() -> Dict[str, str]:
 @app.get("/themes")
 def list_themes() -> Dict[str, List[str]]:
     return {"themes": [k for k in THEMES if k != "default"]}
+
+
+@app.get("/providers")
+def list_providers() -> Dict[str, Any]:
+    """Provider names (in the sidebar's order) with their default models."""
+    return {
+        "default": GenerateRequest.model_fields["provider"].default,
+        "providers": [
+            {"name": name, "default_model": model}
+            for name, model in _DEFAULT_PROVIDER_MODELS.items()
+        ],
+    }
 
 
 def resolve_profile_path(path: str) -> Path:
