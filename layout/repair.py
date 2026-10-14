@@ -118,7 +118,7 @@ def _nudge_hop_blockers(
     ts = float(layout.tile_size)
     hitbox = (profile.player.width_px, profile.player.height_px)
     ra, rb = layout.rect(a), layout.rect(b)
-    scale = layout.gravity_scale_at((ra[1] + ra[2]) // 2)
+    scale = layout.gravity_scale_of(ra)
     golden = set(layout.golden_path)
     abilities = [None] + [x for x in ABILITY_ORDER if ability_enabled(profile, x)]
     best: Optional[Tuple[Tuple[int, int], Set[str], Set[Cell]]] = None
@@ -184,7 +184,7 @@ def _insert_stepping_stone(
     while stone_id in layout.node_layouts:
         k += 1
         stone_id = f"stone{k}"
-    scale_a = layout.gravity_scale_at((ra[1] + ra[2]) // 2)
+    scale_a = layout.gravity_scale_of(ra)
     base = _dist(_centre(layout, ra), target)
     partial: Optional[Tuple[float, int, int]] = None
 
@@ -203,7 +203,7 @@ def _insert_stepping_stone(
             try:
                 if move_between(grid, ra, stone, profile, scale_a) is None:
                     continue
-                scale_s = layout.gravity_scale_at(col + 1)
+                scale_s = layout.gravity_scale_of(stone)
                 if move_between(grid, stone, rb, profile, scale_s) is not None:
                     chosen = (row, col)
                     break
@@ -223,7 +223,7 @@ def _insert_stepping_stone(
     row, col = chosen
     layout.node_layouts[stone_id] = NodeLayout(stone_id, col, row, STONE_WIDTH, 1)
     layout.node_kinds[stone_id] = "Platform"
-    section = layout.section_at(col + STONE_WIDTH // 2).id
+    section = layout.section_at(col + STONE_WIDTH // 2, row).id
     layout.node_sections[stone_id] = section
     layout.added_nodes.append(stone_id)
     path = layout.golden_path

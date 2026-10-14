@@ -14,10 +14,17 @@ Approximation is detected from the requirement alone: an ``entity_count``
 whose ``subkind`` is not a valid value for its kind ("ghost" for an Enemy)
 can only have been met by the nearest kind, so it is matched against the
 entities' description / sprite text and reported ``approximated``.
+
+Hazards are tiles (Hazard nodes), never entities.  ``hazard`` checks count
+Hazard nodes, and an ``entity_count`` that names a hazard concept (its
+subkind is "hazard", "spikes", "pit", "lava", …, or its text is and the
+subkind is not a valid one for the kind) is checked as a ``hazard`` instead
+(:func:`effective_check`), so the fill never adds an Enemy for "a spike pit".
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Tuple, get_args
 
@@ -55,6 +62,12 @@ SUBKIND_VALUES: Dict[str, Optional[Tuple[str, ...]]] = {
     "Weapon": None,
 }
 
+HAZARD_WORDS = re.compile(
+    r"\b(hazards?|spikes?|spiky|pits?|lava|acid|magma|thorns?|brambles?|quicksand|traps?)\b",
+    re.IGNORECASE,
+)
+"""Words that name a hazard concept (hazards are tiles, not entities)."""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Level view (what the checks look at)
@@ -68,6 +81,11 @@ class LevelView:
     height_tiles: int
     entities: List[Dict[str, Any]] = field(default_factory=list)  # {"kind", "section", ...}
     where: str = "spec"  # "spec" | "level", used in reasons
+    hazards: List[Dict[str, Any]] = field(default_factory=list)  # Hazard nodes: {"id", "section"}
+
+
+def _hazard_nodes(spec: LevelSpec) -> List[Dict[str, Any]]:
+    return [{"id": n.id, "section": n.section} for n in spec.nodes if n.type == "Hazard"]
 
 
 def spec_view(spec: LevelSpec) -> LevelView:
@@ -77,16 +95,20 @@ def spec_view(spec: LevelSpec) -> LevelView:
         height_tiles=spec.size.height_tiles,
         entities=[e.model_dump() for e in spec.entities],
         where="spec",
+        hazards=_hazard_nodes(spec),
     )
 
 
 def level_view(spec: LevelSpec, ir: IRLevel) -> LevelView:
+    """Entities as placed in *ir*; hazards are the final spec's Hazard nodes
+    (the layout keeps every node, it only moves them)."""
     return LevelView(
         sections={s.id: s for s in spec.sections},
         width_tiles=ir.width_tiles,
         height_tiles=ir.height_tiles,
         entities=[{**e.metadata, "kind": e.entity_type} for e in ir.entities],
         where="level",
+        hazards=_hazard_nodes(spec),
     )
 
 
@@ -139,6 +161,41 @@ def matching_entities(
                 continue
         out.append(ent)
     return out
+
+
+def names_hazard(text: Optional[str]) -> bool:
+    """True if *text* names a hazard concept (spikes, a pit, lava, ...)."""
+    return bool(text) and HAZARD_WORDS.search(str(text)) is not None
+
+
+def effective_check(req: Requirement) -> Optional[RequirementCheck]:
+    """The check to run for *req*: an ``entity_count`` naming a hazard becomes ``hazard``.
+
+    It names a hazard when its subkind does ("hazard", "spikes"), or when the
+    requirement text does ("a spike pit in the cave") and the subkind is
+    empty or not a valid value for the kind.
+    """
+    check = req.check
+    if check is None or check.type != "entity_count":
+        return check
+    hazard = names_hazard(check.subkind)
+    if not hazard and names_hazard(req.text):
+        sub, valid = resolve_subkind(check.entity_kind, check.subkind)
+        hazard = sub is None or not valid
+    if not hazard:
+        return check
+    return check.model_copy(update={"type": "hazard", "entity_kind": None, "subkind": None})
+
+
+def hazard_count(view: LevelView, check: RequirementCheck) -> int:
+    """Hazard nodes that count towards a ``hazard`` check."""
+    return sum(1 for h in view.hazards if not check.section or h["section"] == check.section)
+
+
+def hazard_deficit(view: LevelView, check: RequirementCheck) -> int:
+    """How many more Hazard nodes a ``hazard`` check needs (0 when met)."""
+    need = 1 if check.min_count is None else check.min_count
+    return max(0, need - hazard_count(view, check))
 
 
 def entity_deficit(view: LevelView, check: RequirementCheck) -> int:
@@ -197,6 +254,20 @@ def _check_entity_count(check: RequirementCheck, view: LevelView) -> Result:
     if have > 0:
         return "approximated", f"only {have} of {need} {what} in the {view.where}"
     return "missing", f"no {what} in the {view.where} (needs {need})"
+
+
+def _check_hazard(check: RequirementCheck, view: LevelView, converted: bool) -> Result:
+    if check.section and check.section not in view.sections:
+        return "missing", f"section '{check.section}' does not exist"
+    need = 1 if check.min_count is None else check.min_count
+    have = hazard_count(view, check)
+    where = f" in section '{check.section}'" if check.section else ""
+    note = " (checked as a hazard: hazards are tiles, not entities)" if converted else ""
+    if have >= need:
+        return "satisfied", f"{have} of {need} hazard(s){where}{note}"
+    if have > 0:
+        return "approximated", f"only {have} of {need} hazard(s){where} in the {view.where}{note}"
+    return "missing", f"no hazard{where} in the {view.where} (needs {need}){note}"
 
 
 def _check_start_item(check: RequirementCheck, view: LevelView) -> Result:
@@ -276,11 +347,14 @@ def _check_gravity(check: RequirementCheck, view: LevelView) -> Result:
 
 
 def check_requirement(req: Requirement, view: LevelView, profile: GameProfile) -> Result:
-    check = req.check
+    check = effective_check(req)
     if check is None or check.type == "none":
         return "unchecked", f"no structured check (category '{req.category}')"
     if check.type == "entity_count":
         return _check_entity_count(check, view)
+    if check.type == "hazard":
+        converted = req.check is not None and req.check.type != "hazard"
+        return _check_hazard(check, view, converted)
     if check.type == "start_item":
         return _check_start_item(check, view)
     if check.type == "section":

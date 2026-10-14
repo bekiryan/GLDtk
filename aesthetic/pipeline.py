@@ -3,7 +3,8 @@
 Builds all Part 4 outputs in one deterministic pass:
 1) Theme selection from description keywords (plus one theme per section:
    ``ir.metadata["sections"][i]["mapped_theme"]``, set by the server)
-2) Auto-tiling from the IR tile grid, each section's columns in its own theme
+2) Auto-tiling from the IR tile grid, each section's band in its own theme
+   (columns in a horizontal level, rows in a vertical one)
 3) Golden-path entity placement
 4) The entity sprite atlas
 5) AestheticData payload for LDtk serialization
@@ -45,20 +46,54 @@ def _tileset_identifier(theme: Theme) -> str:
     return re.sub(r"\W", "_", theme.identifier).capitalize()
 
 
-def _section_spans(ir_level: IRLevel) -> List[Tuple[int, int, Theme]]:
-    """``(col_start, col_end, theme)`` for each section band with a ``mapped_theme``."""
+SectionRect = Tuple[int, int, int, int, Theme]  # col_start, col_end, row_start, row_end, theme
+
+
+def _section_spans(ir_level: IRLevel) -> List[SectionRect]:
+    """The cell rectangle and theme of each section band with a ``mapped_theme``.
+
+    Bands without ``row_start`` / ``row_end`` (files from before vertical
+    sections) cover every row.
+    """
     spans = []
+    last_row = ir_level.height_tiles - 1
     for band in ir_level.metadata.get("sections") or []:
         mapped = band.get("mapped_theme") if isinstance(band, dict) else None
         if mapped in THEMES:
-            spans.append((int(band["col_start"]), int(band["col_end"]), THEMES[mapped]))
+            spans.append((
+                int(band["col_start"]),
+                int(band["col_end"]),
+                int(band.get("row_start", 0)),
+                int(band.get("row_end", last_row)),
+                THEMES[mapped],
+            ))
     return spans
 
 
-def copy_aesthetic_assets(result: "AestheticBuildResult", ldtk_dir: Union[str, Path]) -> List[str]:
+def _first_section(spans: List[SectionRect]) -> Theme:
+    """The theme of the first section: leftmost, or bottom-most in a vertical level."""
+    return min(spans, key=lambda sp: (sp[0], -sp[3]))[4]
+
+
+def copy_aesthetic_assets(
+    result: "AestheticBuildResult", ldtk_dir: Union[str, Path], all_themes: bool = True
+) -> List[str]:
     """Copy every theme sheet in use and write the sprite atlas next to the
-    ``.ldtk``; returns the relative paths written."""
-    paths = [copy_theme_assets(t, ldtk_dir) for t in result.themes or [result.theme]]
+    ``.ldtk``; returns the relative paths of those files.
+
+    With *all_themes* every other library sheet is copied too (about 1 KB
+    each), so the first generate in a project writes them all and later
+    generates create no new files: LDtk's file watcher would otherwise reload
+    a tileset that appears after the level is loaded and mark it modified.
+    Unchanged files are never rewritten (``copy_theme_assets``).
+    """
+    used = result.themes or [result.theme]
+    paths = [copy_theme_assets(t, ldtk_dir) for t in used]
+    if all_themes:
+        for theme in list(THEMES.values()):
+            if theme in used or theme.sheet_path is None or not theme.sheet_path.exists():
+                continue
+            copy_theme_assets(theme, ldtk_dir)
     if result.sprite_atlas is not None:
         paths.append(write_sprite_atlas(result.sprite_atlas, ldtk_dir))
     return paths
@@ -103,17 +138,17 @@ def build_aesthetic_layer(
     """
     spans = _section_spans(ir_level)
     if spans and not theme_override:
-        theme = min(spans, key=lambda sp: sp[0])[2]  # the first section's theme is the primary one
+        theme = _first_section(spans)  # the first section's theme is the primary one
     else:
         theme = detect_theme(description, override=theme_override)
 
-    def theme_for_col(col: int) -> Theme:
-        for lo, hi, th in spans:
-            if lo <= col <= hi:
+    def theme_for_cell(col: int, row: int) -> Theme:
+        for c0, c1, r0, r1, th in spans:
+            if c0 <= col <= c1 and r0 <= row <= r1:
                 return th
         return theme
 
-    tile_entries = autotile_level(ir_level, theme, theme_for_col)
+    tile_entries = autotile_level(ir_level, theme, theme_for_cell=theme_for_cell)
     # Every sheet the tiles use, the primary theme's first.
     themes: List[Theme] = [theme]
     for te in tile_entries:

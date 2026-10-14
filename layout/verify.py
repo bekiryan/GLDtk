@@ -58,6 +58,8 @@ class GridReport:
     reachable_nodes: Set[str] = field(default_factory=set)  # spec ids reachable from Start
     pre_exit_nodes: Set[str] = field(default_factory=set)  # … without passing an Exit
     graph: Optional[AbstractLevelGraph] = field(default=None, repr=False)
+    start_span: Optional[str] = None  # span id (in ``graph``) the player starts on
+    exit_spans: Set[str] = field(default_factory=set)  # span ids of the Exit nodes
 
     def error_messages(self) -> List[str]:
         return [e.message for e in self.errors]
@@ -162,7 +164,7 @@ def verify_grid(
     layout = spec_layout
     ir = layout.ir
     graph = extract_graph(
-        ir.grid, profile=profile, gravity_scale_at=layout.gravity_scale_at, collision=True
+        ir.grid, profile=profile, gravity_scale_at_cell=layout.gravity_scale_at, collision=True
     )
     index = SpanIndex(graph, layout)
     errors: List[GridError] = []
@@ -280,6 +282,8 @@ def verify_grid(
         reachable_nodes=reachable_nodes,
         pre_exit_nodes=pre_exit_nodes,
         graph=graph,
+        start_span=start_span,
+        exit_spans=exit_spans,
     )
 
 
@@ -301,7 +305,7 @@ def _hop_needs_wall_jump(
         if e.from_ == a and e.to == b and e.ability == "wall_jump":
             return True
     p1, p2 = hop_points(layout, a, b)
-    scale = layout.gravity_scale_at(layout.node_layouts[a].col)
+    scale = layout.gravity_scale_of(layout.rect(a))
     return best_ability(p1, p2, profile, scale) == "wall_jump"
 
 
@@ -322,7 +326,7 @@ def _no_path_error(
     a, b = hop
     p1, p2 = hop_points(layout, a, b)
     dx, dy = p2[0] - p1[0], p2[1] - p1[1]
-    scale = layout.gravity_scale_at(layout.node_layouts[a].col)
+    scale = layout.gravity_scale_of(layout.rect(a))
     if _hop_needs_wall_jump(layout, profile, spec, a, b) and not find_walls(
         grid, p1, p2, profile, float(layout.tile_size)
     ):

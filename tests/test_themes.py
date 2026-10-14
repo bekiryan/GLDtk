@@ -77,6 +77,33 @@ def test_copy_theme_assets_leaves_unchanged_sheet_alone(tmp_path: Path):
     assert copied.read_bytes() == theme.sheet_path.read_bytes()
 
 
+def test_first_generate_copies_every_theme_sheet_and_later_ones_write_nothing(tmp_path: Path):
+    # A sheet appearing after LDtk loaded the level makes its file watcher reload
+    # the tileset (M2 bug 2): the first copy writes every library sheet.
+    from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
+    from symbolic.schema import AbstractLevelGraph
+
+    ir = IRLevel.empty("Level_0", 30, 15)
+    ir.fill_rect(0, 14, 30, 1, TileValue.SOLID)
+    result = build_aesthetic_layer("a forest", AbstractLevelGraph(), {}, ir,
+                                   theme_override="forest", place_random_entities=False)
+    paths = copy_aesthetic_assets(result, tmp_path)
+    assert THEMES["forest"].tileset_rel_path in paths
+    with_sheets = [t for t in THEMES.values() if t.sheet_path and t.sheet_path.exists()]
+    assert len(with_sheets) >= 8
+    for t in with_sheets:
+        assert (tmp_path / t.tileset_rel_path).read_bytes() == t.sheet_path.read_bytes()
+
+    files = sorted(p for p in tmp_path.rglob("*") if p.is_file())
+    for p in files:
+        os.utime(p, ns=(1, 1))
+    other = build_aesthetic_layer("a dungeon", AbstractLevelGraph(), {}, ir,
+                                  theme_override="dungeon", place_random_entities=False)
+    copy_aesthetic_assets(other, tmp_path)
+    assert sorted(p for p in tmp_path.rglob("*") if p.is_file()) == files
+    assert all(p.stat().st_mtime_ns == 1 for p in files)
+
+
 def test_write_sprite_atlas_skips_identical_bytes(tmp_path: Path):
     from aesthetic.sprites import SpriteAtlas, write_sprite_atlas
 
