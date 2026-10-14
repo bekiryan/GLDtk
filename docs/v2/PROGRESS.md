@@ -14,8 +14,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | **M1** | **User review: prompt → detailed level end to end** | | ⏳ waiting for user | |
 | 7 | Fidelity report + completeness loop | strong | ✅ | see git log |
 | 7b | M1 fixes (export, layout, art) | medium | ✅ | see git log |
-| 9 | Sidebar UI (Haxe) | medium | ⬜ | |
-| **M2** | **User review in LDtk** | | ⬜ | |
+| 9 | Sidebar UI (Haxe) | strong | ✅ (edit controls deferred to Part 8) | see git log (both repos) |
+| **M2** | **User review in LDtk** | | ⏳ waiting for user | |
 | 5 | Asset library | light | ✅ (pulled forward) | see git log |
 | 8 | Regional editing + undo | strong | ⬜ | |
 | **M3** | **User review** | | ⬜ | |
@@ -51,8 +51,15 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - **Cleanup:** `tilesets/` and the root v1 `level.ldtk` were deleted. Pillow is now in the `server` extra.
   - **App test** (`demo_m1/fix/level.ldtk`, fake provider): layer order correct, tiles in full colour with a per-section sheet, sprite icons in the palette and on the canvas, and no `*` after opening.
 
+- 2026-10-14: Part 9 done ([spec](parts/09-sidebar.md)); 268 tests pass. Commits: ldtk-src `c55f392`, main `7902073`. The section dropdown, rectangle selection and undo button were **deferred to Part 8**, because they need its backend; an empty `#g-edit` slot is left for them.
+  - **Sidebar:** fidelity report (score, rows, auto tags, reasons), collapsible warnings and preview, provider and model selector (with a new `GET /providers`), Game Profile panel (GET/PUT `/profile`, 422 errors shown inline), and a clear-history button.
+  - **Bug 1 (blank canvas after generate):** `App.loadProject` builds a new Editor while the old one is still being disposed. The old one's `onDispose` then hides the canvas and removes the mouse handlers. Fix: swap the project into the open editor the way `LastChance` does (`ProjectLoader`, then `editor.selectProject`).
+  - **Bug 4 (label):** a hook in `App.loadPage` calls `gldtkSidebar.onPageLoaded()`, which listens for `ProjectSelected` and `ProjectSaved`.
+  - **New load-modified cause:** rewriting `gldtk_assets/*.png` on every generate made LDtk's file watcher reload the tilesets. Assets are now only written when their content changes.
+  - **Open:** the warning and failure rows have not been seen in the app (the fixture has only satisfied and unchecked items); the profile panel needs scrolling; the "AI" tab partly covers the auto tags; switching projects during a generate swaps the result into the open editor.
+
 ## Next steps (resume here)
-1. **Part 9 (sidebar UI, Haxe):** Game Profile panel, fidelity report view (`GenerateResponse.fidelity`), section dropdown, rectangle selection mode, undo button, provider selector. Also app-test bugs 1 (blank canvas after the in-app reload) and 4 (the "No project open" label). Write `parts/09-sidebar.md` first. Haxe changes are committed and pushed in `ldtk-src` on its own `feat/v2`.
-2. Then **M2**: the user reviews in LDtk. Try the new prompt guidance with a real Gemini run (the Flash quota resets daily).
+1. **M2: user review in LDtk.** Start everything with `./start.sh`. Try a real Gemini prompt (multi-section, with entities) and check the fidelity report, the per-section tilesets, the entity sprites and the Game Profile panel.
+2. After M2: Part 8 (regional editing and undo, which also adds the sidebar's section dropdown, rectangle selection and undo button), then M3.
 - Merged worktree branches can be deleted: Parts 4, 5, 6, 7 and M1 fixes (`worktree-agent-*`).
-- App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash screen). Stub `dialog.showOpenDialog` in the main process, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`.
+- App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash screen). Stub `dialog.showOpenDialog` in the main process, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To test without LLM quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`.
