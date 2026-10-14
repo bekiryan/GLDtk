@@ -24,12 +24,17 @@ hitbox ``player_h`` tiles tall) fits above them; hazards may use any row.
 
 Sections
 --------
-Each section gets a contiguous column band, ordered by ``Section.order``; the
-bands cover the full width.  If the nodes' x-extents already respect the order
-the band boundaries sit midway between neighbouring sections' extents.
-Otherwise every section's nodes are remapped affinely into bands sized in
-proportion to the section's node extent (minimum 8 columns): translated when
-the band is wide enough, scaled down when it is not.
+The level's orientation (``LevelSpec.layout_orientation``: stated by the
+spec, else ``vertical`` when it is taller than wide) picks the axis.  In a
+horizontal level each section gets a contiguous column band, left to right in
+``Section.order``; in a vertical level a contiguous row band, bottom to top.
+The bands cover the whole axis.  If the nodes' extents along the axis already
+respect the order the band boundaries sit midway between neighbouring
+sections' extents.  Otherwise every section's nodes are remapped affinely into
+bands sized in proportion to the section's node extent (minimum 8 tiles):
+translated when the band is wide enough, scaled down when it is not.  Each
+band is stored as a cell rectangle (``SectionBand``: ``col_start..col_end`` ×
+``row_start..row_end``), so ``section_at(col, row)`` works for both.
 
 Conflicts
 ---------
@@ -44,12 +49,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import networkx as nx
 
 from game.profile import GameProfile
-from spec.level_spec import LevelSpec
+from spec.level_spec import LevelSpec, Section
 
 from .ir import IREntity, IRLevel, TileValue
 from .sugiyama import NodeLayout
@@ -96,6 +101,13 @@ def grid_to_spec(
 
 @dataclass
 class SectionBand:
+    """A section's rectangle of the grid (inclusive bounds).
+
+    Horizontal levels: a column band ``col_start..col_end`` over every row.
+    Vertical levels: a row band ``row_start..row_end`` over every column, the
+    first section at the bottom.
+    """
+
     id: str
     name: str
     col_start: int
@@ -103,13 +115,24 @@ class SectionBand:
     gravity_scale: float
     theme: str
     difficulty: str
+    row_start: int = 0
+    row_end: int = 0  # inclusive
+    orientation: str = "horizontal"
+
+    def contains(self, col: int, row: Optional[int] = None) -> bool:
+        if not self.col_start <= col <= self.col_end:
+            return False
+        return row is None or self.row_start <= row <= self.row_end
 
     def as_dict(self) -> Dict[str, object]:
         return {
             "id": self.id,
             "name": self.name,
+            "orientation": self.orientation,
             "col_start": self.col_start,
             "col_end": self.col_end,
+            "row_start": self.row_start,
+            "row_end": self.row_end,
             "gravity_scale": self.gravity_scale,
             "theme": self.theme,
             "difficulty": self.difficulty,
@@ -155,14 +178,31 @@ class SpecLayout:
     def standable(self, node_id: str) -> bool:
         return self.node_kinds.get(node_id) != "Hazard"
 
-    def section_at(self, col: int) -> SectionBand:
+    @property
+    def orientation(self) -> str:
+        return self.sections[0].orientation if self.sections else "horizontal"
+
+    def section_at(self, col: int, row: Optional[int] = None) -> SectionBand:
+        """The band holding cell ``(col, row)`` (``row`` None = any row).
+
+        Cells outside every band (only possible out of bounds) fall back to the
+        first / last band along the level's axis.
+        """
         for band in self.sections:
-            if band.col_start <= col <= band.col_end:
+            if band.contains(col, row):
                 return band
+        if self.orientation == "vertical":
+            if row is None:
+                return self.sections[0]
+            return self.sections[0] if row > self.height - 1 else self.sections[-1]
         return self.sections[0] if col < 0 else self.sections[-1]
 
-    def gravity_scale_at(self, col: int) -> float:
-        return self.section_at(col).gravity_scale
+    def gravity_scale_at(self, col: int, row: Optional[int] = None) -> float:
+        return self.section_at(col, row).gravity_scale
+
+    def gravity_scale_of(self, rect: Rect) -> float:
+        """Gravity scale of the section under a span ``(row, col_start, col_end)``."""
+        return self.gravity_scale_at((rect[1] + rect[2]) // 2, rect[0])
 
     def node_at(self, col: int, row: int) -> Optional[str]:
         for nid, nl in self.node_layouts.items():
@@ -301,10 +341,17 @@ def _proportional_widths(weights: List[float], total: int, minimum: int) -> List
 
 def _assign_sections(
     spec: LevelSpec,
-    cols: Dict[str, List[int]],  # node id → [col, width]; mutated on remap
-    width: int,
+    pos: Dict[str, List[int]],  # node id → [start, size] along the axis; mutated on remap
+    length: int,
     adjustments: List[str],
-) -> List[SectionBand]:
+    describe: Callable[[int, int], str],
+) -> List[Tuple[Section, Tuple[int, int]]]:
+    """Contiguous bands along one axis, in ``Section.order`` (see the module doc).
+
+    The axis is columns (horizontal levels) or rows counted from the bottom
+    (vertical levels); *describe* names an axis range for the adjustment
+    notes.  Returns ``(section, (start, end))`` pairs, ends inclusive.
+    """
     ordered = sorted(spec.sections, key=lambda s: (s.order, s.id))
     members: Dict[str, List[str]] = {s.id: [] for s in ordered}
     for n in spec.nodes:
@@ -315,8 +362,8 @@ def _assign_sections(
         if not ids:
             return None
         return (
-            min(cols[i][0] for i in ids),
-            max(cols[i][0] + cols[i][1] - 1 for i in ids),
+            min(pos[i][0] for i in ids),
+            max(pos[i][0] + pos[i][1] - 1 for i in ids),
         )
 
     extents = [extent(s.id) for s in ordered]
@@ -329,14 +376,14 @@ def _assign_sections(
         start = 0
         for i in range(len(ordered)):
             if i == len(ordered) - 1:
-                end = width - 1
+                end = length - 1
             else:
                 end = (extents[i][1] + extents[i + 1][0]) // 2  # type: ignore[index]
             bounds.append((start, end))
             start = end + 1
     else:
         weights = [float(e[1] - e[0] + 1) if e else 0.0 for e in extents]
-        widths = _proportional_widths(weights, width, MIN_SECTION_COLS)
+        widths = _proportional_widths(weights, length, MIN_SECTION_COLS)
         start = 0
         for sec, ext, bw in zip(ordered, extents, widths):
             band = (start, start + bw - 1)
@@ -349,33 +396,39 @@ def _assign_sections(
             if ext_w <= bw:
                 shift = band[0] + (bw - ext_w) // 2 - ext[0]
                 for nid in ids:
-                    cols[nid][0] += shift
+                    pos[nid][0] += shift
             else:
                 scale = bw / ext_w
                 for nid in ids:
-                    c, w = cols[nid]
+                    c, w = pos[nid]
                     nw = max(1, _round_half_up(w * scale))
                     nc = band[0] + int(math.floor((c - ext[0]) * scale))
-                    cols[nid] = [min(nc, band[1] - nw + 1), nw]
+                    pos[nid] = [min(nc, band[1] - nw + 1), nw]
             new_ext = extent(sec.id)
+            assert new_ext is not None
             adjustments.append(
-                f"remapped section '{sec.id}' from columns {ext[0]}..{ext[1]} to "
-                f"{new_ext[0]}..{new_ext[1]} (band {band[0]}..{band[1]}) to keep the "
-                "section order"
+                f"remapped section '{sec.id}' from {describe(*ext)} to "
+                f"{describe(*new_ext)} (band {describe(*band)}) to keep the section order"
             )
 
-    return [
-        SectionBand(
-            id=s.id,
-            name=s.name,
-            col_start=b[0],
-            col_end=b[1],
-            gravity_scale=s.gravity_scale,
-            theme=s.theme,
-            difficulty=s.difficulty,
-        )
-        for s, b in zip(ordered, bounds)
-    ]
+    return list(zip(ordered, bounds))
+
+
+def _band(
+    sec: Section, col_start: int, col_end: int, row_start: int, row_end: int, orientation: str
+) -> SectionBand:
+    return SectionBand(
+        id=sec.id,
+        name=sec.name,
+        col_start=col_start,
+        col_end=col_end,
+        gravity_scale=sec.gravity_scale,
+        theme=sec.theme,
+        difficulty=sec.difficulty,
+        row_start=row_start,
+        row_end=row_end,
+        orientation=orientation,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -473,6 +526,7 @@ def layout_spec(spec: LevelSpec, profile: Optional[GameProfile] = None, seed: in
     raw: Dict[str, Tuple[int, int, int]] = {
         n.id: spec_to_grid(n.x, n.y, n.w, height, ts) for n in spec.nodes
     }
+    kinds = {n.id: n.type for n in spec.nodes}
     cols: Dict[str, List[int]] = {}
     for nid, (col, _row, w) in raw.items():
         w = min(w, width)
@@ -481,21 +535,51 @@ def layout_spec(spec: LevelSpec, profile: Optional[GameProfile] = None, seed: in
             adjustments.append(f"clamped '{nid}' to column {c} (was {col}) to fit the level width")
         cols[nid] = [c, w]
 
-    sections = _assign_sections(spec, cols, width, adjustments)
+    def min_row(nid: str) -> int:
+        return player_tiles[1] if kinds[nid] != "Hazard" else 0
 
-    kinds = {n.id: n.type for n in spec.nodes}
-    node_layouts: Dict[str, NodeLayout] = {}
+    rows: Dict[str, int] = {}
     for n in spec.nodes:
         row = raw[n.id][1]
-        min_row = player_tiles[1] if n.type != "Hazard" else 0
-        clamped = min(max(row, min_row), height - 1)
+        clamped = min(max(row, min_row(n.id)), height - 1)
         if clamped != row:
             adjustments.append(
                 f"clamped '{n.id}' to row {clamped} (was {row}) to keep it inside the "
                 "level with headroom for the player"
             )
+        rows[n.id] = clamped
+
+    orientation = spec.layout_orientation
+    sections: List[SectionBand] = []
+    if orientation == "vertical":
+        # Rows counted from the bottom, so section order runs bottom → top.
+        ups = {nid: [height - 1 - r, 1] for nid, r in rows.items()}
+
+        def rows_of(lo: int, hi: int) -> str:
+            return f"rows {height - 1 - hi}..{height - 1 - lo}"
+
+        for sec, (lo, hi) in _assign_sections(spec, ups, height, adjustments, rows_of):
+            sections.append(_band(sec, 0, width - 1, height - 1 - hi, height - 1 - lo, orientation))
+        for nid, (u, _size) in ups.items():
+            row = height - 1 - u
+            clamped = min(max(row, min_row(nid)), height - 1)
+            if clamped != row:
+                adjustments.append(
+                    f"clamped '{nid}' to row {clamped} (was {row}) to keep headroom for the player"
+                )
+            rows[nid] = clamped
+    else:
+
+        def cols_of(lo: int, hi: int) -> str:
+            return f"columns {lo}..{hi}"
+
+        for sec, (lo, hi) in _assign_sections(spec, cols, width, adjustments, cols_of):
+            sections.append(_band(sec, lo, hi, 0, height - 1, orientation))
+
+    node_layouts: Dict[str, NodeLayout] = {}
+    for n in spec.nodes:
         c, w = cols[n.id]
-        node_layouts[n.id] = NodeLayout(node_id=n.id, col=c, row=clamped, width=w, height=1)
+        node_layouts[n.id] = NodeLayout(node_id=n.id, col=c, row=rows[n.id], width=w, height=1)
 
     ir = IRLevel.empty("Level_0", width, height, ts, title=spec.title)
     layout = SpecLayout(

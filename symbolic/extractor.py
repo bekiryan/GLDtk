@@ -27,7 +27,8 @@ Game Profile (v2)
 With ``profile`` given, classification uses the profile's tile size,
 gravity, jump_v and run_speed (as both the walk speed and the |vx| cap), and
 ``gravity_scale_at(col)`` (default 1.0) scales gravity by the column of the
-source span's centre.  When a plain jump fails but an enabled ability makes
+source span's centre (``gravity_scale_at_cell(col, row)`` also sees its row,
+for levels whose sections are row bands).  When a plain jump fails but an enabled ability makes
 the move (``best_ability``), the Jump edge carries ``metadata["ability"]``.
 Every edge then carries ``metadata["gravity_scale"]``.  Without a profile the
 behaviour is the v1 one.
@@ -87,6 +88,7 @@ _SURFACE_TILES = {TILE_SOLID, TILE_HAZARD, TILE_START, TILE_EXIT}
 
 Grid = Sequence[Sequence[int]]
 GravityScaleAt = Callable[[int], float]
+GravityScaleAtCell = Callable[[int, int], float]  # (col, row) -> gravity scale
 
 if TYPE_CHECKING:  # pragma: no cover
     from game.profile import GameProfile
@@ -124,6 +126,7 @@ def extract_graph(
     profile: Optional["GameProfile"] = None,
     gravity_scale_at: Optional[GravityScaleAt] = None,
     collision: bool = False,
+    gravity_scale_at_cell: Optional[GravityScaleAtCell] = None,
 ) -> AbstractLevelGraph:
     """Build an AbstractLevelGraph from a 2-D tile grid.
 
@@ -141,6 +144,8 @@ def extract_graph(
     gravity_scale_at : optional ``col -> gravity_scale`` (default 1.0).
     collision : keep only edges whose trajectory is clear on the grid (uses
         *profile*, or the default GameProfile when None).
+    gravity_scale_at_cell : optional ``(col, row) -> gravity_scale``; wins
+        over *gravity_scale_at*.
 
     Returns
     -------
@@ -164,6 +169,13 @@ def extract_graph(
         profile = GameProfile()
         tile_size = float(profile.tile_size)
 
+    scale_at: Optional[GravityScaleAtCell] = gravity_scale_at_cell
+    if scale_at is None and gravity_scale_at is not None:
+        col_scale = gravity_scale_at
+
+        def scale_at(col: int, _row: int) -> float:
+            return col_scale(col)
+
     spans = _collect_spans(grid, height, width)
     nodes = _spans_to_nodes(spans, height, tile_size)
 
@@ -173,7 +185,7 @@ def extract_graph(
 
     if collision:
         assert profile is not None
-        _add_collision_edges(graph, nodes, grid, profile, gravity_scale_at)
+        _add_collision_edges(graph, nodes, grid, profile, scale_at)
         return graph
 
     _add_edges(
@@ -184,7 +196,7 @@ def extract_graph(
         max_horizontal_speed,
         walk_speed,
         profile,
-        gravity_scale_at,
+        scale_at,
     )
     return graph
 
@@ -376,7 +388,7 @@ def _add_edges(
     max_horizontal_speed: Optional[float],
     walk_speed: float,
     profile: Optional["GameProfile"] = None,
-    gravity_scale_at: Optional[GravityScaleAt] = None,
+    gravity_scale_at: Optional[GravityScaleAtCell] = None,
 ) -> None:
     node_list = list(nodes.values())
     for i, src in enumerate(node_list):
@@ -389,7 +401,7 @@ def _add_edges(
             scale = 1.0
             if gravity_scale_at is not None:
                 col = (int(src.metadata["col_start"]) + int(src.metadata["col_end"])) // 2
-                scale = float(gravity_scale_at(col))
+                scale = float(gravity_scale_at(col, int(src.metadata["row"])))
             edge = _classify_edge(
                 src,
                 dst,
@@ -529,7 +541,7 @@ def _add_collision_edges(
     nodes: Dict[str, LevelNode],
     grid: Grid,
     profile: "GameProfile",
-    gravity_scale_at: Optional[GravityScaleAt],
+    gravity_scale_at: Optional[GravityScaleAtCell],
 ) -> None:
     standable = [n for n in nodes.values() if n.node_type != NodeType.HAZARD]
     rects = {
@@ -541,7 +553,7 @@ def _add_collision_edges(
         s = rects[src.id]
         scale = 1.0
         if gravity_scale_at is not None:
-            scale = float(gravity_scale_at((s[1] + s[2]) // 2))
+            scale = float(gravity_scale_at((s[1] + s[2]) // 2, s[0]))
         for dst in standable:
             if dst.id == src.id:
                 continue

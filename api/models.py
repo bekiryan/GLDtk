@@ -32,6 +32,10 @@ class GenerateRequest(BaseModel):
         None,
         description="Path to gldtk.game.json; None = next to output_path (defaults if missing)",
     )
+    densify: bool = Field(
+        True,
+        description="Fill large empty regions with extra platforms (fill_N nodes) after layout",
+    )
 
 
 class LevelStats(BaseModel):
@@ -43,6 +47,7 @@ class LevelStats(BaseModel):
     grid_repairs: int = 0  # deterministic grid repairs applied
     completeness_reprompts: int = 0  # LLM re-prompts for unmet requirements (0 or 1)
     entities_filled: int = 0  # entities the deterministic completeness fill added
+    densify_added: int = 0  # fill platforms the densify step added
 
 
 class FidelityItemModel(BaseModel):

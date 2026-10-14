@@ -392,3 +392,113 @@ def test_check_level_counts_placed_entities(load_fixture):
     assert "only 1 of 3" in _item(report, "R3").reason and "in the level" in _item(report, "R3").reason
     assert _status(report, "R4") == "missing"
     assert _status(check_spec(built.spec), "R4") == "satisfied"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Hazard requirements (M2 bug 1)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _gap_spec(requirements, orientation=None) -> LevelSpec:
+    """Section a has a 6-tile gap between pa and pb; section b a 2-tile one."""
+    nodes = [
+        node("start", "Start", 1, 2, 3, "a"),
+        node("pa", "Platform", 5, 3, 3, "a"),
+        node("pb", "Platform", 14, 3, 3, "a"),
+        node("pc", "Platform", 19, 3, 3, "b"),
+        node("exit", "Exit", 24, 3, 3, "b"),
+    ]
+    d = make_spec(
+        nodes,
+        [("start", "pa", "Jump"), ("pa", "pb", "Jump"), ("pb", "pc", "Jump"), ("pc", "exit", "Jump")],
+        None, [section("a", 0), section("b", 1)], (40, 15), as_dict=True,
+    )
+    d["requirements"] = requirements
+    d["orientation"] = orientation
+    return LevelSpec.model_validate(d)
+
+
+def test_hazard_check_counts_hazard_nodes_per_section():
+    spec = _spec([
+        _req("R1", "spikes in a", "layout", type="hazard", section="a"),
+        _req("R2", "spikes in b", "layout", type="hazard", section="b"),
+        _req("R3", "two spike strips", "layout", type="hazard", min_count=2),
+        _req("R4", "lava in c", "layout", type="hazard", section="c"),
+    ])
+    report = check_spec(spec)
+    assert _status(report, "R1") == "satisfied"
+    assert _status(report, "R2") == "missing"
+    assert _status(report, "R3") == "approximated"
+    assert _status(report, "R4") == "missing"
+    assert "does not exist" in _item(report, "R4").reason
+
+
+def test_entity_count_naming_a_hazard_is_checked_as_a_hazard():
+    # The M2 demo: "a spike pit in the cave" typed as an Enemy with subkind "Hazard".
+    spec = _spec([
+        _req("R1", "Spike pit in a.", "entity", type="entity_count", entity_kind="Enemy",
+             subkind="Hazard", min_count=1, section="a"),
+        _req("R2", "A lava pool in b.", "entity", type="entity_count", entity_kind="Enemy",
+             min_count=1, section="b"),
+        _req("R3", "Coins near the lava.", "entity", type="entity_count", entity_kind="Pickup",
+             subkind="coin", min_count=1),
+        _req("R4", "A spike trap in a.", "entity", type="entity_count", entity_kind="Interactive",
+             subkind="spikes", section="a"),
+    ])
+    report = check_spec(spec)
+    assert _status(report, "R1") == "satisfied"  # the spec's own Hazard node in a
+    assert "checked as a hazard" in _item(report, "R1").reason
+    assert _status(report, "R2") == "missing" and "hazard" in _item(report, "R2").reason
+    assert _status(report, "R3") == "missing"  # a valid coin requirement stays an entity count
+    assert "Pickup coin" in _item(report, "R3").reason
+    assert _status(report, "R4") == "satisfied"
+
+    fill = fill_missing(spec)
+    # never an Enemy (or Interactive) for a hazard; the coin is still filled
+    added = [e for e in fill.spec.entities if e.id.startswith("auto_")]
+    assert [e.kind for e in added] == ["Pickup"]
+    assert "R2" not in fill.filled  # section b has no gap wide enough: left to the re-prompt
+    assert fill.nodes_added == 0
+
+
+def test_fill_adds_hazard_node_under_a_gap_and_the_level_still_builds():
+    reqs = [_req("R1", "a spike pit in a", "layout", type="entity_count", entity_kind="Enemy",
+                 subkind="spikes", section="a")]
+    spec = _gap_spec(reqs)
+    assert _status(check_spec(spec), "R1") == "missing"
+    fill = fill_missing(spec)
+    assert fill.filled == ["R1"] and fill.nodes_added == 1 and fill.entities_added == 0
+    hz = [n for n in fill.spec.nodes if n.type == "Hazard"]
+    assert len(hz) == 1 and hz[0].section == "a" and hz[0].id.startswith("auto_hazard_r1")
+    # on the floor, inside the pa..pb gap with a tile of margin on both sides
+    assert hz[0].y == 0 and 9 * 16 <= hz[0].x and hz[0].x + hz[0].w <= 13 * 16
+    assert not any(e.from_ == hz[0].id for e in fill.spec.edges)
+    assert validate_spec(fill.spec).valid
+    assert _status(check_spec(fill.spec), "R1") == "satisfied"
+
+    ctrl, _ = _controller([json.dumps(spec.model_dump(by_alias=True))])
+    built = build_level("a spike pit", ctrl, GameProfile())
+    assert built.report.ok
+    assert _status(built.fidelity, "R1") == "satisfied" and _item(built.fidelity, "R1").auto_filled
+    assert not any(e.kind == "Enemy" for e in built.spec.entities)
+    ir = built.spec_layout.ir
+    assert any(v == 2 for row in ir.grid for v in row)  # HAZARD tiles on the grid
+
+
+def test_vertical_hazard_fill_uses_the_lower_neighbours_height():
+    spec = _gap_spec([_req("R1", "lava", "layout", type="hazard", section="a")],
+                     orientation="vertical")
+    hz = next(n for n in fill_missing(spec).spec.nodes if n.type == "Hazard")
+    assert hz.y == 3 * 16  # y = 0 would lie in the bottom band, not in section a
+
+
+def test_system_prompt_documents_hazard_checks_and_orientation():
+    from llm import SYSTEM_PROMPT
+
+    start = SYSTEM_PROMPT.index('{"title"')
+    example, _ = json.JSONDecoder().raw_decode(SYSTEM_PROMPT[start:])
+    spec = LevelSpec.model_validate(example)
+    hazard = [r for r in spec.requirements if r.check and r.check.type == "hazard"]
+    assert hazard and _status(check_spec(spec), hazard[0].id) == "satisfied"
+    assert '"hazard"' in SYSTEM_PROMPT and "NEVER entities" in SYSTEM_PROMPT
+    assert "BOTTOM → TOP" in SYSTEM_PROMPT and '"orientation"' in SYSTEM_PROMPT

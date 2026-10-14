@@ -9,7 +9,10 @@ returns an unverified level.
        missing requirements, then at most one ``controller.complete_spec``
        re-prompt for what the fill cannot meet
     3. ``layout_spec`` → ``place_spec_entities`` → ``verify_grid``
-       → ``repair_grid`` (deterministic, bounded) → ``verify_grid``
+       → ``repair_grid`` (deterministic, bounded) → ``verify_grid``;
+       once verified, ``densify`` (``layout/densify.py``) adds ``fill_N``
+       platforms to the empty regions and re-verifies (it drops what breaks
+       verification, so it never fails a level)
     4. still failing → ``controller.repair_spec`` with the grid errors
        (named by spec node ids), deterministic fill again, and back to 3, at
        most ``max_layout_retries`` times
@@ -26,6 +29,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from fidelity import FidelityReport, check_level, fill_missing
 from game.profile import GameProfile
+from layout.densify import densify as densify_layout
 from layout.repair import repair_grid
 from layout.spec_entities import place_spec_entities
 from layout.spec_layout import SpecLayout, grid_to_spec, layout_spec
@@ -58,7 +62,8 @@ class LevelBuildFailed(RuntimeError):
 
 
 def _with_added_nodes(spec: LevelSpec, layout: SpecLayout) -> LevelSpec:
-    """Copy of *spec* with repair's stepping stones appended as Platform nodes."""
+    """Copy of *spec* with repair's stepping stones and densify's fill platforms
+    appended as Platform nodes."""
     if not layout.added_nodes:
         return spec
     ts = layout.tile_size
@@ -94,6 +99,7 @@ def build_level(
     seed: int = 0,
     max_layout_retries: int = 2,
     size_override: Optional[Tuple[Optional[int], Optional[int]]] = None,
+    densify: bool = True,
 ) -> BuiltLevel:
     """Generate, lay out, verify and repair a level (see the module docstring).
 
@@ -101,9 +107,9 @@ def build_level(
     ``repair_spec``, ``stats`` and optionally ``complete_spec``).
     *size_override* ``(width, height)`` in tiles replaces ``spec.size``
     (either may be None); it is applied after the completeness fill, so it
-    wins over a size requirement.
+    wins over a size requirement.  *densify* False skips the densify step.
 
-    ``stats`` adds ``completeness_reprompts`` (0 or 1) and ``entities_filled``
+    ``stats`` adds ``densify_added`` (fill platforms kept), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
     (entities the deterministic fill added, over all fills).
 
     Raises ``MaxRetriesExceeded`` (LLM) or :class:`LevelBuildFailed` (grid).
@@ -116,6 +122,7 @@ def build_level(
         "grid_repairs": 0,
         "completeness_reprompts": 0,
         "entities_filled": 0,
+        "densify_added": 0,
     }
 
     def absorb_llm_stats() -> None:
@@ -158,6 +165,11 @@ def build_level(
         spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
         stats["grid_repairs"] += len(applied)
         repairs += applied
+        if report.ok and densify:
+            dense = densify_layout(spec_layout, report, profile, spec, seed=seed)
+            report = dense.report or report
+            stats["densify_added"] = len(dense.added)
+            notes += dense.notes
         if report.ok:
             stats["verify"] = report.stats
             warnings = (

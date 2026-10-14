@@ -29,12 +29,17 @@ def test_generate_with_fake_provider_writes_ldtk(client, monkeypatch, tmp_path, 
     out = tmp_path / "gen" / "level.ldtk"
     resp = client.post(
         "/generate",
-        json={"description": "A meadow then a dungeon.", "output_path": str(out)},
+        json={
+            "description": "A meadow then a dungeon.",
+            "output_path": str(out),
+            "densify": False,
+        },
     )
     body = resp.json()
     assert resp.status_code == 200
     assert body["success"], body.get("error")
     assert seen == {"provider": "gemini", "model": None}  # request defaults
+    assert body["stats"]["densify_added"] == 0
     assert body["sections"] == ["Grassy Meadow", "Dungeon"]
     assert body["requirements"][0] == "There is a grassy meadow section."
     assert len(body["requirements"]) == 6

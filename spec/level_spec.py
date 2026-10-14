@@ -55,8 +55,9 @@ RequirementCategory = Literal[
     "size", "section", "layout", "entity", "ability", "style", "other"
 ]
 CheckType = Literal[
-    "entity_count", "start_item", "section", "ability", "size", "gravity", "none"
+    "entity_count", "hazard", "start_item", "section", "ability", "size", "gravity", "none"
 ]
+Orientation = Literal["horizontal", "vertical"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -82,7 +83,12 @@ class Section(_SpecModel):
     difficulty: Difficulty
     gravity_scale: float = Field(1.0, ge=0.25, le=2.0, description="1.0 = normal gravity.")
     description: str = Field(..., description="What happens in this section.")
-    order: int = Field(..., ge=0, description="Left-to-right position of the section, 0-based.")
+    order: int = Field(
+        ...,
+        ge=0,
+        description="Position of the section, 0-based: left to right in a horizontal level, "
+        "bottom to top in a vertical one.",
+    )
 
 
 class SpecNode(_SpecModel):
@@ -152,6 +158,9 @@ class RequirementCheck(_SpecModel):
     * ``entity_count`` — at least ``min_count`` (null = 1) entities of
       ``entity_kind``, of ``subkind`` when set (the archetype, pickup_kind,
       interactive_kind or weapon_kind value), in ``section`` (null = anywhere).
+    * ``hazard``       — at least ``min_count`` (null = 1) Hazard *nodes*
+      (spikes, pits, lava, …) in ``section`` (null = anywhere).  Hazards are
+      tiles, never entities.
     * ``start_item``   — the player starts with ``subkind`` (the Start
       entity's starting_weapon or one of its starting_items).
     * ``section``      — a section with id ``section`` exists.
@@ -170,7 +179,9 @@ class RequirementCheck(_SpecModel):
     subkind: Optional[str] = Field(
         None, description="archetype / pickup_kind / interactive_kind / weapon_kind, or the start item."
     )
-    min_count: Optional[int] = Field(None, ge=0, description="Minimum entity count (null = 1).")
+    min_count: Optional[int] = Field(
+        None, ge=0, description="Minimum entity or hazard count (null = 1)."
+    )
     section: Optional[str] = Field(None, description="Section.id it applies to; null = anywhere.")
     ability: Optional[str] = Field(
         None, description='"double_jump", "dash", "wall_jump", or the ability named in the prompt.'
@@ -192,11 +203,24 @@ class Requirement(_SpecModel):
 class LevelSpec(_SpecModel):
     title: str
     size: LevelSize
+    orientation: Optional[Orientation] = Field(
+        None,
+        description='"horizontal" (sections are column bands, left to right) or "vertical" '
+        "(sections are row bands, bottom to top); null = vertical when the level is taller "
+        "than wide.",
+    )
     sections: List[Section] = Field(..., min_length=1)
     nodes: List[SpecNode]
     edges: List[SpecEdge]
     entities: List[SpecEntity]
     requirements: List[Requirement]
+
+    @property
+    def layout_orientation(self) -> str:
+        """The stated ``orientation``, else ``vertical`` when the level is taller than wide."""
+        if self.orientation:
+            return self.orientation
+        return "vertical" if self.size.height_tiles > self.size.width_tiles else "horizontal"
 
     # ------------------------------------------------------------------
     # Schema

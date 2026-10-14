@@ -237,6 +237,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
             constraints=constraints or None,
             seed=req.seed,
             size_override=(req.width_tiles, req.height_tiles),
+            densify=req.densify,
         )
     except MaxRetriesExceeded as exc:
         return GenerateResponse(
@@ -315,6 +316,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         grid_repairs=built.stats["grid_repairs"],
         completeness_reprompts=built.stats.get("completeness_reprompts", 0),
         entities_filled=built.stats.get("entities_filled", 0),
+        densify_added=built.stats.get("densify_added", 0),
     )
     preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 

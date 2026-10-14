@@ -134,7 +134,7 @@ def test_large_level_is_fast():
     ctrl, _ = _controller([json.dumps(d)] * 3)
     t0 = time.perf_counter()
     try:
-        built = build_level("big", ctrl, GameProfile())
+        built = build_level("big", ctrl, GameProfile(), densify=False)  # see test_densify
         ok = built.report.ok
     except LevelBuildFailed:
         ok = False
