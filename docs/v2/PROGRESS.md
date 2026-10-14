@@ -18,8 +18,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | **M2** | **User review in LDtk** | | ✅ app test with real Gemini (orchestrator, at the user's request) | |
 | 9b | M2 fixes (Python + Haxe) | strong | ✅ | see git log (both repos) |
 | 5 | Asset library | light | ✅ (pulled forward) | see git log |
-| 8 | Regional editing + undo | strong | ⬜ | |
-| **M3** | **User review** | | ⬜ | |
+| 8 | Regional editing + undo | strong | ✅ (8a backend + 8b sidebar) | see git log (both repos) |
+| **M3** | **User review** | | ◐ app test done; region/section edits not yet run on a real LLM (quota) | |
 | 10 | Evaluation harness | light | ✅ | see git log |
 | 6 | AI theme/sprite generation | medium | ✅ code done, not tested on real images (pulled forward) | see git log |
 | **M4** | **Final review** | | ⬜ | |
@@ -74,7 +74,26 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - **Re-test with real Gemini** (`demo_m2b/`): the 40×60 climb has 3 vertical sections in the right order, 37 fill platforms, no `*` and clean labels. The 3-section adventure prompt hit a timeout, then 503 "high demand" on both Flash models, so it is to be re-run at M3.
 - 2026-10-14: **Part 10** done ([spec](parts/10-evaluation.md)). `python -m eval.run` runs 27 prompts and reports fidelity, playability, retries and timing, with `--record`/`--replay`, `--max-calls` and `--compare`. It has not been run against real Gemini yet.
 
+- 2026-10-14: **Part 8** done ([spec](parts/08-regional-editing.md)); 337 tests pass.
+  - **8a (`edit/` package):**
+    - Endpoints: `/edit/region`, `/edit/section`, `/edit/entities`, `/edit/locate`, `/undo` and `GET /history`.
+    - Seams are walk spans that cross the rect border, plus jump and fall edges into it; up to 3 locked cells each.
+    - `RegionSpec` is region-local. After the edit the whole level is re-verified (with `SEAM_BROKEN` and `SEAM_DEAD_END` added), repaired deterministically, then re-prompted at most once, and never written if it fails.
+    - The result is spliced into the existing JSON, so hand edits and untouched instances are kept byte-for-byte. Only the rect plus a 1-tile margin is re-autotiled. v1 files are fully re-exported (upgraded) on their first edit.
+    - Snapshots go in `<dir>/.gldtk_history/<stem>/` (the last 30, with `index.json`). `/generate` also snapshots before it overwrites.
+  - **8b (`ldtk-src`):**
+    - Rect drag through LDtk's special-tool mechanism (`tool/GldtkAreaTool.hx`), with an `h2d.Graphics` overlay on `levelRender.root`.
+    - The four modes (region, section, entities, describe) and an undo button with a count.
+    - Unsaved changes are saved before an edit.
+- 2026-10-14: **M3 app test with real Gemini** (`demo_m3/`).
+  - **Generate, 3-section adventure:** 100% fidelity. The spike pit is now checked as a hazard (the M2 bug is fixed in real output). 39 fill platforms plus ground; no `*`; clean labels.
+  - **Entity edit (whole level):** succeeded, verified, and the fidelity view refreshed.
+  - **Locate:** returned a sensible rect and explanation.
+  - **Undo:** restored the file from before the entity edit; the count went from 2 to 1.
+  - **Section and region edits failed in all 4 attempts.** The Flash daily quota was used up (429), and the fallback `gemini-3.1-flash-lite` returned 503 "high demand". `gemini-2.5-flash` is no longer available to new users (404), so there is no third fallback. Region edits have so far run only against fake LLM answers.
+
 ## Next steps (resume here)
-1. **Part 8** ([spec](parts/08-regional-editing.md)): 8a (backend, in a worktree) and 8b (sidebar, `ldtk-src`) run in parallel. Then M3: the orchestrator runs an app test with real Gemini, including the 3-section prompt that failed in the M2 re-test.
-2. Then run the evaluation harness on real Gemini (a small `--limit`), then M4.
+1. When the Gemini quota resets: run a real **section edit** and a **describe → apply** edit in the app (driver `m3.js`/`m3b.js` in the session scratchpad; it is easy to rewrite from the "App testing" note), then undo.
+2. Run the **evaluation harness** on real Gemini: `python -m eval.run --provider gemini --limit 8 --max-calls 15 --record eval/recordings/gemini-<date>`. Then M4, the final review.
+- Merged worktree branches can be deleted: Parts 4, 5, 6, 7, 8a, 10, the M1 fixes and the M2 fixes (`worktree-agent-*`).
 - App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash). Stub both `dialog.showOpenDialog` and `dialog.showOpenDialogSync`, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To avoid using quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`. On macOS the server process is named `Python`, so stop it with `kill $(lsof -tiTCP:8765 -sTCP:LISTEN)`.
