@@ -37,9 +37,12 @@ class LLMProvider(Protocol):
 class ProviderError(RuntimeError):
     """Raised when a provider call fails (HTTP, connection, empty output)."""
 
-    def __init__(self, message: str, status: int | None = None) -> None:
+    def __init__(
+        self, message: str, status: int | None = None, timed_out: bool = False
+    ) -> None:
         super().__init__(message)
         self.status = status
+        self.timed_out = timed_out  # the request timed out (no HTTP status)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -78,5 +81,6 @@ def http_json_post(
         raise ProviderError(f"LLM API connection error when calling {url}: {err}") from err
     except (OSError, HTTPException) as err:  # timeouts, dropped connections
         raise ProviderError(
-            f"LLM API transport error when calling {url}: {type(err).__name__}: {err}"
+            f"LLM API transport error when calling {url}: {type(err).__name__}: {err}",
+            timed_out=isinstance(err, TimeoutError),
         ) from err

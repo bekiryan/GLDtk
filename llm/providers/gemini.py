@@ -8,9 +8,11 @@ Schema, accepts ``"type": [T, "null"]``).  The canonical schema from
 The API key travels in the ``x-goog-api-key`` header, never in the URL, so it
 cannot leak into error messages.
 
-When the model was not chosen explicitly, persistent 5xx overload or a 429
-(the free tier allows ~20 requests/day per Flash model; quota is per model) on
-the default Flash model falls back to ``FALLBACK_MODELS`` in order.
+When the model was not chosen explicitly, persistent 5xx overload, a 429
+(the free tier allows ~20 requests/day per Flash model; quota is per model) or
+a read timeout on the default Flash model falls back to ``FALLBACK_MODELS`` in
+order.  A timeout is not retried on the same model: it already cost the full
+timeout once.
 """
 
 from __future__ import annotations
@@ -138,7 +140,7 @@ class GeminiProvider:
         messages: List[Dict[str, Any]],
         schema: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Try ``self.model``, then each fallback model on overload or quota errors."""
+        """Try ``self.model``, then each fallback model on overload, quota or timeout errors."""
         primary = self.model
         candidates = [primary, *self._fallback_models]
         try:
@@ -148,7 +150,8 @@ class GeminiProvider:
                 try:
                     response = self._post_with_retry(url, headers, payload)
                 except base.ProviderError as err:
-                    if err.status in _FALLBACK_STATUSES and i < len(candidates) - 1:
+                    retryable = err.status in _FALLBACK_STATUSES or err.timed_out
+                    if retryable and i < len(candidates) - 1:
                         continue
                     raise
                 self.model_used = model

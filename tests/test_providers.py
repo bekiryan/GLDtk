@@ -249,3 +249,32 @@ def test_validator_reexports_default_models():
     from llm.validator import _DEFAULT_PROVIDER_MODELS as from_validator
 
     assert from_validator is _DEFAULT_PROVIDER_MODELS
+
+
+def test_gemini_falls_back_on_timeout_without_retrying(monkeypatch):
+    urls = []
+
+    def slow_primary(url, headers, payload, timeout_seconds):
+        urls.append(url)
+        if "/models/primary:" in url:
+            raise ProviderError("transport error: timed out", timed_out=True)
+        return {"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}
+
+    monkeypatch.setattr(base, "http_json_post", slow_primary)
+    p = gemini.GeminiProvider(
+        model="primary", api_key="K", backoff_seconds=0, fallback_models=("backup",)
+    )
+    assert p.complete_json("s", MESSAGES, SCHEMA) == "{}"
+    assert len(urls) == 2 and p.model_used == "backup"
+
+
+def test_transport_timeout_is_flagged(monkeypatch):
+    import socket
+
+    def timeout(*a, **kw):
+        raise socket.timeout("The read operation timed out")
+
+    monkeypatch.setattr(base, "urlopen", timeout)
+    with pytest.raises(ProviderError) as exc:
+        base.http_json_post("http://x", {}, {}, 1.0)
+    assert exc.value.timed_out and exc.value.status is None
