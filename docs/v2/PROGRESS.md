@@ -15,11 +15,12 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 7 | Fidelity report + completeness loop | strong | ✅ | see git log |
 | 7b | M1 fixes (export, layout, art) | medium | ✅ | see git log |
 | 9 | Sidebar UI (Haxe) | strong | ✅ (edit controls deferred to Part 8) | see git log (both repos) |
-| **M2** | **User review in LDtk** | | ⏳ waiting for user | |
+| **M2** | **User review in LDtk** | | ✅ app test with real Gemini (orchestrator, at the user's request) | |
+| 9b | M2 fixes (Python + Haxe) | strong | ✅ | see git log (both repos) |
 | 5 | Asset library | light | ✅ (pulled forward) | see git log |
 | 8 | Regional editing + undo | strong | ⬜ | |
 | **M3** | **User review** | | ⬜ | |
-| 10 | Evaluation harness | light | ⬜ | |
+| 10 | Evaluation harness | light | ✅ | see git log |
 | 6 | AI theme/sprite generation | medium | ✅ code done, not tested on real images (pulled forward) | see git log |
 | **M4** | **Final review** | | ⬜ | |
 
@@ -58,8 +59,22 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - **New load-modified cause:** rewriting `gldtk_assets/*.png` on every generate made LDtk's file watcher reload the tilesets. Assets are now only written when their content changes.
   - **Open:** the warning and failure rows have not been seen in the app (the fixture has only satisfied and unchecked items); the profile panel needs scrolling; the "AI" tab partly covers the auto tags; switching projects during a generate swaps the result into the open editor.
 
+- 2026-10-14: **M2 app test** with real Gemini (the user asked the orchestrator to do it). Two prompts, both verified. Findings:
+  1. A spike pit was typed as an Enemy, and the fill then added a fake Enemy for it.
+  2. The level was marked `*` after a generate that writes new theme sheets.
+  3. Stale renders of removed layers were left after the in-place swap.
+  4. Levels were sparse (about 10 platforms).
+  5. Vertical levels got column sections.
+
+  Also: labels overlapped.
+- 2026-10-14: **M2 fixes** done ([spec](parts/09b-m2-fixes.md)); 307 tests pass.
+  - **Python:** a `hazard` check type, and hazard text is never filled as an Enemy. `LevelSpec.orientation` (vertical when height > width) stacks sections bottom → top through layout, aesthetic, verification and fill. `layout/densify.py` adds ground segments, intermediate ledges and fill platforms (about 1 per 50 empty tiles, capped at 100), each reachable and kept off golden-path arcs; it never fails a level (`GenerateRequest.densify`). All theme sheets are copied on the first generate.
+  - **Haxe:** LDtk ignores watcher events for images whose bytes are unchanged (`Project.isCachedImageUpToDate`, `Editor.onProjectImageChanged`), and `LevelRender` disposes the old layer renders on `ProjectSelected`.
+  - **Orchestrator:** Enemy, Pickup, Weapon, Interactive and NPC hide their name (the subtype label is enough); tileset defs carry `cachedPixelData`, so the title loses `[UNSAVED]`; Gemini falls back to the next model on a read timeout.
+  - **Re-test with real Gemini** (`demo_m2b/`): the 40×60 climb has 3 vertical sections in the right order, 37 fill platforms, no `*` and clean labels. The 3-section adventure prompt hit a timeout, then 503 "high demand" on both Flash models, so it is to be re-run at M3.
+- 2026-10-14: **Part 10** done ([spec](parts/10-evaluation.md)). `python -m eval.run` runs 27 prompts and reports fidelity, playability, retries and timing, with `--record`/`--replay`, `--max-calls` and `--compare`. It has not been run against real Gemini yet.
+
 ## Next steps (resume here)
-1. **M2: user review in LDtk.** Start everything with `./start.sh`. Try a real Gemini prompt (multi-section, with entities) and check the fidelity report, the per-section tilesets, the entity sprites and the Game Profile panel.
-2. After M2: Part 8 (regional editing and undo, which also adds the sidebar's section dropdown, rectangle selection and undo button), then M3.
-- Merged worktree branches can be deleted: Parts 4, 5, 6, 7 and M1 fixes (`worktree-agent-*`).
-- App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash screen). Stub `dialog.showOpenDialog` in the main process, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To test without LLM quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`.
+1. **Part 8** ([spec](parts/08-regional-editing.md)): 8a (backend, in a worktree) and 8b (sidebar, `ldtk-src`) run in parallel. Then M3: the orchestrator runs an app test with real Gemini, including the 3-section prompt that failed in the M2 re-test.
+2. Then run the evaluation harness on real Gemini (a small `--limit`), then M4.
+- App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash). Stub both `dialog.showOpenDialog` and `dialog.showOpenDialogSync`, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To avoid using quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`. On macOS the server process is named `Python`, so stop it with `kill $(lsof -tiTCP:8765 -sTCP:LISTEN)`.
