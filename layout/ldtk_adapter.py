@@ -43,11 +43,14 @@ atlas tile picked for it; LDtk shows that tile and computes the instance
 
 from __future__ import annotations
 
+import io
 import json
 import logging
+import math
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from spec.catalog import (
@@ -103,6 +106,9 @@ class TilesetInfo:
     px_width: int
     px_height: int
     identifier: str = "Tileset"
+    # The image (path or PNG bytes) used to precompute ``cachedPixelData``;
+    # None leaves it for LDtk to rebuild on load (which flags the project unsaved).
+    image: Optional[Union[str, Path, bytes]] = None
 
 
 # Sprite picker: (LDtk kind, hint strings) -> (col, row) of the atlas cell, or None.
@@ -143,6 +149,7 @@ class AestheticData:
     tileset_px_width: int = 80
     tileset_px_height: int = 64
     tileset_identifier: str = "Tileset"
+    tileset_image: Optional[Union[str, Path, bytes]] = None  # for cachedPixelData
     extra_tilesets: List[TilesetInfo] = field(default_factory=list)
     entity_atlas: Optional[EntityAtlas] = None
 
@@ -273,7 +280,7 @@ class _TileLayer:
 
 def _primary_tileset(a: AestheticData) -> TilesetInfo:
     return TilesetInfo(a.tileset_uid, a.tileset_rel_path, a.tileset_px_width,
-                       a.tileset_px_height, a.tileset_identifier)
+                       a.tileset_px_height, a.tileset_identifier, a.tileset_image)
 
 
 def _tile_layers(a: AestheticData, cfg: LDtkConfig) -> List[_TileLayer]:
@@ -459,7 +466,7 @@ def _make_entity_def(kind: KindSpec, cfg: LDtkConfig, atlas: Optional[EntityAtla
         "allowOutOfBounds": False,
         "color": kind.color,
         "renderMode": "Tile" if tile_rect else "Rectangle",
-        "showName": True,
+        "showName": kind.show_name or tile_rect is None,  # a bare rectangle needs its name
         "tilesetId": atlas_uid if tile_rect else None,
         "tileRenderMode": "FitInside",
         "tileRect": tile_rect,
@@ -519,8 +526,59 @@ def _make_tileset_def(ts: TilesetInfo, tile_size: int) -> Dict[str, Any]:
         "enumTags": [],
         "customData": [],
         "savedSelections": [],
-        "cachedPixelData": None,
+        "cachedPixelData": tileset_pixel_data(ts.image, tile_size) if ts.image is not None else None,
     }
+
+
+def _hex_nibble(v: float) -> str:
+    return "0123456789abcdef"[int(math.floor(max(0.0, min(1.0, v)) * 15 + 0.5))]
+
+
+def tileset_pixel_data(image: Union[str, Path, bytes], tile_size: int) -> Optional[Dict[str, str]]:
+    """LDtk's ``cachedPixelData`` for a tileset image (see ``TilesetDef._parseTilePixels``).
+
+    ``opaqueTiles``: one ``0``/``1`` per tile, ``1`` when every pixel is fully
+    opaque.  ``averageColors``: 4 hex chars ``argb`` per tile, the alpha-weighted
+    root-mean-square colour.  With a valid cache LDtk skips the rebuild on
+    load.  Returns None when Pillow or the image is unavailable.
+    """
+    try:
+        from PIL import Image
+    except ImportError:  # pragma: no cover - Pillow is part of the server extra
+        return None
+    try:
+        src = io.BytesIO(image) if isinstance(image, bytes) else image
+        img = Image.open(src).convert("RGBA")
+    except (OSError, ValueError):
+        return None
+    px = img.load()
+    c_wid, c_hei = img.width // tile_size, img.height // tile_size
+    opaque: List[str] = []
+    colors: List[str] = []
+    for ty in range(c_hei):
+        for tx in range(c_wid):
+            all_opaque = True
+            a = r = g = b = 0.0
+            for y in range(ty * tile_size, ty * tile_size + tile_size):
+                for x in range(tx * tile_size, tx * tile_size + tile_size):
+                    pr, pg, pb, pa = px[x, y]
+                    alpha = pa / 255
+                    if alpha < 1:
+                        all_opaque = False
+                    a += alpha
+                    r += (pr / 255) ** 2 * alpha
+                    g += (pg / 255) ** 2 * alpha
+                    b += (pb / 255) ** 2 * alpha
+            opaque.append("1" if all_opaque else "0")
+            if a == 0:  # fully transparent: LDtk ends up with colour 0
+                colors.append("0000")
+            else:
+                n = tile_size * tile_size
+                colors.append(
+                    _hex_nibble(a / n) + _hex_nibble(math.sqrt(r / a))
+                    + _hex_nibble(math.sqrt(g / a)) + _hex_nibble(math.sqrt(b / a))
+                )
+    return {"opaqueTiles": "".join(opaque), "averageColors": "".join(colors)}
 
 
 def _make_defs(cfg: LDtkConfig, aesthetic: Optional[AestheticData], tile_size: int) -> Dict[str, Any]:

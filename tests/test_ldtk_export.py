@@ -723,3 +723,46 @@ def test_many_themes_get_distinct_layer_uids(validator):
     assert _layer_stack(doc)[0] == _layer_stack(doc)[1]
     assert doc["nextUid"] > max(uids)
     assert_valid(validator, doc)
+
+
+# M2 fixes: label clutter, precomputed tileset pixel data
+
+
+def test_subtyped_kinds_hide_their_name():
+    result = _build(_two_theme_level())
+    doc = to_ldtk_dict(_two_theme_level(), aesthetic=result.aesthetic)
+    shown = {d["identifier"]: d["showName"] for d in doc["defs"]["entities"]}
+    assert shown == {"Start": True, "Exit": True, "Enemy": False, "Pickup": False,
+                     "Weapon": False, "Interactive": False, "NPC": False,
+                     "Checkpoint": True, "Key": True}
+    # without sprites every kind is a bare rectangle and keeps its name
+    plain = to_ldtk_dict(_two_theme_level())
+    assert all(d["showName"] for d in plain["defs"]["entities"])
+
+
+def test_tilesets_carry_cached_pixel_data(validator):
+    result = _build(_two_theme_level())
+    doc = to_ldtk_dict(_two_theme_level(), aesthetic=result.aesthetic)
+    assert_valid(validator, doc)
+    for ts in doc["defs"]["tilesets"]:
+        data = ts["cachedPixelData"]
+        n = ts["__cWid"] * ts["__cHei"]
+        # LDtk only trusts the cache when the lengths match (TilesetDef.fromJson)
+        assert data is not None, ts["relPath"]
+        assert len(data["opaqueTiles"]) == n and set(data["opaqueTiles"]) <= {"0", "1"}
+        assert len(data["averageColors"]) == 4 * n
+
+
+def test_tileset_pixel_data_values():
+    import io
+
+    from PIL import Image
+
+    from layout.ldtk_adapter import tileset_pixel_data
+
+    img = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
+    img.paste((255, 0, 0, 255), (0, 0, 16, 16))  # tile 0: opaque red; tile 1: transparent
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    assert tileset_pixel_data(buf.getvalue(), 16) == {
+        "opaqueTiles": "10", "averageColors": "ff000000"}

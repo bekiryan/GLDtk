@@ -76,6 +76,7 @@ class SpriteAtlas:
                 px_width=self.width,
                 px_height=self.height,
                 identifier=ENTITY_ATLAS_IDENTIFIER,
+                image=self.png,
             ),
             tile_size=self.tile_size,
             kind_defaults=self.kind_defaults(),

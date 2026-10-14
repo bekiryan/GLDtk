@@ -136,6 +136,9 @@ class KindSpec:
     max_count: int = 0  # 0 = unlimited
     resizable: bool = False
     tags: Tuple[str, ...] = ("gldtk",)
+    # False for kinds whose ValueOnly subtype label ("Coin", "Walker") already
+    # names them; the kind name would only stack a second label on top.
+    show_name: bool = True
 
     @property
     def identifier(self) -> str:
@@ -164,7 +167,7 @@ class KindSpec:
         return self.width, self.height
 
 
-_FACING = FieldSpec("facing", F_ENUM, "right", enum="Facing", display="ValueOnly")
+_FACING = FieldSpec("facing", F_ENUM, "right", enum="Facing")
 
 KINDS: Dict[str, KindSpec] = {
     k.kind: k
@@ -182,7 +185,7 @@ KINDS: Dict[str, KindSpec] = {
             fields=(FieldSpec("requires_key", F_BOOL, False),),
         ),
         KindSpec(
-            "Enemy", 12, "#ff2244", resizable=True,
+            "Enemy", 12, "#ff2244", resizable=True, show_name=False,
             fields=(
                 FieldSpec("archetype", F_ENUM, "walker", enum="EnemyArchetype", display="ValueOnly"),
                 FieldSpec("health", F_INT, 1),
@@ -193,14 +196,14 @@ KINDS: Dict[str, KindSpec] = {
             ),
         ),
         KindSpec(
-            "Pickup", 13, "#ffd700",
+            "Pickup", 13, "#ffd700", show_name=False,
             fields=(
                 FieldSpec("pickup_kind", F_ENUM, "coin", enum="PickupKind", display="ValueOnly"),
                 FieldSpec("value", F_INT, 1),
             ),
         ),
         KindSpec(
-            "Weapon", 14, "#ff8800",
+            "Weapon", 14, "#ff8800", show_name=False,
             fields=(
                 FieldSpec("weapon_kind", F_STRING, "sword", display="ValueOnly"),
                 FieldSpec("damage", F_INT, 1),
@@ -208,7 +211,7 @@ KINDS: Dict[str, KindSpec] = {
             ),
         ),
         KindSpec(
-            "Interactive", 15, "#a0703c",
+            "Interactive", 15, "#a0703c", show_name=False,
             fields=(
                 FieldSpec("interactive_kind", F_ENUM, "chest", enum="InteractiveKind", display="ValueOnly"),
                 FieldSpec("linked_to", F_ENTITY_REF, None, display="RefLinkBetweenCenters"),
@@ -216,7 +219,7 @@ KINDS: Dict[str, KindSpec] = {
             ),
         ),
         KindSpec(
-            "NPC", 16, "#44ddcc",
+            "NPC", 16, "#44ddcc", show_name=False,
             fields=(
                 FieldSpec("name", F_STRING, "", display="ValueOnly"),
                 FieldSpec("dialogue", F_TEXT, ""),

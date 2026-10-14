@@ -177,9 +177,10 @@ def build_aesthetic_layer(
         tileset_px_width=theme.tileset_px_width,
         tileset_px_height=theme.tileset_px_height,
         tileset_identifier=_tileset_identifier(theme),
+        tileset_image=theme.sheet_path,
         extra_tilesets=[
             TilesetInfo(t.tileset_uid, t.tileset_rel_path, t.tileset_px_width,
-                        t.tileset_px_height, _tileset_identifier(t))
+                        t.tileset_px_height, _tileset_identifier(t), t.sheet_path)
             for t in themes[1:]
         ],
         entity_atlas=atlas.to_entity_atlas() if atlas else None,
