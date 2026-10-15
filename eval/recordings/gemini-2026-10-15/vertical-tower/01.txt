@@ -1,0 +1,274 @@
+{
+  "title": "Tower Climb",
+  "size": {
+    "width_tiles": 30,
+    "height_tiles": 80
+  },
+  "orientation": "vertical",
+  "sections": [
+    {
+      "id": "climb_bottom",
+      "name": "Tower Base",
+      "theme": "stone tower",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "The base of the tower with the player start.",
+      "order": 0
+    },
+    {
+      "id": "climb_top",
+      "name": "Tower Peak",
+      "theme": "stone tower",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "The peak of the tower with the exit.",
+      "order": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_start",
+      "type": "Start",
+      "x": 80,
+      "y": 16,
+      "w": 64,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 160,
+      "y": 96,
+      "w": 64,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 64,
+      "y": 176,
+      "w": 64,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "p3",
+      "type": "Platform",
+      "x": 160,
+      "y": 256,
+      "w": 64,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "p4",
+      "type": "Platform",
+      "x": 64,
+      "y": 336,
+      "w": 64,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "p5",
+      "type": "Platform",
+      "x": 160,
+      "y": 416,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    },
+    {
+      "id": "p6",
+      "type": "Platform",
+      "x": 64,
+      "y": 496,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    },
+    {
+      "id": "p7",
+      "type": "Platform",
+      "x": 160,
+      "y": 576,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    },
+    {
+      "id": "p8",
+      "type": "Platform",
+      "x": 64,
+      "y": 656,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    },
+    {
+      "id": "n_exit",
+      "type": "Exit",
+      "x": 160,
+      "y": 736,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n_start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Jump",
+      "vx": -120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "p3",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p3",
+      "to": "p4",
+      "type": "Jump",
+      "vx": -120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p4",
+      "to": "p5",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p5",
+      "to": "p6",
+      "type": "Jump",
+      "vx": -120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p6",
+      "to": "p7",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p7",
+      "to": "p8",
+      "type": "Jump",
+      "vx": -120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p8",
+      "to": "n_exit",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "n_start",
+      "section": "climb_bottom",
+      "description": "player start",
+      "sprite": "player",
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "tower_exit",
+      "kind": "Exit",
+      "anchor": "n_exit",
+      "section": "climb_top",
+      "description": "tower exit",
+      "sprite": "portal",
+      "facing": "right",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "The level is a tall vertical tower.",
+      "category": "size",
+      "check": {
+        "type": "size",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": null,
+        "ability": null,
+        "min_width_tiles": 30,
+        "min_height_tiles": 80,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "There are platforms zig-zagging upward.",
+      "category": "layout",
+      "check": null
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "title": "Cave Descent",
+  "size": {
+    "width_tiles": 60,
+    "height_tiles": 20
+  },
+  "orientation": "horizontal",
+  "sections": [
+    {
+      "id": "cave_section",
+      "name": "Rocky Cave",
+      "theme": "cave",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "Navigate rocky platforms and avoid deadly spike pits.",
+      "order": 0
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_node",
+      "type": "Start",
+      "x": 0,
+      "y": 48,
+      "w": 48,
+      "h": 16,
+      "section": "cave_section"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 48,
+      "w": 64,
+      "h": 16,
+      "section": "cave_section"
+    },
+    {
+      "id": "spike_pit1",
+      "type": "Hazard",
+      "x": 160,
+      "y": 16,
+      "w": 48,
+      "h": 16,
+      "section": "cave_section"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 224,
+      "y": 48,
+      "w": 64,
+      "h": 16,
+      "section": "cave_section"
+    },
+    {
+      "id": "exit_node",
+      "type": "Exit",
+      "x": 352,
+      "y": 48,
+      "w": 48,
+      "h": 16,
+      "section": "cave_section"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_node",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 100,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Jump",
+      "vx": 150,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "exit_node",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start_node",
+      "section": "cave_section",
+      "description": "player spawn",
+      "sprite": "player",
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "exit_door",
+      "kind": "Exit",
+      "anchor": "exit_node",
+      "section": "cave_section",
+      "description": "single exit",
+      "sprite": "door",
+      "facing": "right",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "A cave level",
+      "category": "style",
+      "check": null
+    },
+    {
+      "id": "R2",
+      "text": "Spike pits between rocky platforms",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "cave_section",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "A single exit",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "cave_section",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    }
+  ]
+}

@@ -57,3 +57,6 @@ coverage.xml
 .DS_Store
 test.ldtk
 package-lock.json
+
+# example.py output
+example_out/

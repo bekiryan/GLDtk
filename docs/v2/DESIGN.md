@@ -69,4 +69,4 @@ Every entity has `description: String` and `sprite: String`, plus the kind-speci
 
 - **`ldtk-src/` in git:** it is its own repository (fork `github.com/bekiryan/ldtk`) and is currently untracked by the main repo. The planned `git submodule add` was blocked by a permission check. The user needs to decide: add it as a submodule themselves (`git submodule add https://github.com/bekiryan/ldtk.git ldtk-src`), or leave it as a separate repo. Haxe changes are committed in `ldtk-src` on its own `feat/v2` branch either way.
 - Gemini image free-tier quota: verify at the start of Part 6 (or earlier in Part 1 for text).
-- `plan.md` and `ui/index.html` are stale (from the old JS-injection approach) and should be removed or archived at some point.
+- ~~`plan.md`, `ui/index.html` and `ldtk-integration/` are stale (from the old JS-injection approach).~~ Removed on 2026-10-15; they remain in git history.

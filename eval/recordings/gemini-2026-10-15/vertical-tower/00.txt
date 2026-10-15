@@ -1,0 +1,206 @@
+{
+  "title": "Tower Climb",
+  "size": {
+    "width_tiles": 30,
+    "height_tiles": 80
+  },
+  "orientation": "vertical",
+  "sections": [
+    {
+      "id": "climb_bottom",
+      "name": "Tower Base",
+      "theme": "stone tower",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "The base of the tower with the player start.",
+      "order": 0
+    },
+    {
+      "id": "climb_top",
+      "name": "Tower Peak",
+      "theme": "stone tower",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "The peak of the tower with the exit.",
+      "order": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_start",
+      "type": "Start",
+      "x": 80,
+      "y": 16,
+      "w": 64,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "n_mid1",
+      "type": "Platform",
+      "x": 32,
+      "y": 160,
+      "w": 48,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "n_mid2",
+      "type": "Platform",
+      "x": 200,
+      "y": 320,
+      "w": 48,
+      "h": 16,
+      "section": "climb_bottom"
+    },
+    {
+      "id": "n_mid3",
+      "type": "Platform",
+      "x": 32,
+      "y": 500,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    },
+    {
+      "id": "n_mid4",
+      "type": "Platform",
+      "x": 200,
+      "y": 700,
+      "w": 48,
+      "h": 16,
+      "section": "climb_top"
+    },
+    {
+      "id": "n_exit",
+      "type": "Exit",
+      "x": 112,
+      "y": 1100,
+      "w": 64,
+      "h": 16,
+      "section": "climb_top"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n_start",
+      "to": "n_mid1",
+      "type": "Jump",
+      "vx": -150,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "n_mid1",
+      "to": "n_mid2",
+      "type": "Jump",
+      "vx": 150,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "n_mid2",
+      "to": "n_mid3",
+      "type": "Jump",
+      "vx": -150,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "n_mid3",
+      "to": "n_mid4",
+      "type": "Jump",
+      "vx": 150,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "n_mid4",
+      "to": "n_exit",
+      "type": "Jump",
+      "vx": -100,
+      "vy": 600,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "n_start",
+      "section": "climb_bottom",
+      "description": "player start",
+      "sprite": "player",
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "tower_exit",
+      "kind": "Exit",
+      "anchor": "n_exit",
+      "section": "climb_top",
+      "description": "tower exit",
+      "sprite": "portal",
+      "facing": "right",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "The level is a tall vertical tower.",
+      "category": "size",
+      "check": {
+        "type": "size",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": null,
+        "ability": null,
+        "min_width_tiles": 30,
+        "min_height_tiles": 80,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "There are platforms zig-zagging upward.",
+      "category": "layout",
+      "check": null
+    }
+  ]
+}
