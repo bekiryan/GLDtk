@@ -12,6 +12,8 @@ POST /edit/region, /edit/section, /edit/entities — regional edits (Part 8).
 POST /edit/locate — text location → rect (writes nothing).
 POST /undo      — restore the newest history snapshot.
 GET  /history   — the snapshots of a .ldtk file.
+GET  /route     — the golden Start → Exit route of a .ldtk file (v3 Part 13).
+POST /route     — the same for the project JSON open in LDtk (unsaved edits).
 """
 
 from __future__ import annotations
@@ -46,6 +48,8 @@ from api.models import (
     PathRequest,
     RectModel,
     RegionEditRequest,
+    RouteModel,
+    RouteRequest,
     SectionEditRequest,
     UndoResponse,
 )
@@ -56,6 +60,7 @@ from edit.locate import locate as locate_text
 from edit.outcome import EditOutcome
 from edit.region import edit_region, edit_section
 from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
+from layout.route import file_route, unsaved_route
 from game.profile import (
     PROFILE_FILENAME,
     GameProfile,
@@ -372,6 +377,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         verified=built.report.ok,
         warnings=provider_notes(provider) + built.warnings + export_warnings,
         fidelity=built.fidelity.to_dict() if built.fidelity else None,
+        route=route_of(out),
     )
 
 
@@ -416,6 +422,7 @@ def edit_response(out: EditOutcome, path: str) -> EditResponse:
         warnings=out.warnings,
         fidelity=out.fidelity.to_dict() if out.fidelity else None,
         edit=info,
+        route=route_of(path),
     )
 
 
@@ -471,11 +478,41 @@ def edit_locate_route(req: LocateRequest) -> LocateResponse:
                           explanation=out.explanation, error=out.error)
 
 
-@app.post("/undo", response_model=UndoResponse)
+@app.post("/undo", response_model=UndoResponse, response_model_exclude_unset=True)
 def undo_route(req: PathRequest) -> UndoResponse:
     res = edit_history.undo(req.path)
-    return UndoResponse(success=res.success, restored_from=res.restored_from,
-                        remaining=res.remaining, error=res.error)
+    out = UndoResponse(success=res.success, restored_from=res.restored_from,
+                       remaining=res.remaining, error=res.error)
+    if res.success:  # a failed undo keeps its v2 shape (no ``route`` key)
+        out.route = route_of(req.path)
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Golden route (v3 Part 13)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def route_of(path: str | Path, project: Dict[str, Any] | None = None) -> RouteModel:
+    """The golden route of the file at *path*, read like an edit reads it (no LLM call).
+
+    With *project* (the LDtk JSON open in the editor) that JSON is used instead of the file.
+    """
+    try:
+        route = file_route(path) if project is None else unsaved_route(path, project)
+    except Exception as exc:  # never fail a generate / edit because of the overlay
+        return RouteModel(success=False, error=f"Route error: {exc}")
+    return RouteModel.model_validate(route.as_dict())
+
+
+@app.get("/route", response_model=RouteModel)
+def route_route(path: str = Query(..., description=".ldtk path")) -> RouteModel:
+    return route_of(path)
+
+
+@app.post("/route", response_model=RouteModel)
+def route_unsaved_route(req: RouteRequest) -> RouteModel:
+    return route_of(req.path, req.project)
 
 
 @app.get("/history", response_model=HistoryResponse)
