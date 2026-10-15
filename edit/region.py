@@ -621,6 +621,7 @@ def edit_region(
     seed: int = 0,
     level: Optional[str] = None,
     patterns: Optional[int] = None,
+    fill: Any = None,
 ) -> EditOutcome:
     """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring).
 
@@ -688,11 +689,17 @@ def edit_region(
             jobs.report("densify", "Adding fill platforms")
             grid, check, fills, dropped = _densify_region(
                 ctx, rect, grid, entities, locks, baseline, check, name, seed)
+        rock.update(n=0, note="")
+        if fill is not None and check.ok:  # v4 Part 25a: noise rock inside the rect
+            from .fill import fill_region
+            grid, check, rock["n"], rock["note"] = fill_region(
+                ctx, rect, grid, entities, locks, baseline, check, name, seed, fill)
         return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped,
                         hops, comfort_notes)
 
     stats: Dict[str, Any] = {"llm_attempts": 0, "grid_repairs": 0, "layout_retries": 0,
                              "seams": len(seams)}
+    rock: Dict[str, Any] = {"n": 0, "note": ""}
     parse = _parser(ctx, rect, seams, outside_ids)
     examples = None
     if patterns:  # pattern-library examples (Part 26a): the prompt and the sections in the region
@@ -732,7 +739,8 @@ def edit_region(
     stats["grid_repairs"] = len(result.repairs)
     stats["densify_added"] = len(result.fills)
     stats["comfort_added"] = len(result.hops)
-    densify_notes: List[str] = []
+    stats["fill_added"] = rock["n"]
+    densify_notes: List[str] = [rock["note"]] if rock["note"] else []
     if result.fills:
         densify_notes.append(f"densify: added {len(result.fills)} fill platform(s)"
                              + (f", dropped {result.dropped_fills} that broke verification"
@@ -769,7 +777,7 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
                  *, max_retries: int = 3, densify: bool = True, seed: int = 0,
                  level: Optional[str] = None, structure: Optional[str] = None,
-                 patterns: Optional[int] = None) -> EditOutcome:
+                 patterns: Optional[int] = None, fill: Any = None) -> EditOutcome:
     """A region edit over the section's band (column or row band) of *level*.
 
     With *structure* (or a prompt like "make this a labyrinth", v3 Part 21) the
@@ -787,7 +795,7 @@ def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
     if structure:
         return restructure_section(ctx, section_id, structure, prompt, seed=seed)
     return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries,
-                       ctx=ctx, densify=densify, seed=seed, patterns=patterns)
+                       ctx=ctx, densify=densify, seed=seed, patterns=patterns, fill=fill)
 
 
 __all__ = [
