@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from pydantic import Field
 
+from api import jobs
 from layout.densify import densify_grid
 from layout.ir import IREntity, TileValue
 from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
@@ -577,6 +578,7 @@ def edit_region(
     if blocker:
         return failure(mode, blocker, rect)
     seams = find_seams(ctx, rect, spans0)
+    jobs.report("seams", f"Found {len(seams)} seam(s) on the region border")
     locks = locked_cells(ctx, rect, seams)
     region_old = [e for e in ctx.entities
                   if rect.contains(e.col, e.row) and e.entity_type not in FIXED_KINDS]
@@ -597,15 +599,18 @@ def edit_region(
         taken = {(e.col, e.row) for e in kept}
         placed, warns = place_region_entities(ctx, rect, grid, region, nodes, seams, taken)
         entities = [IREntity(e.entity_type, e.col, e.row, dict(e.metadata)) for e in kept] + placed
+        jobs.report("region", "Stamping the region and verifying the level")
         check = verify_level(ctx, grid, entities, baseline, name)
         region_iids = {str(e.metadata["iid"]) for e in placed}
         repairs: List[str] = []
         if not check.ok:
+            jobs.report("repair", f"Repairing the region ({len(check.messages())} problem(s))")
             check, repairs = repair_region(ctx, rect, grid, entities, region_iids, locks,
                                            baseline, check, name)
         fills: List[RegionNode] = []
         dropped = 0
         if densify and check.ok:
+            jobs.report("densify", "Adding fill platforms")
             grid, check, fills, dropped = _densify_region(
                 ctx, rect, grid, entities, locks, baseline, check, name, seed)
         return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped)
@@ -615,11 +620,14 @@ def edit_region(
     parse = _parser(ctx, rect, seams, outside_ids)
     messages = build_region_messages(ctx, rect, seams, prompt, region_old)
     try:
-        run = run_structured(provider, REGION_SYSTEM_PROMPT, messages, RegionSpec, parse, max_retries)
+        run = run_structured(provider, REGION_SYSTEM_PROMPT, messages, RegionSpec, parse, max_retries,
+                             what="the region")
         stats["llm_attempts"] += run.attempts
         result = attempt(run.value)
         if not result.check.ok:  # at most one LLM re-prompt with the grid errors
             stats["layout_retries"] = 1
+            jobs.report("repair", "The level still fails verification, asking the LLM to fix "
+                                  "the region")
             numbered = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(result.check.messages()))
             retry = run.messages + [
                 {"role": "assistant", "content": run.raw},
@@ -630,7 +638,8 @@ def edit_region(
                     "listed problem (connect every seam, add Platform nodes, keep jump arcs and "
                     "headroom clear). Output ONLY the JSON object.")},
             ]
-            run2 = run_structured(provider, REGION_SYSTEM_PROMPT, retry, RegionSpec, parse, max_retries)
+            run2 = run_structured(provider, REGION_SYSTEM_PROMPT, retry, RegionSpec, parse, max_retries,
+                                  what="a corrected region")
             stats["llm_attempts"] += run2.attempts
             run, result = run2, attempt(run2.value)
     except EditLLMFailed as exc:

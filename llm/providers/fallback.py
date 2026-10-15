@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Sequence, Tuple
 
+from api import jobs
+
 from . import base
 
 FALLBACK_STATUSES = {404, 429, 500, 502, 503, 504}
@@ -26,6 +28,13 @@ def should_fall_back(err: base.ProviderError) -> bool:
 def provider_label(provider: Any) -> str:
     model = getattr(provider, "model_used", None) or getattr(provider, "model", None)
     return f"{provider.name}/{model}" if model else provider.name
+
+
+def describe(provider: Any) -> str:
+    """``provider/model`` of any provider, for progress lines."""
+    if isinstance(provider, FallbackProvider):
+        return provider.model_used
+    return provider_label(provider)
 
 
 class FallbackProvider:
@@ -65,6 +74,7 @@ class FallbackProvider:
                         ) from err
                     raise
                 errors.append(f"{provider_label(provider)}: {_short(err)}")
+                jobs.report("llm", switch_message(self._providers[i + 1]))
                 continue
             if i != self._current:
                 self.notes.append(
@@ -74,6 +84,14 @@ class FallbackProvider:
                 self._current = i
             return text
         raise AssertionError("unreachable")
+
+
+def switch_message(provider: Any) -> str:
+    """The progress line for moving on to *provider*."""
+    if provider.name == "ollama":
+        model = getattr(provider, "model", None) or "?"
+        return f"Switched to local model {model} (this can take a few minutes)"
+    return f"Switched to {provider_label(provider)}"
 
 
 def _short(err: Any) -> str:

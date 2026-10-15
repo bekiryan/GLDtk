@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from pydantic import Field, create_model
 
+from api import jobs
 from layout.ir import IREntity, TileValue
 from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
 from llm.providers import LLMProvider
@@ -402,15 +403,17 @@ def edit_entities(
     parse = _parser(scope)
     try:
         run = run_structured(provider, ENTITY_SYSTEM_PROMPT, build_entity_messages(ctx, scope, prompt),
-                             EntityEdit, parse, max_retries)
+                             EntityEdit, parse, max_retries, what="the entity changes")
         stats["llm_attempts"] += run.attempts
         applied = apply_ops(ctx, scope, run.value)
+        jobs.report("verify", "Applying the changes and verifying the level")
         check = verify_level(ctx, ctx.grid, applied.entities, baseline, name, spans=spans)
         repairs: List[str] = []
         if not check.ok:
             check, repairs = _repair(ctx, scope, applied, check, baseline, name)
         if not check.ok:
             stats["layout_retries"] = 1
+            jobs.report("repair", "The level still fails verification, asking the LLM again")
             numbered = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(check.messages()))
             retry = run.messages + [
                 {"role": "assistant", "content": run.raw},
@@ -419,7 +422,8 @@ def edit_entities(
                     f"{numbered}\n\nOutput a corrected EntityEdit that avoids these problems "
                     "(use platforms the player can reach). Output ONLY the JSON object.")},
             ]
-            run = run_structured(provider, ENTITY_SYSTEM_PROMPT, retry, EntityEdit, parse, max_retries)
+            run = run_structured(provider, ENTITY_SYSTEM_PROMPT, retry, EntityEdit, parse, max_retries,
+                                 what="corrected entity changes")
             stats["llm_attempts"] += run.attempts
             applied = apply_ops(ctx, scope, run.value)
             check = verify_level(ctx, ctx.grid, applied.entities, baseline, name, spans=spans)

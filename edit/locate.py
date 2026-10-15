@@ -96,7 +96,7 @@ def locate(path: str, text: str, provider: LLMProvider, max_retries: int = 3) ->
 
     try:
         run = run_structured(provider, LOCATE_SYSTEM_PROMPT, build_locate_messages(ctx, text),
-                             LocateResult, parse, max_retries)
+                             LocateResult, parse, max_retries, what="the location")
     except EditLLMFailed as exc:
         return LocateOutcome(False, error=str(exc))
     except Exception as exc:  # provider errors

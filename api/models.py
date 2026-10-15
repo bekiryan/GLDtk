@@ -36,6 +36,9 @@ class GenerateRequest(BaseModel):
         True,
         description="Fill large empty regions with extra platforms (fill_N nodes) after layout",
     )
+    job_id: Optional[str] = Field(
+        None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
+    )
 
 
 class LevelStats(BaseModel):
@@ -126,6 +129,7 @@ class GenerateResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)  # layout / entity / repair notes
     fidelity: Optional[FidelityModel] = None  # per-requirement report on the final level
     route: Optional[RouteModel] = None  # golden route of the written file (v3 Part 13)
+    cancelled: bool = False  # the job was cancelled; nothing was written (v3 Part 14)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,6 +154,9 @@ class EditRequestBase(BaseModel):
     densify: bool = Field(True, description="Region/section edits: fill the rect with extra "
                                             "platforms; ignored by entity edits")
     max_retries: int = Field(3, ge=1, le=10)
+    job_id: Optional[str] = Field(
+        None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
+    )
 
 
 class RegionEditRequest(EditRequestBase):
@@ -174,6 +181,9 @@ class LocateRequest(BaseModel):
     provider: str = Field("gemini")
     model: Optional[str] = None
     max_retries: int = Field(3, ge=1, le=10)
+    job_id: Optional[str] = Field(
+        None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
+    )
 
 
 class EditInfo(BaseModel):
@@ -191,6 +201,7 @@ class LocateResponse(BaseModel):
     rect: Optional[RectModel] = None
     explanation: str = ""
     error: Optional[str] = None
+    cancelled: bool = False
 
 
 class PathRequest(BaseModel):
@@ -213,3 +224,31 @@ class HistoryEntry(BaseModel):
 
 class HistoryResponse(BaseModel):
     snapshots: List[HistoryEntry] = Field(default_factory=list)  # newest first
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job progress + cancel (v3 Part 14)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ProgressEvent(BaseModel):
+    t: float  # seconds since the job started
+    stage: str
+    message: str  # short, user-facing
+
+
+class ProgressResponse(BaseModel):
+    stage: Optional[str] = None  # None for an unknown job
+    events: List[ProgressEvent] = Field(default_factory=list)  # oldest first, the last ~50
+    elapsed_s: float = 0.0
+    done: bool = True  # unknown ids are done
+    cancelled: bool = False
+
+
+class CancelRequest(BaseModel):
+    job_id: str
+
+
+class CancelResponse(BaseModel):
+    job_id: str
+    running: bool  # False: the job had finished or was not known yet

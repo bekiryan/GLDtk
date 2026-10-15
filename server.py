@@ -14,11 +14,14 @@ POST /undo      — restore the newest history snapshot.
 GET  /history   — the snapshots of a .ldtk file.
 GET  /route     — the golden Start → Exit route of a .ldtk file (v3 Part 13).
 POST /route     — the same for the project JSON open in LDtk (unsaved edits).
+GET  /progress  — progress events of a running job (v3 Part 14).
+POST /cancel    — cancel a running job; it writes nothing.
 """
 
 from __future__ import annotations
 
 import collections
+import functools
 import json
 import os
 from pathlib import Path
@@ -33,8 +36,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
 from aesthetic.themes import THEMES, Theme, detect_theme
-from api import art_routes
+from api import art_routes, jobs
 from api.models import (
+    CancelRequest,
+    CancelResponse,
     EditInfo,
     EditResponse,
     EntityEditRequest,
@@ -46,6 +51,7 @@ from api.models import (
     LocateRequest,
     LocateResponse,
     PathRequest,
+    ProgressResponse,
     RectModel,
     RegionEditRequest,
     RouteModel,
@@ -170,6 +176,46 @@ def section_theme(theme_text: str, description: str, override: str | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Jobs: progress + cancel (v3 Part 14)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def job_route(cancelled: Callable[[], Any], start: str) -> Callable:
+    """Run a long route as the request's ``job_id`` (see ``api/jobs.py``).
+
+    *start* is the first progress line; a cancel returns ``cancelled()``.
+    """
+
+    def wrap(fn: Callable) -> Callable:
+        @functools.wraps(fn)
+        def route(req: Any) -> Any:
+            try:
+                with jobs.job(req.job_id):
+                    jobs.report("start", start)
+                    return fn(req)
+            except jobs.Cancelled:
+                return cancelled()
+
+        return route
+
+    return wrap
+
+
+def _cancelled_edit() -> EditResponse:
+    return EditResponse(success=False, error="Cancelled", cancelled=True)
+
+
+@app.get("/progress", response_model=ProgressResponse)
+def progress_route(job: str = Query(..., description="job_id of a request")) -> ProgressResponse:
+    return ProgressResponse.model_validate(jobs.registry.progress(job))
+
+
+@app.post("/cancel", response_model=CancelResponse)
+def cancel_route(req: CancelRequest) -> CancelResponse:
+    return CancelResponse(job_id=req.job_id, running=jobs.registry.cancel(req.job_id))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -230,6 +276,8 @@ def put_profile(
 
 
 @app.post("/generate", response_model=GenerateResponse)
+@job_route(lambda: GenerateResponse(success=False, error="Cancelled", cancelled=True),
+           "Generating the level")
 def generate(req: GenerateRequest) -> GenerateResponse:
     # ── game profile (never written during generate) ──────────────────────
     profile_path = (
@@ -307,6 +355,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     sections = [s.name for s in ordered_sections]
 
     # ── aesthetic (spec entities only — no random coins / enemies) ───────
+    jobs.report("aesthetic", "Tiling and decorating the level")
     try:
         for band in ir.metadata.get("sections", []):
             band["mapped_theme"] = section_theme(
@@ -327,7 +376,8 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Aesthetic error: {exc}")
 
-    # ── serialise ─────────────────────────────────────────────────────────
+    # ── serialise (the last cancel checkpoint: nothing is written before it) ──
+    jobs.report("export", "Writing the level file")
     try:
         out = Path(req.output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -435,6 +485,7 @@ def _provider_or_error(req: Any):
 
 
 @app.post("/edit/region", response_model=EditResponse)
+@job_route(_cancelled_edit, "Reading the level for a region edit")
 def edit_region_route(req: RegionEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
@@ -446,6 +497,7 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
 
 
 @app.post("/edit/section", response_model=EditResponse)
+@job_route(_cancelled_edit, "Reading the level for a section edit")
 def edit_section_route(req: SectionEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
@@ -457,6 +509,7 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
 
 
 @app.post("/edit/entities", response_model=EditResponse)
+@job_route(_cancelled_edit, "Reading the level for an entity edit")
 def edit_entities_route(req: EntityEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
@@ -472,6 +525,8 @@ def edit_entities_route(req: EntityEditRequest) -> EditResponse:
 
 
 @app.post("/edit/locate", response_model=LocateResponse)
+@job_route(lambda: LocateResponse(success=False, error="Cancelled", cancelled=True),
+           "Reading the level to locate the place")
 def edit_locate_route(req: LocateRequest) -> LocateResponse:
     provider, err = _provider_or_error(req)
     if err:

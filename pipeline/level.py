@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from api import jobs
 from fidelity import FidelityReport, check_level, fill_missing
 from game.profile import GameProfile
 from layout.densify import densify as densify_layout
@@ -83,9 +84,11 @@ def _layout_and_verify(
 ) -> Tuple[SpecLayout, GridReport, List[str]]:
     spec_layout = layout_spec(spec, profile, seed=seed)
     place_spec_entities(spec, spec_layout)
+    jobs.report("verify", "Verifying the grid")
     report = verify_grid(spec_layout, profile, spec)
     applied: List[str] = []
     if not report.ok:
+        jobs.report("repair", f"Repairing the grid ({len(report.errors)} problem(s))")
         spec_layout, applied = repair_grid(spec_layout, report, profile, spec)
         report = verify_grid(spec_layout, profile, spec)
     return spec_layout, report, applied
@@ -147,6 +150,7 @@ def build_level(
     complete_spec = getattr(controller, "complete_spec", None)
 
     def reprompt(current: LevelSpec, missing: List[str]) -> LevelSpec:
+        jobs.report("complete", f"{len(missing)} requirement(s) missing, asking the LLM once more")
         try:
             return complete_spec(description, current, missing, constraints)
         finally:
@@ -162,10 +166,12 @@ def build_level(
     repairs: List[str] = []
     report: Optional[GridReport] = None
     for attempt in range(max_layout_retries + 1):
+        jobs.report("layout", "Laying out the level" + (f" (round {attempt + 1})" if attempt else ""))
         spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
         stats["grid_repairs"] += len(applied)
         repairs += applied
         if report.ok and densify:
+            jobs.report("densify", "Adding fill platforms")
             dense = densify_layout(spec_layout, report, profile, spec, seed=seed)
             report = dense.report or report
             stats["densify_added"] = len(dense.added)
@@ -193,6 +199,8 @@ def build_level(
         if attempt == max_layout_retries:
             break
         stats["layout_retries"] += 1
+        jobs.report("repair", f"The grid still fails verification, asking the LLM to repair it "
+                              f"(round {attempt + 1})")
         try:
             repaired = controller.repair_spec(
                 description, spec, report.error_messages(), constraints

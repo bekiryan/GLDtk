@@ -641,7 +641,7 @@ def test_routes_section_entities_locate(client, level, monkeypatch):
     loc = client.post("/edit/locate", json={"path": str(level), "text": "the start",
                                             "provider": "gemini"}).json()
     assert loc == {"success": True, "rect": {"col": 1, "row": 2, "w": 5, "h": 5},
-                   "explanation": "start", "error": None}
+                   "explanation": "start", "error": None, "cancelled": False}
     assert len(client.get("/history", params={"path": str(level)}).json()["snapshots"]) == 2
 
 
