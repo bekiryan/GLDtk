@@ -17,11 +17,13 @@ that the player can get from Start to Exit with the game's own jump and ability 
 2. [Using the GLDtk sidebar](#using-the-gldtk-sidebar)
 3. [LLM providers and the local fallback](#llm-providers-and-the-local-fallback)
 4. [How it works](#how-it-works)
-5. [Repository layout](#repository-layout)
-6. [Without the app: Python and HTTP](#without-the-app-python-and-http)
-7. [Evaluation](#evaluation)
-8. [Tests](#tests)
-9. [Troubleshooting](#troubleshooting)
+5. [Level structure, missions and patterns](#level-structure-missions-and-patterns)
+6. [Repository layout](#repository-layout)
+7. [Without the app: Python and HTTP](#without-the-app-python-and-http)
+8. [Evaluation](#evaluation)
+9. [Tests](#tests)
+10. [Troubleshooting](#troubleshooting)
+11. [Build the Mac app](#build-the-mac-app)
 
 ---
 
@@ -48,6 +50,9 @@ LDtk app from `ldtk-src/app`, and stops the backend when LDtk closes. To run the
 source .venv/bin/activate && python server.py   # backend
 cd ldtk-src/app && npm start                    # LDtk with the GLDtk sidebar
 ```
+
+Prefer an app? `scripts/build_mac_app.sh` builds an unsigned `GLDtk.app` (see
+[Build the Mac app](#build-the-mac-app)).
 
 `ldtk-src/` is a fork of LDtk ([github.com/bekiryan/ldtk](https://github.com/bekiryan/ldtk), branch
 `feat/v2`) with the GLDtk sidebar built in. After changing its Haxe sources, rebuild it (see
@@ -76,10 +81,36 @@ Open or create a `.ldtk` project in LDtk; the sidebar on the right works on that
     confirm with *Apply here*.
 - **↶ Undo last GLDtk edit:** every generate and edit snapshots the file first (in
   `.gldtk_history/` next to it, last 30 kept). Undo walks back through them.
-- **Game Profile:** physics (gravity, jump speed, run speed, step height) and abilities (double jump,
-  dash, wall jump) for the whole game, saved as `gldtk.game.json` next to the project. Levels are
-  verified against it, and a prompt asking for an ability the profile lacks is reported as ❌.
+- **Game Profile:** physics (gravity, jump speed, run speed, step height), abilities (double jump,
+  dash, wall jump) and **design comfort limits** (longest hop, tallest rise, longest drop) for the
+  whole game, saved as `gldtk.game.json` next to the project. Levels are verified against it, and a
+  prompt asking for an ability the profile lacks is reported as ❌. The default numbers are listed in
+  the profile panel (see the Game Profile).
 - **Provider:** choose the LLM and optionally a model.
+- **Complexity:** a slider (1–10) for the whole level, and optionally per section. It drives enemy and
+  hazard density, jump tightness, branching and mission loops. After generation GLDtk measures the
+  result and adjusts (add or remove enemies, tighten or widen gaps) until the score is close to your
+  target.
+- **Rock fill:** a density slider that fills unused space with natural cave rock (noise plus smoothing).
+  The route, its jump arcs and headroom are never touched.
+- **Progress and Cancel:** a generate or edit shows live steps (LLM attempt, retry, model fallback,
+  verification, repair). **Cancel** stops it and writes nothing.
+- **Route overlay:** shows the verified Start→Exit route on the canvas (walks, hops, falls, the
+  ability used), plus soft-lock spans in red. It refreshes after your hand edits.
+- **Difficulty chart:** a per-section difficulty curve with warnings (a spike, a flat stretch); hover a
+  point to flash its section on the canvas.
+- **▶ Play:** LDtk has no play mode, so GLDtk adds one. It opens a canvas modal that runs the level with
+  the Game Profile's physics and abilities (within about 1 px of the verifier): pickups, lives,
+  checkpoints, keys, hazards, the Exit, and a ghost of the verified route.
+- **Levels (worlds):** a prompt that describes several levels (or the *Levels* setting, 1–8) makes a
+  world: one outline call, then one level per entry, each Exit linked to the next Start. A level list
+  with fidelity scores lets you switch levels; edits and the chart act on the open level, and you can
+  **regenerate a single level** and keep the rest.
+- **Structure:** each section has a type (see
+  [Level structure](#level-structure-missions-and-patterns)). Pick **Make this section a…** to change
+  a section's structure; no LLM call is needed.
+- **Memory:** a panel showing what GLDtk learned from your edits, with edit, delete, reset and an off
+  switch (see [Design memory](#design-memory)).
 
 Levels use a curated CC0 asset library (8 tile themes and 25 entity sprites, see `assets/LICENSES.md`).
 A level with several sections gets one tile layer per section theme. GLDtk state (prompt, sections,
@@ -114,21 +145,31 @@ answered. A local 14B model takes about 1–5 minutes per level on an Apple M-se
 Prompt
   │
   ▼  LLMController (llm/validator.py)            LLM → LevelSpec JSON (spec/level_spec.py):
-  │    generate → validate → symbolic patch →     size, sections, platform graph, entities,
-  │    re-prompt with precise errors              requirements extracted from the prompt
+  │    generate → validate → symbolic patch →     size, sections (with structure type and style),
+  │    re-prompt with precise errors              graph, entities, requirements, complexity.
+  │                                               Retrieved patterns and your design memory
+  │                                               are added to the prompt.
   ▼
   Completeness (pipeline/completeness.py)         fidelity check; deterministic fill of missing
   │                                               entities/items; at most one LLM re-prompt
   ▼
-  Layout (layout/spec_layout.py)                  keeps the LLM's coordinates and section bands
-  │                                               (horizontal, or vertical bottom → top)
+  Terrain + layout (layout/terrain/, spec_layout) per-section generators carve rock into floors,
+  │  (+ mission placement, mission/)               walls, corridors, labyrinths…; keys, locks and
+  │                                               gates are placed from the mission graph
   ▼
-  Densify (layout/densify.py)                     extra reachable platforms and ground so the
-  │                                               level reads as a level
+  Verify + repair (layout/verify.py, softlock.py) extract the graph from the final tile grid, prove
+  │                                               Start→Exit with hitbox-swept arcs and the Game
+  │                                               Profile's abilities, and prove there is no
+  │                                               soft-lock; repair, or re-prompt as a last resort
   ▼
-  Grid verification + repair (layout/verify.py)   extract the graph from the final tile grid,
-  │                                               prove Start→Exit with hitbox-swept arcs and the
-  │                                               Game Profile's abilities; repair or re-prompt
+  Comfort pass (layout/comfort.py)                short hops and walk-first paths (Game Profile
+  │                                               comfort limits)
+  ▼
+  Densify (layout/densify.py)                     extra reachable platforms and ground
+  ▼
+  Complexity loop (pipeline/complexity.py)        measure difficulty, adjust toward the target
+  ▼
+  Rock fill (layout/fill.py, noise.py)            optional noise fill outside the protected route
   ▼
   Aesthetic (aesthetic/)                          per-section themes, autotiling, entity sprites
   ▼
@@ -154,15 +195,90 @@ The design and part-by-part history are in [docs/v2/DESIGN.md](docs/v2/DESIGN.md
 
 ---
 
+## Level structure, missions and patterns
+
+### Section structure types
+
+The LLM picks a type for each section and deterministic generators (`layout/terrain/`) carve the
+terrain from solid rock, so levels have floors, walls, ceilings and rooms, not only platforms.
+
+| Type | What you get |
+|---|---|
+| `corridor` | a walled passage with a floor and ceiling, mostly walking |
+| `parkour` | platforms and short hops over a gap or pit |
+| `labyrinth` | a maze of rooms and branches, with dead ends |
+| `arena` | a large room for a fight |
+| `shaft` | a vertical climb with ledges |
+| `hub` | a central room with several exits |
+| `open` | open ground and a few platforms |
+
+Paths are mostly **walking, fighting and short hops**: the comfort limits in the Game Profile cap a hop,
+a rise and a drop, and the route prefers walking. Sections also have a **style** (for example
+sparse or dense). Select a section and use **Make this section a…** to re-carve it as another type
+without an LLM call.
+
+### Soft-lock detection
+
+The guarantee is "the player can never get stuck", not only "Start→Exit exists". GLDtk computes the
+strongly connected components of the movement graph and an **item-state graph** (position plus keys,
+abilities and switches held). A span the player can reach but cannot leave for an Exit (a pit with no
+way out, a door whose key is behind it, a drop past the key) is an error. Deterministic repairs add a
+ledge or a one-way exit, or move the key. Soft-lock spans show in red on the route overlay.
+
+### Mission graphs
+
+For prompts with keys, locks, abilities or backtracking, GLDtk builds a **mission graph** with a small
+graph grammar: lock-and-key cycles, ability gates, shortcut loops and optional branches. It is embedded
+into sections (`mission/`), and the item-state graph proves every lock is reachable only after its key,
+with no soft-lock. "The key is in the cave, the door is in the castle" is a structural check in the
+fidelity report.
+
+### Endless chunks
+
+`POST /chunks` appends seeded noise chunks to a world, one LDtk level per chunk. The same seed and chunk
+number always give the same chunk, and neighbours join through fixed seam openings. Each chunk is
+verified, and soft-lock checked, on its own and across its seams.
+
+### Pattern library
+
+GLDtk can show the LLM real level fragments as examples (retrieval-augmented generation). **Licensed
+sources only:** LDtk's own MIT-licensed sample projects, plus your levels and GLDtk levels you
+approved (kept, not undone). No commercial game levels are used. Each fragment is cut into a room or
+set-piece, checked (soft-locking patterns are rejected), labelled by one LLM call, embedded, and stored
+in a local index in the app data folder (`GLDTK_PATTERNS_DIR` overrides it). At generate or edit time the
+top matches go into the prompt, and the response lists which patterns were used. Only the layout is kept,
+never the art.
+
+```bash
+python -m patterns.build --dry-run                          # ingest only, no LLM call
+python -m patterns.build --provider gemini --max-calls 40   # label and embed
+```
+
+### Design memory
+
+GLDtk learns your taste from what you change: hand edits to its output, undos, accepted edits, Game
+Profile changes. A local event log is turned into short preference rules ("prefers 2–3 enemies per
+room") that go into later prompts and adjust deterministic parameters. It is **local and
+cross-project**, stored in `~/Library/Application Support/GLDtk/memory/` (`GLDTK_MEMORY_DIR` overrides
+it), and never uploaded except the short rule text inside an LLM prompt. The sidebar **Memory** panel
+(or `GET/PUT/DELETE /memory`) lets you view, edit, delete or reset rules, or turn memory off.
+
+---
+
 ## Repository layout
 
 ```
-server.py         FastAPI backend: /generate, /edit/*, /undo, /history, /profile, /providers, /art/*
-api/              request and response models
+server.py         FastAPI backend (endpoints listed below)
+api/              request and response models, art routes
 spec/             LevelSpec schema, validation, entity catalog
 llm/              prompts, LLMController, patcher, providers/ (gemini, anthropic, ollama, openai, fallback)
-pipeline/         build_level (spec → verified level), completeness loop
-layout/           spec layout, densify, grid verification and repair, LDtk export and reader
+pipeline/         build_level (spec → verified level), completeness, complexity loop, worlds, chunks.py
+layout/           spec layout, comfort, densify, rock fill and noise, route, soft-locks, grid
+                  verification and repair, LDtk export and reader, world.py
+layout/terrain/   structure generators: corridor, parkour, labyrinth, arena, shaft, hub, open
+mission/          mission graph grammar, space embedding, item-state verification
+patterns/         pattern library: ingest, label, embed, retrieve, store (RAG)
+memory/           design memory: event log, hand-edit diffs, analysis, preferences
 symbolic/         graph schema, physics oracle, grid → graph extractor
 game/             Game Profile (gldtk.game.json)
 fidelity/         requirement checker, report, deterministic fill
@@ -171,6 +287,8 @@ aesthetic/        themes, autotiling, sprites, asset library loader
 assets/           CC0 tile themes and sprites (manifest.json)
 art/              optional AI theme/sprite generation (Gemini image models; needs a paid key)
 eval/             evaluation harness and prompt suite
+packaging/        PyInstaller spec for the bundled backend
+scripts/          build_assets.py, build_mac_app.sh
 tests/            offline tests (fake LLM with recorded responses)
 ldtk-src/         LDtk fork with the GLDtk sidebar (separate git repository)
 example.py        generate a level from the command line
@@ -196,10 +314,31 @@ curl -s http://127.0.0.1:8765/generate -H 'Content-Type: application/json' -d '{
 }'
 ```
 
-Edits take the same `.ldtk` path; rects are in tiles, with row 0 at the top:
-`POST /edit/region {path, rect: {col,row,w,h}, prompt}`, `/edit/section {path, section_id, prompt}`,
-`/edit/entities {path, prompt, rect?, entity_iids?}`, `/edit/locate {path, text}`, `/undo {path}`,
-`GET /history?path=…`. Every request accepts `provider` and `model`.
+Edits take the same `.ldtk` path; rects are in tiles, with row 0 at the top. Every generate and edit
+request accepts `provider` and `model`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /generate` | build a level or world (`description`, `output_path`, `seed`, `complexity`, `fill`, `levels`, `level`, `job_id`, `densify`, …) |
+| `POST /edit/region` | `{path, rect: {col,row,w,h}, prompt}` regenerate a rectangle |
+| `POST /edit/section` | `{path, section_id, prompt}`; a structure change needs no LLM call |
+| `POST /edit/entities` | `{path, prompt, rect?, entity_iids?}` entity-only edit |
+| `POST /edit/locate` | `{path, text}` find the area a description means |
+| `POST /undo`, `GET /history` | step back through snapshots; list them |
+| `GET /route`, `POST /route` | verified route and soft-lock spans (POST re-extracts after hand edits) |
+| `GET /difficulty` | per-section difficulty curve |
+| `POST /chunks` | `{path, count, seed, theme?, orientation?}` append endless chunks |
+| `GET /progress`, `POST /cancel` | live steps and cancel for a `job_id` |
+| `GET /memory`, `PUT /memory`, `DELETE /memory`, `POST /memory/scan` | design memory: view, edit, reset, scan a file for hand edits |
+| `GET /profile`, `PUT /profile` | Game Profile |
+| `GET /providers`, `GET /themes` | available LLMs; asset themes |
+| `GET /settings`, `POST /settings` | API key and local fallback (used by the Mac app) |
+| `GET /health` | liveness |
+| `POST /art/theme`, `POST /art/sprite`, `GET /art/library` | optional AI art |
+
+Environment variables: `GEMINI_API_KEY` (`.env`), `GLDTK_LOCAL_FALLBACK`, `GLDTK_MEMORY_DIR`,
+`GLDTK_PATTERNS_DIR`, `GLDTK_CONFIG_DIR` (where the Mac app keeps its settings), `GLDTK_HOST`,
+`GLDTK_PORT`, and `GLDTK_FAKE_LLM` (tests only: canned LLM replies).
 
 ---
 
@@ -230,10 +369,12 @@ pytest -m e2e tests/e2e/test_gemini.py -s    # one real Gemini call (uses free-t
 - **Gemini 429 / 503 / 404:** see [the providers section](#llm-providers-and-the-local-fallback).
   Pull the local fallback model, or pick another provider in the sidebar.
 - **Ollama "model not found":** run `ollama pull <model>` and check `ollama list`.
-- **A generate or edit fails with "not verified":** the level could not be proven beatable with the
+- **A generate or edit fails with "not verified" or a soft-lock error:** the level could not be proven beatable with the
   current Game Profile, so nothing was written. Try again (another seed) or simplify the request.
 - **Tiles are blank in LDtk:** the theme sheets are copied to `gldtk_assets/` next to the `.ldtk`. Keep
   that folder with the project.
+
+---
 
 ## Build the Mac app
 
