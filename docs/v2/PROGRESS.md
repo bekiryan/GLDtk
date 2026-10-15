@@ -25,7 +25,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | **M4** | **Final review** | | ◐ cleanup done; PRs open: bekiryan/GLDtk#1, bekiryan/ldtk#1 (waiting for the user to merge) | |
 | | **v3** ([plan](../v3/PLAN.md), requested 2026-10-15) | | | |
 | 11 | Physics accuracy (cross-section gravity, headroom, exact wall jumps) | strong | ⏳ running (wave 1) | |
-| 12 | Densify inside edits | medium | ⏳ running (wave 1) | |
+| 12 | Densify inside edits | medium | ✅ (generate output byte-identical for a seed, checked) | see git log |
 | 13 | Route overlay (API + canvas) | strong | ⏳ running (wave 1) | |
 | 14 | Live progress + Cancel | strong | ⬜ wave 2 | |
 | 15 | Difficulty curve | medium | ⬜ wave 3 | |
