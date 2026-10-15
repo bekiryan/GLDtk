@@ -615,6 +615,7 @@ def edit_region(
     densify: bool = True,
     seed: int = 0,
     level: Optional[str] = None,
+    fill: Any = None,
 ) -> EditOutcome:
     """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring).
 
@@ -680,11 +681,17 @@ def edit_region(
             jobs.report("densify", "Adding fill platforms")
             grid, check, fills, dropped = _densify_region(
                 ctx, rect, grid, entities, locks, baseline, check, name, seed)
+        rock.update(n=0, note="")
+        if fill is not None and check.ok:  # v4 Part 25a: noise rock inside the rect
+            from .fill import fill_region
+            grid, check, rock["n"], rock["note"] = fill_region(
+                ctx, rect, grid, entities, locks, baseline, check, name, seed, fill)
         return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped,
                         hops, comfort_notes)
 
     stats: Dict[str, Any] = {"llm_attempts": 0, "grid_repairs": 0, "layout_retries": 0,
                              "seams": len(seams)}
+    rock: Dict[str, Any] = {"n": 0, "note": ""}
     parse = _parser(ctx, rect, seams, outside_ids)
     messages = build_region_messages(ctx, rect, seams, prompt, region_old)
     try:
@@ -718,7 +725,8 @@ def edit_region(
     stats["grid_repairs"] = len(result.repairs)
     stats["densify_added"] = len(result.fills)
     stats["comfort_added"] = len(result.hops)
-    densify_notes: List[str] = []
+    stats["fill_added"] = rock["n"]
+    densify_notes: List[str] = [rock["note"]] if rock["note"] else []
     if result.fills:
         densify_notes.append(f"densify: added {len(result.fills)} fill platform(s)"
                              + (f", dropped {result.dropped_fills} that broke verification"
@@ -754,7 +762,7 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
                  *, max_retries: int = 3, densify: bool = True, seed: int = 0,
-                 level: Optional[str] = None) -> EditOutcome:
+                 level: Optional[str] = None, fill: Any = None) -> EditOutcome:
     """A region edit over the section's band (column or row band) of *level*."""
     try:
         ctx = load_context(path, level)
@@ -762,7 +770,7 @@ def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
     except EditError as exc:
         return failure("section", str(exc))
     return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries,
-                       ctx=ctx, densify=densify, seed=seed)
+                       ctx=ctx, densify=densify, seed=seed, fill=fill)
 
 
 __all__ = [

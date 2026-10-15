@@ -36,6 +36,10 @@ class GenerateRequest(BaseModel):
         True,
         description="Fill large empty regions with extra platforms (fill_N nodes) after layout",
     )
+    fill: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Noise rock fill density 0-1 after densify (v4 Part 25a); null = off",
+    )
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
     )
@@ -76,6 +80,7 @@ class LevelStats(BaseModel):
     entities_filled: int = 0  # entities the deterministic completeness fill added
     densify_added: int = 0  # fill platforms the densify step added
     comfort_added: int = 0  # platforms the comfort pass added for short hops (v3 Part 20)
+    fill_added: int = 0  # noise rock tiles the fill step added (v4 Part 25a)
 
 
 class FidelityItemModel(BaseModel):
@@ -216,6 +221,8 @@ class EditRequestBase(BaseModel):
     seed: int = Field(42)
     densify: bool = Field(True, description="Region/section edits: fill the rect with extra "
                                             "platforms; ignored by entity edits")
+    fill: Optional[float] = Field(None, ge=0.0, le=1.0, description="Region/section edits: noise "
+                                  "rock fill density inside the rect (v4 Part 25a); null = off")
     max_retries: int = Field(3, ge=1, le=10)
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
@@ -326,3 +333,37 @@ class CancelResponse(BaseModel):
 
 GenerateResponse.model_rebuild()
 EditResponse.model_rebuild()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Endless chunks (v4 Part 25a)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ChunksRequest(BaseModel):
+    path: str = Field(..., description="World .ldtk file to append to (created when missing)")
+    count: int = Field(1, ge=1, le=32)
+    seed: int = Field(42)
+    start_k: Optional[int] = Field(None, description="First chunk coordinate; None = after the "
+                                                     "file's last Chunk_<k> level (0 if none)")
+    theme: Optional[str] = Field(None, description="Theme of this chunk group (default cave)")
+    orientation: str = Field("horizontal", pattern="^(horizontal|vertical)$")
+
+
+class ChunkInfo(BaseModel):
+    k: int
+    identifier: str
+    iid: str
+    verified: bool
+    fill_added: int = 0
+    densify_added: int = 0
+    entry: Dict[str, Optional[int]]  # {"row": .., "col": ..} of the entry seam
+    exit: Dict[str, Optional[int]]
+
+
+class ChunksResponse(BaseModel):
+    success: bool
+    error: Optional[str] = None
+    output_path: Optional[str] = None
+    chunks: List[ChunkInfo] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)

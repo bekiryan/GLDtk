@@ -90,6 +90,7 @@ from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider_w
 from pipeline import LevelBuildFailed, build_level
 from pipeline.world import WorldLevelInfo, check_world, outline_world, wants_outline
 from spec.world import SIZE_HINT_WIDTH
+from api.models import ChunksRequest, ChunksResponse  # v4 Part 25a
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -364,7 +365,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
             constraints=constraints or None,
             seed=req.seed,
             size_override=(req.width_tiles, req.height_tiles),
-            densify=req.densify,
+            densify=req.densify, fill=req.fill,
         )
     except MaxRetriesExceeded as exc:
         return GenerateResponse(
@@ -496,6 +497,7 @@ def _level_stats(built: Any, result: Any) -> LevelStats:
         entities_filled=built.stats.get("entities_filled", 0),
         densify_added=built.stats.get("densify_added", 0),
         comfort_added=built.stats.get("comfort_added", 0),
+        fill_added=built.stats.get("fill_added", 0),
     )
 
 
@@ -522,7 +524,7 @@ def _build_one(description: str, theme_text: str, cons: Dict[str, Any], provider
     controller = LLMController(profile=profile, provider=provider, max_retries=req.max_retries)
     built = build_level(
         description, controller, profile, constraints=cons or None, seed=seed,
-        size_override=(req.width_tiles, req.height_tiles), densify=req.densify,
+        size_override=(req.width_tiles, req.height_tiles), densify=req.densify, fill=req.fill,
     )
     jobs.report("aesthetic", "Tiling and decorating the level")
     result = _dress(built, f"{theme_text} {description}".strip(), req, density, seed)
@@ -743,6 +745,7 @@ def edit_response(out: EditOutcome, path: str, level: str | None = None) -> Edit
         grid_repairs=out.stats.get("grid_repairs", 0),
         densify_added=out.stats.get("densify_added", 0),
         comfort_added=out.stats.get("comfort_added", 0),
+        fill_added=out.stats.get("fill_added", 0),
     )
     sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)] if spec else []
     return EditResponse(
@@ -777,7 +780,7 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
     out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries,
-                      densify=req.densify, seed=req.seed, level=req.level)
+                      densify=req.densify, seed=req.seed, level=req.level, fill=req.fill)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path, req.level)
 
@@ -789,7 +792,7 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
-                       densify=req.densify, seed=req.seed, level=req.level)
+                       densify=req.densify, seed=req.seed, level=req.level, fill=req.fill)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path, req.level)
 
@@ -900,6 +903,13 @@ def history_route(path: str = Query(..., description=".ldtk path"),
                   ) -> HistoryResponse:
     snaps = edit_history.list_snapshots(path)
     return HistoryResponse(snapshots=[HistoryEntry(**s.as_dict()) for s in reversed(snaps)])
+
+
+@app.post("/chunks", response_model=ChunksResponse)
+def chunks_route(req: ChunksRequest) -> ChunksResponse:
+    """Append N endless chunks to a world file (v4 Part 25a, ``pipeline/chunks.py``)."""
+    from pipeline.chunks import chunks_response
+    return chunks_response(req)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

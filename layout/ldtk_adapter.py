@@ -209,7 +209,13 @@ class LevelMeta:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_IID_STATE = __import__("threading").local()  # .rng: seeded iids (endless chunks, v4 Part 25a)
+
+
 def _new_iid() -> str:
+    rng = getattr(_IID_STATE, "rng", None)
+    if rng is not None:
+        return str(uuid.UUID(int=rng.getrandbits(128), version=4))
     return str(uuid.uuid4())
 
 

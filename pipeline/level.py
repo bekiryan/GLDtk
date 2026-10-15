@@ -106,6 +106,7 @@ def build_level(
     max_layout_retries: int = 2,
     size_override: Optional[Tuple[Optional[int], Optional[int]]] = None,
     densify: bool = True,
+    fill: Any = None,
 ) -> BuiltLevel:
     """Generate, lay out, verify and repair a level (see the module docstring).
 
@@ -115,12 +116,13 @@ def build_level(
     (either may be None); it is applied after the completeness fill, so it
     wins over a size requirement.  *densify* False skips the densify step.
 
-    ``stats`` adds ``comfort_added`` (comfort-pass platforms kept), ``densify_added`` (fill platforms kept), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
+    ``stats`` adds ``comfort_added`` (comfort-pass platforms kept), ``densify_added`` (fill platforms kept), ``fill_added`` (noise rock tiles kept; *fill* is a density or a ``layout.fill.FillParams``, None = off), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
     (entities the deterministic fill added, over all fills).
 
     Raises ``MaxRetriesExceeded`` (LLM) or :class:`LevelBuildFailed` (grid).
     """
     profile = profile or GameProfile()
+    rock_fill = fill  # the retry loop below reuses the name ``fill``
     stats: Dict[str, Any] = {
         "llm_attempts": 0,
         "patches_applied": [],
@@ -130,6 +132,7 @@ def build_level(
         "entities_filled": 0,
         "densify_added": 0,
         "comfort_added": 0,
+        "fill_added": 0,
     }
 
     def absorb_llm_stats() -> None:
@@ -186,6 +189,12 @@ def build_level(
             report = dense.report or report
             stats["densify_added"] = len(dense.added)
             notes += dense.notes
+        if report.ok and rock_fill is not None:  # v4 Part 25a: noise rock (FillParams or density)
+            from layout.fill import fill_layout
+            jobs.report("fill", "Filling empty space with rock")
+            rock = fill_layout(spec_layout, report, profile, spec, rock_fill, seed=seed)
+            report, stats["fill_added"] = rock.report or report, rock.added
+            notes += rock.notes
         if report.ok:
             stats["verify"] = report.stats
             warnings = (
