@@ -30,7 +30,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 14 | Live progress + Cancel | strong | ✅ app-tested (real retry/fallback messages, cancel mid-backoff writes nothing) | see git log (both repos) |
 | 15 | Difficulty curve | medium | ✅ metrics + sidebar chart (hover flashes the band); scale provisional (few real hard samples); hand edits refresh on save | see git log (both repos) |
 | 16 | Play mode | strong | ✅ client-only (canvas modal, profile physics within ~1 px of the verifier, ghost route, pickups/lives/checkpoints/keys/win) | see git log (ldtk-src) |
-| 17 | Multi-level worlds | strong | ◐ 17a backend merged (outline call, linked levels, `level` on all edit/route/difficulty/undo calls); 17b sidebar after Part 16 | see git log |
+| 17 | Multi-level worlds | strong | ✅ backend + sidebar (Levels select, level list with scores, all calls target the current level, regenerate one level; LDtk WorldRender null-guard for the in-place swap) | see git log (both repos) |
 | 20 | Short hops + walk-first paths (user feedback) | strong | ✅ effort-based route cost, comfort pass (hop 4, rise 3, drop 6 tiles; profile `design`), Section.style; replayed three-sections moves 10–15 → 3–4 tiles; tall zigzag towers keep 5-row climbs (warning) | see git log |
 | 21 | Terrain from section types: corridor, parkour, labyrinth, arena, shaft, hub (user feedback; user chose section types) | strong | ⬜ after 17a + 20 | |
 | 18 | Packaged Mac app | medium | ⬜ last | |
