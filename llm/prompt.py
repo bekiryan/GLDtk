@@ -241,6 +241,7 @@ def build_generate_messages(
     description: str,
     constraints: Optional[Dict[str, Any]] = None,
     profile: Optional[GameProfile] = None,
+    examples: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """First-turn message list for a fresh generation request.
 
@@ -255,6 +256,7 @@ def build_generate_messages(
                    as a GAME PROFILE block — the physics and abilities the
                    level must respect.  Kept out of SYSTEM_PROMPT so the
                    cached prefix stays profile-independent.
+    examples     : optional reference-pattern block (patterns.prompt), appended last.
     """
     content = description.strip()
     if constraints:
@@ -285,6 +287,8 @@ def build_generate_messages(
             content += "\n\nCONSTRAINTS (follow exactly):\n" + "\n".join(lines)
     profile = profile or GameProfile()
     content += "\n\nGAME PROFILE (fixed for this game):\n" + profile.summary_for_prompt()
+    if examples:  # pattern library (Part 26a): user message only, the system prompt stays cacheable
+        content += "\n\n" + examples
     return [{"role": "user", "content": content}]
 
 

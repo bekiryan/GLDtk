@@ -38,3 +38,9 @@ def valid_spec_dict() -> Dict[str, Any]:
 @pytest.fixture
 def minimal_spec_dict() -> Dict[str, Any]:
     return json.loads(fixture_text("valid_minimal.json"))
+
+
+@pytest.fixture(autouse=True)
+def _patterns_dir(tmp_path, monkeypatch):
+    """Pattern library (Part 26a): never touch the user's index."""
+    monkeypatch.setenv("GLDTK_PATTERNS_DIR", str(tmp_path / "patterns"))

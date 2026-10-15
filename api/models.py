@@ -50,6 +50,11 @@ class GenerateRequest(BaseModel):
         description="Regenerate only this level (iid or identifier) of the existing world at "
                     "output_path, keeping the other levels and the links (v3 Part 17)",
     )
+    patterns: Optional[int] = Field(
+        None, ge=1, le=5,
+        description="Pattern library (v4 Part 26a): retrieve this many reference patterns per "
+                    "query and add them to the user message; None = off",
+    )
 
 
 class LevelSummary(BaseModel):
@@ -193,6 +198,7 @@ class GenerateResponse(BaseModel):
     # the fields above describe the ``current`` level (the first one after a world generate).
     levels: List[LevelSummary] = Field(default_factory=list)
     world: Optional["WorldFidelityModel"] = None  # world report (a multi-level generate only)
+    patterns_used: List[Dict[str, str]] = Field(default_factory=list)  # [{id, title}] (Part 26a)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -220,6 +226,7 @@ class EditRequestBase(BaseModel):
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
     )
+    patterns: Optional[int] = Field(None, ge=1, le=5, description="Pattern examples per query (Part 26a); None = off")
     level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
 
 
