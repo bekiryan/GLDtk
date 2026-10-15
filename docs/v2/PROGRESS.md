@@ -27,7 +27,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 11 | Physics accuracy (cross-section gravity, headroom, exact wall jumps) | strong | ✅ (eval replay unchanged: 8/8, fidelity 1.00) | see git log |
 | 12 | Densify inside edits | medium | ✅ (generate output byte-identical for a seed, checked) | see git log |
 | 13 | Route overlay (API + canvas) | strong | ✅ API + canvas overlay, app-tested (hand edits refetch via POST /route) | see git log (both repos) |
-| 14 | Live progress + Cancel | strong | ◐ 14a API merged (`/progress`, `/cancel`, job_id); 14b sidebar running | see git log |
+| 14 | Live progress + Cancel | strong | ✅ app-tested (real retry/fallback messages, cancel mid-backoff writes nothing) | see git log (both repos) |
 | 15 | Difficulty curve | medium | ◐ 15a metrics merged (`GET /difficulty`, `difficulty` in responses, eval table; scale provisional: only 2 real hard sections); 15b chart in wave 3 | see git log |
 | 16 | Play mode | strong | ⬜ wave 4 | |
 | 17 | Multi-level worlds | strong | ⬜ wave 5 | |
