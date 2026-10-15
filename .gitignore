@@ -18,6 +18,7 @@ lib/
 lib64/
 parts/
 !docs/v2/parts/
+!docs/v3/parts/
 sdist/
 var/
 wheels/
