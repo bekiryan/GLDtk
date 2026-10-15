@@ -237,13 +237,30 @@ def test_region_edit_keeps_seams_and_verifies(level):
     assert check.ok, check.messages()
 
 
-def test_repair_moves_an_unreachable_region_entity(level):
+def test_repair_keeps_an_unreachable_ledge_with_a_stepping_stone(level):
     rect = Rect(10, 2, 11, 18)
     # A ledge 12 tiles above p2: out of jump reach, so the gem on it is unreachable.
+    # Repair links the ledge (the prompt asked for it) instead of moving the gem off it.
     answer = region_answer([platform("far", 1, 1, 3)], [gem(anchor="far")])
     out = edit_region(str(level), rect, "a high ledge with a gem", FakeProvider([answer]))
     assert out.success, out.error
-    assert out.stats["llm_attempts"] == 1 and out.stats["grid_repairs"] == 1
+    assert out.stats["llm_attempts"] == 1 and out.stats["grid_repairs"] >= 1
+    assert any("stepping stone" in w and "gem" in w for w in out.warnings)
+    assert not any(w.startswith("moved gem") for w in out.warnings)
+    ctx = load_context(level)
+    assert verify_level(ctx, ctx.grid, ctx.entities).ok
+    gem_ent = next(e for e in ctx.entities if e.metadata.get("spec_id") == "gem")
+    assert (gem_ent.row, 11 <= gem_ent.col <= 13) == (2, True)  # still on the ledge (row 3)
+
+
+def test_repair_moves_an_unreachable_entity_when_no_stone_fits(level, monkeypatch):
+    import edit.region as region_mod
+
+    monkeypatch.setattr(region_mod, "_insert_stone", lambda *a, **k: None)
+    rect = Rect(10, 2, 11, 18)
+    answer = region_answer([platform("far", 1, 1, 3)], [gem(anchor="far")])
+    out = edit_region(str(level), rect, "a high ledge with a gem", FakeProvider([answer]))
+    assert out.success, out.error
     assert any(w.startswith("moved gem") for w in out.warnings)
     ctx = load_context(level)
     assert verify_level(ctx, ctx.grid, ctx.entities).ok
@@ -647,3 +664,29 @@ def test_generate_snapshots_before_overwriting(client, tmp_path, monkeypatch, lo
     snaps = history.list_snapshots(out)
     assert len(snaps) == 1 and snaps[0].label == "generate: tiny"
     assert snaps[0].file.read_bytes() == first
+
+
+def _move_start_into_the_air(path: Path) -> None:
+    """A hand edit that breaks the level: the Start no longer stands on anything."""
+    doc = doc_of(path)
+    start = next(e for e in layer(doc, "Entities")["entityInstances"] if e["__identifier"] == "Start")
+    start["__grid"] = [start["__grid"][0], 1]
+    start["px"] = [start["px"][0], 1 * 16 + 15]
+    path.write_text(json.dumps(doc), encoding="utf-8")
+
+
+def test_edit_on_an_already_broken_level_explains_and_skips_the_llm(level):
+    _move_start_into_the_air(level)
+    raw = level.read_bytes()
+    for run in (
+        lambda fake: edit_region(str(level), REGION, "a lava pit", fake),
+        lambda fake: edit_section(str(level), "dungeon", "a lava pit", fake),
+        lambda fake: edit_entities(str(level), "add a coin", fake),
+    ):
+        fake = FakeProvider([GOOD_REGION])
+        out = run(fake)
+        assert not out.success
+        assert out.error.startswith("This level cannot be beaten as it is now")
+        assert "Start" in out.error and "Undo" in out.error
+        assert fake.calls == []  # no quota spent
+    assert level.read_bytes() == raw

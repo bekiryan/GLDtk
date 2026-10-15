@@ -40,7 +40,7 @@ from spec.level_spec import (
 )
 from symbolic.extractor import move_between
 
-from .check import Baseline, LevelCheck, make_baseline, verify_level
+from .check import Baseline, LevelCheck, make_baseline, preexisting_blocker, verify_level
 from .context import (
     FIXED_KINDS,
     Cell,
@@ -418,6 +418,18 @@ def repair_region(
                 ent = next((e for e in entities if e.metadata.get("iid") == err.entity_iid), None)
                 if ent is None or err.entity_iid not in region_iids:
                     continue
+                if err.code == "ENTITY_UNREACHABLE" and err.span in rects:
+                    # Keep the ledge the prompt asked for: link it to the reachable part first.
+                    target = rects[err.span]
+                    sources = sorted((rects[s] for s in check.reach if s in rects),
+                                     key=lambda s: _dist(_centre(s), _centre(target)))[:6]
+                    stone = _insert_stone(ctx, rect, grid, locks, taken, sources, [target])
+                    if stone:
+                        r, c0, _c1 = stone
+                        applied.append(f"inserted a stepping stone at {name(c0, r)} (3 tiles) so "
+                                       f"{ent.metadata.get('spec_id') or ent.entity_type} can be reached")
+                        done = True
+                        break  # re-check: the stone may reach other entities too
                 old = (ent.col, ent.row)
                 if _move_entity(ctx, rect, grid, ent, reach_spans, taken):
                     applied.append(f"moved {ent.metadata.get('spec_id') or ent.entity_type} from "
@@ -509,7 +521,10 @@ def edit_region(
     rect = clipped
 
     spans0 = ctx.extract(ctx.grid)
-    baseline, _before = make_baseline(ctx, rect, spans0)
+    baseline, before = make_baseline(ctx, rect, spans0)
+    blocker = preexisting_blocker(before, ctx, rect)
+    if blocker:
+        return failure(mode, blocker, rect)
     seams = find_seams(ctx, rect, spans0)
     locks = locked_cells(ctx, rect, seams)
     region_old = [e for e in ctx.entities

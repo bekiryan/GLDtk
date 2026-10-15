@@ -111,7 +111,10 @@ def verify_level(
     elif start_span is None:
         errors.append(CheckError(
             "START_NO_GROUND",
-            f"The Start entity at {name(start.col, start.row)} has no platform under it.",
+            f"The Start entity at {name(start.col, start.row)} "
+            + ("is inside a solid tile." if 0 <= start.row < len(grid)
+               and int(grid[start.row][start.col]) != TileValue.EMPTY
+               else "has no platform under it."),
             start.metadata.get("iid")))
     else:
         rows = range(start.row - ph + 1, start.row + 1)
@@ -222,4 +225,29 @@ def make_baseline(ctx: EditContext, rect: Optional[Rect], spans: Optional[Spans]
     return base, before
 
 
-__all__ = ["Baseline", "CheckError", "LevelCheck", "make_baseline", "verify_level"]
+# Problems an edit cannot fix: they are not in the region (Start and Exit are fixed kinds).
+_START_CODES = ("NO_START", "START_NO_GROUND", "START_BLOCKED", "NO_EXIT")
+
+
+def preexisting_blocker(before: LevelCheck, ctx: EditContext, rect: Optional[Rect] = None
+                        ) -> Optional[str]:
+    """Why no edit can verify while the file is like this, or None.
+
+    A Start without ground (often moved by hand) makes every platform unreachable,
+    so each new entity would be reported as the problem.  The cells under the Start
+    can still be fixed by a region that contains them.
+    """
+    start = next((e for e in ctx.entities if e.entity_type == "Start"), None)
+    for err in before.errors:
+        if err.code not in _START_CODES:
+            continue
+        if err.code == "START_NO_GROUND" and rect is not None and start is not None \
+                and rect.contains(start.col, min(start.row + 1, ctx.height - 1)):
+            continue
+        return ("This level cannot be beaten as it is now, so no edit can be verified: "
+                f"{err.message} Fix it in LDtk (or use ↶ Undo) and try again.")
+    return None
+
+
+__all__ = ["Baseline", "CheckError", "LevelCheck", "make_baseline", "preexisting_blocker",
+           "verify_level"]

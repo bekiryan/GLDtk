@@ -25,7 +25,7 @@ from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
 from llm.providers import LLMProvider
 from spec.level_spec import Requirement, SpecEntity, _SpecModel
 
-from .check import LevelCheck, make_baseline, verify_level
+from .check import LevelCheck, make_baseline, preexisting_blocker, verify_level
 from .context import Cell, EditContext, EditError, Rect, SpanRect, load_context
 from .llm import EditLLMFailed, run_structured
 from .outcome import EditOutcome, add_requirements, base_spec, failure, finish, spec_entity
@@ -390,7 +390,10 @@ def edit_entities(
         scope = make_scope(ctx, spans, None if entity_iids else rect, entity_iids)
     except EditError as exc:
         return failure(mode, str(exc), rect)
-    baseline, _ = make_baseline(ctx, None, spans)
+    baseline, before = make_baseline(ctx, None, spans)
+    blocker = preexisting_blocker(before, ctx)
+    if blocker:
+        return failure(mode, blocker, rect)
 
     def name(col: int, row: int) -> str:
         return f"column {col}, row {row}"
