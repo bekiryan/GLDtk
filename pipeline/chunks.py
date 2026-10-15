@@ -377,8 +377,13 @@ def append_chunks(path: str | Path, count: int, seed: int, start_k: Optional[int
             doc = world
     k0 = start_k if start_k is not None else (next_chunk_k(doc) if doc else 0)
 
-    chunks = [build_chunk(seed, k, orientation=orientation, theme=theme, profile=profile)
-              for k in range(k0, k0 + count)]
+    from api import jobs
+
+    chunks = []
+    for i, k in enumerate(range(k0, k0 + count), 1):
+        jobs.report("chunk", f"Chunk {i}/{count}: building chunk {k}")
+        chunks.append(build_chunk(seed, k, orientation=orientation, theme=theme, profile=profile))
+    jobs.checkpoint()  # a cancel here has written nothing
     from .level import LevelBuildFailed
     for c in chunks:
         if c.problems:
@@ -387,7 +392,8 @@ def append_chunks(path: str | Path, count: int, seed: int, start_k: Optional[int
     run = ChunkRun(out, chunks, [], [])
     out.parent.mkdir(parents=True, exist_ok=True)
     edit_history.snapshot(out, edit_history.make_label("chunks", f"{count} chunk(s) from {k0}"))
-    for c in chunks:
+    for i, c in enumerate(chunks, 1):
+        jobs.report("chunk", f"Chunk {i}/{count}: writing chunk {c.k}")
         fresh, result, warnings = export_chunk(c, theme, seed, out, profile_path, profile)
         copy_aesthetic_assets(result, out.parent)
         if doc is None:

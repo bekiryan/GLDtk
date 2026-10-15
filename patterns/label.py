@@ -75,7 +75,7 @@ def label_pending(
     from edit.llm import EditLLMFailed, run_structured
     from eval.providers import BudgetExceeded, CallBudget, CountingProvider
 
-    todo = [r for r in store if r.get("accepted") and not r.get("label")]
+    todo = [r for r in store if r.get("accepted") and not r.get("label") and r.get("kind", "pattern") == "pattern"]
     rep = LabelReport(cached=sum(1 for r in store if r.get("label")), dry_run=dry_run)
     if dry_run:
         rep.pending = len(todo)
@@ -100,7 +100,7 @@ def label_pending(
         rep.labelled += 1
         store.save()
     rep.calls = budget.total
-    rep.pending = sum(1 for r in store if r.get("accepted") and not r.get("label"))
+    rep.pending = sum(1 for r in store if r.get("accepted") and not r.get("label") and r.get("kind", "pattern") == "pattern")
     return rep
 
 

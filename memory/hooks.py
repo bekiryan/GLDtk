@@ -51,11 +51,15 @@ def _safe(fn: Callable, *a: Any, **k: Any) -> Any:
         return None
 
 
-def before(path: Any) -> None:
-    from memory import handedit
+def before(path: Any, approve: bool = True) -> None:
+    """Scan a hand edit; then a pending write that was not undone is approved (Part 26c).
+    *approve* is False for the undo route, which decides about the pending write itself."""
+    from memory import approve as approvals, handedit
 
     if path:
         _safe(handedit.scan, path)
+        if approve and store.enabled():
+            _safe(approvals.approve, path)
 
 
 def track(kind: str) -> Callable:
@@ -66,6 +70,7 @@ def track(kind: str) -> Callable:
         def route(req: Any) -> Any:
             from layout import densify
             from memory import analyze, handedit, prefs
+            from memory import approve as approvals
 
             path = getattr(req, "output_path", None) if kind == "generate" else getattr(req, "path", None)
             on = bool(_safe(store.enabled))
@@ -96,6 +101,7 @@ def track(kind: str) -> Callable:
                       sections=facts.get("sections"), theme=facts.get("theme"),
                       difficulty=getattr(req, "difficulty", None))
                 _safe(handedit.remember_output, path)
+                _safe(approvals.mark, path, level)
                 if store.load_prefs().get("events_since_summary", 0) >= store.SUMMARY_EVERY:
                     _safe(analyze.maybe_summarize, _provider_of(req))
             return resp
@@ -119,8 +125,9 @@ def undone(path: Any, label_mode: Optional[str]) -> None:
     """Record a successful undo (the file now holds an older GLDtk output)."""
     if store.enabled():
         _safe(store.record, "undone", file=Path(path).name, mode=label_mode)
-        from memory import handedit
+        from memory import approve as approvals, handedit
 
+        _safe(approvals.discard, path)
         _safe(handedit.remember_output, path)
 
 

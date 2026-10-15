@@ -28,7 +28,7 @@ def memory_dir() -> Path:
 
 
 def default_prefs() -> Dict[str, Any]:
-    return {"enabled": True, "rules": [], "dismissed": [], "stats": {}, "event_count": 0,
+    return {"enabled": True, "patterns_auto_add": True, "rules": [], "dismissed": [], "stats": {}, "event_count": 0,
             "events_since_summary": 0}
 
 
