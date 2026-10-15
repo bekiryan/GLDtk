@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import networkx as nx
 
@@ -119,6 +119,12 @@ class SectionBand:
     row_end: int = 0  # inclusive
     orientation: str = "horizontal"
     style: Optional[str] = None  # walk | parkour | mixed; None = mixed (v3 Part 20)
+    structure: Optional[str] = None  # v3 Part 21; None / "open" = open air
+    params: Optional[Dict[str, Any]] = None  # structure parameters (non-null ones)
+
+    @property
+    def is_terrain(self) -> bool:
+        return self.structure not in (None, "open")
 
     def contains(self, col: int, row: Optional[int] = None) -> bool:
         if not self.col_start <= col <= self.col_end:
@@ -138,6 +144,8 @@ class SectionBand:
             "theme": self.theme,
             "difficulty": self.difficulty,
             "style": self.style,
+            # only terrain sections carry these, so open-air levels export as before
+            **({"structure": self.structure, "params": self.params} if self.is_terrain else {}),
         }
 
 
@@ -156,6 +164,9 @@ class SpecLayout:
     entity_anchors: Dict[str, str] = field(default_factory=dict)  # repair overrides
     entity_warnings: List[str] = field(default_factory=list)  # last placement
     added_nodes: List[str] = field(default_factory=list)  # stepping stones
+    terrain: Optional[Any] = None  # layout.terrain.TerrainLayout (v3 Part 21)
+    fixed_nodes: Set[str] = field(default_factory=set)  # snapped onto terrain: never nudged
+    entity_cols: Dict[str, int] = field(default_factory=dict)  # preferred column per entity
 
     # ------------------------------------------------------------------
     # Geometry
@@ -212,6 +223,16 @@ class SpecLayout:
                 return nid
         return None
 
+    @property
+    def has_terrain(self) -> bool:
+        return any(b.is_terrain for b in self.sections)
+
+    def step_at(self) -> Optional[Callable[[int, int], bool]]:
+        """Where 1-tile steps are walkable (terrain sections), or None for open levels."""
+        if not self.has_terrain:
+            return None
+        return lambda col, row: self.section_at(col, row).is_terrain
+
     def surface_y(self, row: int) -> float:
         return float((self.height - 1 - row) * self.tile_size)
 
@@ -225,7 +246,10 @@ class SpecLayout:
         Spec entities are dropped; call ``place_spec_entities`` afterwards.
         """
         ir = self.ir
-        ir.grid = [[TileValue.EMPTY] * ir.width_tiles for _ in range(ir.height_tiles)]
+        if self.terrain is not None:
+            ir.grid = [list(row) for row in self.terrain.base]
+        else:
+            ir.grid = [[TileValue.EMPTY] * ir.width_tiles for _ in range(ir.height_tiles)]
         ir.entities = []
         for nid, nl in self.node_layouts.items():
             kind = self.node_kinds.get(nid, "Platform")
@@ -241,6 +265,8 @@ class SpecLayout:
                     )
                 )
         ir.metadata["sections"] = [b.as_dict() for b in self.sections]
+        if self.terrain is not None:
+            ir.metadata["terrain"] = self.terrain.stats()
         return ir
 
     # ------------------------------------------------------------------
@@ -515,10 +541,18 @@ def resolve_conflicts(layout: SpecLayout, protected: Iterable[str] = ()) -> None
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def layout_spec(spec: LevelSpec, profile: Optional[GameProfile] = None, seed: int = 0) -> SpecLayout:
+def layout_spec(
+    spec: LevelSpec,
+    profile: Optional[GameProfile] = None,
+    seed: int = 0,
+    terrain_attempts: Optional[Dict[str, int]] = None,
+) -> SpecLayout:
     """Lay *spec* out on a ``spec.size`` grid (see the module docstring).
 
-    *seed* is accepted for API symmetry; the layout is fully deterministic.
+    Sections with a structure other than open are then carved from rock by
+    ``layout.terrain.build_terrain`` (seeded by *seed* and, per section, the
+    generator attempt in *terrain_attempts*).  Without them *seed* is unused
+    and the layout is the v2 one.
     """
     profile = profile or GameProfile()
     ts = profile.tile_size
@@ -597,4 +631,8 @@ def layout_spec(spec: LevelSpec, profile: Optional[GameProfile] = None, seed: in
     )
     resolve_conflicts(layout)
     layout.rasterise()
+    if spec.has_terrain:
+        from .terrain import build_terrain
+
+        build_terrain(layout, spec, seed, terrain_attempts)
     return layout

@@ -96,6 +96,10 @@ def check_expectations(expect: Dict[str, Any], built: Any) -> List[str]:
     for k in expect.get("entity_kinds", []):
         if k not in kinds:
             out.append(f"no {k} entity")
+    built_as = {s.structure or "open" for s in spec.sections}
+    for st in expect.get("structures", []):  # v3 Part 21
+        if st not in built_as:
+            out.append(f"no {st} section")
     if "min_impossible" in expect:
         n = built.fidelity.counts()["impossible"] if built.fidelity else 0
         if n < expect["min_impossible"]:

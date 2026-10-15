@@ -1,0 +1,227 @@
+{
+ "title": "The Bell Tower",
+ "size": {
+  "width_tiles": 40,
+  "height_tiles": 90
+ },
+ "orientation": "vertical",
+ "sections": [
+  {
+   "id": "base",
+   "name": "Crypt Stairs",
+   "theme": "crypt",
+   "difficulty": "easy",
+   "gravity_scale": 1.0,
+   "description": "Stairs up from the crypt, with rats.",
+   "order": 0,
+   "style": null,
+   "structure": "corridor",
+   "params": null
+  },
+  {
+   "id": "climb",
+   "name": "Bell Shaft",
+   "theme": "castle",
+   "difficulty": "medium",
+   "gravity_scale": 1.0,
+   "description": "Climb the shaft.",
+   "order": 1,
+   "style": null,
+   "structure": "shaft",
+   "params": null
+  },
+  {
+   "id": "maze",
+   "name": "Tower Maze",
+   "theme": "castle",
+   "difficulty": "medium",
+   "gravity_scale": 1.0,
+   "description": "A maze of storerooms.",
+   "order": 2,
+   "style": null,
+   "structure": "labyrinth",
+   "params": null
+  },
+  {
+   "id": "top",
+   "name": "Belfry",
+   "theme": "castle",
+   "difficulty": "hard",
+   "gravity_scale": 1.0,
+   "description": "The belfry arena with the gargoyle.",
+   "order": 3,
+   "style": null,
+   "structure": "arena",
+   "params": null
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "type": "Start",
+   "x": 64,
+   "y": 16,
+   "w": 48,
+   "h": 16,
+   "section": "base"
+  },
+  {
+   "id": "base_mid",
+   "type": "Platform",
+   "x": 300,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "base"
+  },
+  {
+   "id": "climb_a",
+   "type": "Platform",
+   "x": 200,
+   "y": 300,
+   "w": 48,
+   "h": 16,
+   "section": "climb"
+  },
+  {
+   "id": "maze_a",
+   "type": "Platform",
+   "x": 200,
+   "y": 600,
+   "w": 48,
+   "h": 16,
+   "section": "maze"
+  },
+  {
+   "id": "top_a",
+   "type": "Platform",
+   "x": 200,
+   "y": 900,
+   "w": 48,
+   "h": 16,
+   "section": "top"
+  },
+  {
+   "id": "exit",
+   "type": "Exit",
+   "x": 300,
+   "y": 1000,
+   "w": 48,
+   "h": 16,
+   "section": "top"
+  }
+ ],
+ "edges": [
+  {
+   "from": "start",
+   "to": "base_mid",
+   "type": "Jump",
+   "vx": 0,
+   "vy": 600,
+   "ability": null
+  },
+  {
+   "from": "base_mid",
+   "to": "climb_a",
+   "type": "Jump",
+   "vx": 0,
+   "vy": 600,
+   "ability": null
+  },
+  {
+   "from": "climb_a",
+   "to": "maze_a",
+   "type": "Jump",
+   "vx": 0,
+   "vy": 600,
+   "ability": null
+  },
+  {
+   "from": "maze_a",
+   "to": "top_a",
+   "type": "Jump",
+   "vx": 0,
+   "vy": 600,
+   "ability": null
+  },
+  {
+   "from": "top_a",
+   "to": "exit",
+   "type": "Jump",
+   "vx": 0,
+   "vy": 600,
+   "ability": null
+  }
+ ],
+ "entities": [
+  {
+   "id": "player",
+   "kind": "Start",
+   "anchor": "start",
+   "section": "base",
+   "description": "player",
+   "sprite": "",
+   "facing": "right"
+  },
+  {
+   "id": "rat",
+   "kind": "Enemy",
+   "anchor": "base_mid",
+   "section": "base",
+   "description": "rat",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.5
+  },
+  {
+   "id": "coin",
+   "kind": "Pickup",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "coin",
+   "sprite": "",
+   "pickup_kind": "coin",
+   "place": "dead_end"
+  },
+  {
+   "id": "gargoyle",
+   "kind": "Enemy",
+   "anchor": "top_a",
+   "section": "top",
+   "description": "gargoyle boss",
+   "sprite": "",
+   "archetype": "boss",
+   "place": "arena_center"
+  },
+  {
+   "id": "door",
+   "kind": "Exit",
+   "anchor": "exit",
+   "section": "top",
+   "description": "trapdoor",
+   "sprite": "",
+   "requires_key": false
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "text": "A tower climb.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "shaft"
+   }
+  },
+  {
+   "id": "R2",
+   "text": "A maze.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "labyrinth"
+   }
+  }
+ ]
+}

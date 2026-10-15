@@ -855,7 +855,8 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
-                       densify=req.densify, seed=req.seed, level=req.level)
+                       densify=req.densify, seed=req.seed, level=req.level,
+                       structure=req.structure)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path, req.level)
 

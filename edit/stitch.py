@@ -28,7 +28,7 @@ import copy
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from aesthetic import THEMES, Theme, autotile_level, build_aesthetic_layer, detect_theme
 from aesthetic.pipeline import copy_aesthetic_assets
@@ -69,14 +69,19 @@ class RegionNode:
     type: str = "Platform"  # Platform | Hazard
 
 
-def apply_region(grid: List[List[Any]], rect: Rect, nodes: Iterable[RegionNode], locks: Locks
-                 ) -> List[List[Any]]:
+def apply_region(grid: List[List[Any]], rect: Rect, nodes: Iterable[RegionNode], locks: Locks,
+                 keep: Optional[Callable[[int, int], bool]] = None) -> List[List[Any]]:
     """A copy of *grid* with *rect* cleared, *nodes* stamped and *locks* enforced.
 
-    Only cells inside *rect* change (node cells outside it are ignored).
+    Only cells inside *rect* change (node cells outside it are ignored).  Cells
+    where *keep* is true are not cleared: inside a section carved from rock
+    (v3 Part 21) the rock and the carved space stay and the region's nodes are
+    added to them.
     """
     out = [list(r) for r in grid]
     for c, r in rect.cells():
+        if keep is not None and keep(c, r):
+            continue
         out[r][c] = TileValue.EMPTY
     for n in nodes:
         value = TileValue.HAZARD if n.type == "Hazard" else TileValue.SOLID

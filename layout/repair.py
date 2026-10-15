@@ -123,6 +123,8 @@ def _nudge(
     layout: SpecLayout, node_id: str, avoid: Set[Cell], reason: str, applied: List[str]
 ) -> bool:
     nl = layout.node_layouts[node_id]
+    if node_id in layout.fixed_nodes:  # carved terrain does not move
+        return False
     # Move away from the cells to keep clear: down if they are mostly above.
     prefer_down = bool(avoid) and sum(r for _c, r in avoid) / len(avoid) <= nl.row
     row = _nearest_safe_row(layout, node_id, prefer_down, avoid)

@@ -347,6 +347,102 @@
      "Interactive"
     ]
    }
+  },
+  {
+   "id": "structure-crypt",
+   "tags": [
+    "multi",
+    "horizontal",
+    "structure",
+    "enemy",
+    "boss"
+   ],
+   "prompt": "A crypt: a long corridor with three skeletons, then a parkour shaft climbing up, a small labyrinth of catacombs with two treasure chests in its dead ends, and finally a boss arena where the lich waits by the exit.",
+   "expect": {
+    "min_sections": 4,
+    "structures": [
+     "corridor",
+     "parkour",
+     "labyrinth",
+     "arena"
+    ],
+    "entity_kinds": [
+     "Enemy",
+     "Interactive"
+    ]
+   }
+  },
+  {
+   "id": "structure-labyrinth",
+   "tags": [
+    "single",
+    "horizontal",
+    "structure",
+    "pickup"
+   ],
+   "prompt": "A hedge maze labyrinth with several dead ends; coins hidden at the dead ends and the exit gate on the far side.",
+   "expect": {
+    "structures": [
+     "labyrinth"
+    ],
+    "entity_kinds": [
+     "Pickup"
+    ]
+   }
+  },
+  {
+   "id": "structure-tower",
+   "tags": [
+    "multi",
+    "vertical",
+    "structure"
+   ],
+   "prompt": "A tall bell tower to climb: stairs at the bottom guarded by rats, a climbing shaft, a maze of storerooms and a gargoyle boss in the belfry at the top.",
+   "expect": {
+    "min_sections": 3,
+    "structures": [
+     "shaft"
+    ],
+    "entity_kinds": [
+     "Enemy"
+    ]
+   }
+  },
+  {
+   "id": "structure-hub-key",
+   "tags": [
+    "single",
+    "horizontal",
+    "structure",
+    "key"
+   ],
+   "prompt": "An abandoned mansion of connected rooms with a hidden side room holding the key to the locked exit door.",
+   "expect": {
+    "structures": [
+     "hub"
+    ],
+    "entity_kinds": [
+     "Key"
+    ]
+   }
+  },
+  {
+   "id": "structure-mixed-outdoor",
+   "tags": [
+    "multi",
+    "horizontal",
+    "structure",
+    "hazard"
+   ],
+   "prompt": "Start on open sky islands, then dive into a cave corridor with spike pits and bats, and end in a closed arena fight against a giant spider.",
+   "expect": {
+    "min_sections": 3,
+    "structures": [
+     "open",
+     "corridor",
+     "arena"
+    ]
+   }
   }
  ]
 }

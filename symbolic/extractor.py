@@ -58,6 +58,18 @@ Physics accuracy (v3, Part 11)
   ``metadata["gravity_scale"]`` is still the scale where the move starts.
 * **Wall jumps** are accepted only by the exact grid search
   (``symbolic/walljump.py``).
+
+Stairs (v3 Part 21)
+-------------------
+Terrain sections (``layout/terrain``) carve stairs and slopes as 1-tile steps.
+With ``step_at`` given (collision mode), two spans whose rows differ by one
+tile and whose ends touch (the upper one starts in the column right after the
+lower one ends, or the reverse) are joined by a **Walk** edge in both
+directions when ``step_at(col, row)`` is true for the surface tiles on both
+sides of the step: the player walks up and down a staircase.  Moves in such
+levels also try a launch point one tile short of the target
+(``span_point_pairs(near_launch=True)``).  Without ``step_at`` (every
+open-air level) nothing changes.
 """
 
 from __future__ import annotations
@@ -104,6 +116,7 @@ _SURFACE_TILES = {TILE_SOLID, TILE_HAZARD, TILE_START, TILE_EXIT}
 Grid = Sequence[Sequence[int]]
 GravityScaleAt = Callable[[int], float]
 GravityScaleAtCell = Callable[[int, int], float]  # (col, row) -> gravity scale
+StepAt = Callable[[int, int], bool]  # (col, row) -> may a 1-tile step be walked here
 
 if TYPE_CHECKING:  # pragma: no cover
     from game.profile import GameProfile
@@ -144,6 +157,7 @@ def extract_graph(
     gravity_scale_at_cell: Optional[GravityScaleAtCell] = None,
     gravity_field: Optional[GravityField] = None,
     headroom: Optional[int] = None,
+    step_at: Optional[StepAt] = None,
 ) -> AbstractLevelGraph:
     """Build an AbstractLevelGraph from a 2-D tile grid.
 
@@ -168,6 +182,8 @@ def extract_graph(
         Built from the scale function when not given.
     headroom : empty tiles a surface tile needs above it to be standable
         (collision mode only; default ``profile.player_tiles()[1]``; 0 = off).
+    step_at : optional ``(col, row) -> bool``: where 1-tile steps are walkable
+        (collision mode only; see "Stairs" in the module doc).
 
     Returns
     -------
@@ -220,9 +236,9 @@ def extract_graph(
             from .walljump import cached_wall_runs
 
             with cached_wall_runs(grid):
-                _add_collision_edges(graph, nodes, grid, profile, scale_at, field)
+                _add_collision_edges(graph, nodes, grid, profile, scale_at, field, step_at)
         else:
-            _add_collision_edges(graph, nodes, grid, profile, scale_at, field)
+            _add_collision_edges(graph, nodes, grid, profile, scale_at, field, step_at)
         return graph
 
     _add_edges(
@@ -515,8 +531,14 @@ def span_point_pairs(
     grid_height: int,
     tile_size: float,
     player_width: float,
+    near_launch: bool = False,
 ) -> List[Tuple[Point, Point]]:
     """Launch/landing feet points for a move between two spans.
+
+    *near_launch* (terrain levels) adds a launch point one tile short of the
+    target's facing edge: the run-up to a ledge that starts right where the
+    floor ends (a pillar beside a corridor) — the edge launch would rise along
+    the pillar's face.
 
     Spans are ``(row, col_start, col_end)``.  Launch points: the edge facing
     the target (hitbox fully on the platform), the centre, and — for downward
@@ -544,6 +566,11 @@ def span_point_pairs(
         if y2 < y1:
             launches.insert(0, s_left - half)
         land_near = d_hi
+    if near_launch:
+        s_lo, s_hi = s_left + half, s_right - half
+        x = d_left - tile_size - half if rightward else d_right + tile_size + half
+        if s_lo <= s_hi:
+            launches.append(min(max(x, s_lo), s_hi))
     pairs: List[Tuple[Point, Point]] = []
     seen = set()
     for lx in launches:
@@ -622,8 +649,11 @@ def move_between(
     profile: "GameProfile",
     gravity_scale: float = 1.0,
     gravity_field: Optional[GravityField] = None,
+    near_launch: bool = False,
 ) -> Optional[Tuple[Optional[str], Point, Point]]:
     """Cheapest collision-free move between two spans, or None.
+
+    *near_launch* as in :func:`span_point_pairs` (terrain levels).
 
     Returns ``(ability, launch, land)`` — ability None for a plain move.
     *gravity_scale* is the source section's scale; with *gravity_field* the
@@ -636,7 +666,7 @@ def move_between(
     gap = max(0.0, (dst[1] - src[2] - 1) * ts, (src[1] - dst[2] - 1) * ts)
     if not _could_reach(profile, g, gap, dy):
         return None
-    pairs = span_point_pairs(src, dst, height, ts, profile.player.width_px)
+    pairs = span_point_pairs(src, dst, height, ts, profile.player.width_px, near_launch)
     abilities: List[Optional[str]] = [None] + [
         a for a in ABILITY_ORDER if ability_enabled(profile, a)
     ]
@@ -656,6 +686,7 @@ def _add_collision_edges(
     profile: "GameProfile",
     gravity_scale_at: Optional[GravityScaleAtCell],
     gravity_field: Optional[GravityField] = None,
+    step_at: Optional[StepAt] = None,
 ) -> None:
     standable = [n for n in nodes.values() if n.node_type != NodeType.HAZARD]
     rects = {
@@ -680,7 +711,17 @@ def _add_collision_edges(
                     LevelEdge(src.id, dst.id, EdgeType.WALK, p2[0] - p1[0], 0.0, (vx, 0.0), meta)
                 )
                 continue
-            move = move_between(grid, s, d, profile, scale, gravity_field)
+            if step_at is not None and _is_step(s, d, step_at):
+                vx = walk_speed if d[1] > s[1] else -walk_speed
+                p1, p2 = _surface_point(src), _surface_point(dst)
+                meta["step"] = True
+                graph.add_edge(
+                    LevelEdge(src.id, dst.id, EdgeType.WALK, p2[0] - p1[0], p2[1] - p1[1],
+                              (vx, 0.0), meta)
+                )
+                continue
+            move = move_between(grid, s, d, profile, scale, gravity_field,
+                                near_launch=step_at is not None)
             if move is None:
                 continue
             ability, p1, p2 = move
@@ -692,3 +733,17 @@ def _add_collision_edges(
             vy = 0.0 if edge_type == EdgeType.FALL else profile.physics.jump_v
             vx = math.copysign(walk_speed, dx) if dx else 0.0
             graph.add_edge(LevelEdge(src.id, dst.id, edge_type, dx, dy, (vx, vy), meta))
+
+
+def _is_step(s: Tuple[int, int, int], d: Tuple[int, int, int], step_at: StepAt) -> bool:
+    """Spans ``(row, col_start, col_end)`` one row apart whose ends touch, both
+    sides of the step in a place where steps are walkable."""
+    if abs(s[0] - d[0]) != 1:
+        return False
+    if d[1] == s[2] + 1:
+        a, b = (s[2], s[0]), (d[1], d[0])
+    elif s[1] == d[2] + 1:
+        a, b = (s[1], s[0]), (d[2], d[0])
+    else:
+        return False
+    return bool(step_at(*a) and step_at(*b))

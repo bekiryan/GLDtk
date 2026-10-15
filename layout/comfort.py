@@ -311,6 +311,32 @@ class _Pass:
         return [f"comfort: could not shorten the {m.describe()}" for m in self._moves()]
 
 
+def style_of(band: SectionBand) -> Optional[str]:
+    """A section's comfort style; a ``parkour`` structure plays as parkour (v3 Part 21)."""
+    return "parkour" if band.structure == "parkour" else band.style
+
+
+COMFORT_STRUCTURES = (None, "open", "parkour")
+"""Structures the comfort pass works in (v3 Part 21): carved terrain has its own rhythm."""
+
+
+def terrain_scope(layout: SpecLayout) -> Tuple[Callable[[Move], bool], Optional[Callable[[Rect], bool]]]:
+    """Moves to fix and stone rectangles allowed: only in open-air (and parkour) sections."""
+    if not layout.has_terrain:
+        return (lambda m: True), None
+
+    def ok_cell(col: int, row: int) -> bool:
+        return layout.section_at(col, row).structure in COMFORT_STRUCTURES
+
+    def in_scope(m: Move) -> bool:
+        return ok_cell((m.src[1] + m.src[2]) // 2, m.src[0])
+
+    def allowed(rect: Rect) -> bool:
+        return ok_cell(rect[1], rect[0]) and ok_cell(rect[2], rect[0])
+
+    return in_scope, allowed
+
+
 def _summary(added: int, warnings: List[str]) -> List[str]:
     notes = [f"comfort: added {added} platform(s) for short hops"] if added else []
     return notes + warnings
@@ -348,8 +374,10 @@ def make_comfortable(
         layout.rasterise()
         place_spec_entities(spec, layout)
 
+    in_scope, allowed = terrain_scope(layout)
     p = _Pass(layout, profile, (report.graph, report.start_span, set(report.exit_spans)),
-              commit, restore, lambda c, r: layout.section_at(c, r).style)
+              commit, restore, lambda c, r: style_of(layout.section_at(c, r)),
+              in_scope=in_scope, allowed=allowed)
     result.warnings = p.run()
     result.added = list(p.added)
     result.report = holder[0]

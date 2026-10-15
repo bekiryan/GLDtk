@@ -16,7 +16,8 @@ from spec.catalog import (
 )
 from spec.level_spec import EntityKind, SpecEntity
 
-_BASE = {"id", "kind", "anchor", "section", "description", "sprite"}
+_BASE = {"id", "kind", "anchor", "section", "description", "sprite",
+         "place", "position"}  # placement inputs (v3 Part 21), not kind fields
 
 
 def test_catalog_covers_every_spec_kind():
