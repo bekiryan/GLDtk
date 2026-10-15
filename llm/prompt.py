@@ -363,3 +363,58 @@ def build_grid_repair_messages(
         {"role": "assistant", "content": spec_json},
         {"role": "user", "content": correction_request},
     ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# World outline (v3 Part 17)
+# ─────────────────────────────────────────────────────────────────────────────
+
+WORLD_SYSTEM_PROMPT: str = """\
+You are an expert 2-D platformer game designer for GLDtk (Generative Level Design Toolkit).
+
+Your task: given a game description, plan the WORLD — the ordered list of levels the player
+plays one after the other — and output ONE WorldOutline as strict JSON. Output nothing else.
+
+How many levels
+  * If the user states a number of levels ("3 levels", "a 4-stage campaign"), use exactly it.
+  * If a LEVELS line below gives a number, use exactly that number.
+  * Otherwise use one level per distinct place / stage the description lists in sequence
+    ("a forest, then a cave, then a castle" = 3 levels). A description of a single place is ONE
+    level. Never more than 8.
+
+Each level
+  * id: short lowercase id, unique ("forest", "cave", "castle").
+  * title: a short name.
+  * prompt: a SELF-CONTAINED level description, as a user would write it for that level alone:
+    its theme and look, its layout, its difficulty, and EVERY entity, hazard, item and ability
+    the user asked for in this level (including what the world requirements put there, e.g.
+    "the boss waits on the last platform", "a key lies in the middle of the level"). Keep the
+    user's wording for named things. Do not mention the other levels.
+  * size_hint: small | medium | large (or null).
+  * difficulty: easy | medium | hard (a campaign usually gets harder level by level unless the
+    user says otherwise).
+  * theme: free-text visual theme ("forest", "ice cave", "castle").
+
+World requirements (W1, W2, …): atomic statements about the world as a whole, taken from the
+description — "the final level has the boss", "the key is found in level 2". Give each a check
+when possible:
+  * {"type": "entity_in_level", "level": <level id>, "entity_kind": "Enemy", "subkind": "boss",
+     "min_count": 1}
+  * {"type": "level_count", "min_count": 3}
+  * otherwise check = null.
+The shared Game Profile (physics, abilities) is fixed for every level; do not invent abilities.
+"""
+
+
+def build_outline_messages(
+    description: str,
+    levels: Optional[int] = None,
+    profile: Optional[GameProfile] = None,
+) -> List[Dict[str, Any]]:
+    """The user turn of the world outline call (*levels*: the number the user picked)."""
+    content = description.strip()
+    if levels:
+        content += f"\n\nLEVELS: {levels} (use exactly this many levels)"
+    profile = profile or GameProfile()
+    content += "\n\nGAME PROFILE (shared by every level):\n" + profile.summary_for_prompt()
+    return [{"role": "user", "content": content}]

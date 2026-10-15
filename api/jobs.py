@@ -130,6 +130,7 @@ class JobRegistry:
 registry = JobRegistry()
 
 _current: contextvars.ContextVar[Optional[Job]] = contextvars.ContextVar("gldtk_job", default=None)
+_prefix: contextvars.ContextVar[str] = contextvars.ContextVar("gldtk_job_prefix", default="")
 
 
 def current() -> Optional[Job]:
@@ -168,12 +169,25 @@ def checkpoint() -> None:
 
 
 def report(stage: str, message: str) -> None:
-    """Record a progress line for the current job (a cancel checkpoint first)."""
+    """Record a progress line for the current job (a cancel checkpoint first).
+
+    Inside :func:`prefixed` the message starts with that prefix ("Level 2/3: ").
+    """
     j = _current.get()
     if j is None:
         return
     checkpoint()
-    registry.add_event(j, stage, message)
+    registry.add_event(j, stage, _prefix.get() + message)
+
+
+@contextlib.contextmanager
+def prefixed(prefix: str) -> Iterator[None]:
+    """Prefix every progress line reported in the block (one level of a world, v3 Part 17)."""
+    token = _prefix.set(prefix)
+    try:
+        yield
+    finally:
+        _prefix.reset(token)
 
 
 def sleep(seconds: float) -> None:
@@ -186,5 +200,5 @@ def sleep(seconds: float) -> None:
     checkpoint()
 
 
-__all__ = ["Cancelled", "Job", "JobRegistry", "checkpoint", "current", "job", "registry",
-           "report", "sleep"]
+__all__ = ["Cancelled", "Job", "JobRegistry", "checkpoint", "current", "job", "prefixed",
+           "registry", "report", "sleep"]

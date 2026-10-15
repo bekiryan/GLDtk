@@ -36,7 +36,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from game.profile import GameProfile, load_profile, profile_path_for
 from layout.ir import IREntity, IRLevel, TileValue
-from layout.ldtk_reader import ReadLevel, read_level
+from layout.ldtk_reader import ReadLevel, all_levels, read_level
 from spec.level_spec import LevelSpec
 from symbolic.extractor import extract_graph
 from symbolic.schema import AbstractLevelGraph, NodeType
@@ -314,8 +314,9 @@ def _mask_buried(grid: List[List[Any]], player_h: int) -> List[List[int]]:
     return out
 
 
-def load_context(path: Union[str, Path]) -> EditContext:
-    """Read an ``.ldtk`` for editing (first level).  Raises :class:`EditError`."""
+def load_context(path: Union[str, Path], level: Union[int, str, None] = None) -> EditContext:
+    """Read one level of an ``.ldtk`` for editing: *level* is an iid, an identifier or an
+    index (None: the first level).  Raises :class:`EditError`."""
     p = Path(path)
     if p.suffix.lower() != ".ldtk":
         raise EditError(f"{p} is not an .ldtk file.")
@@ -327,10 +328,12 @@ def load_context(path: Union[str, Path]) -> EditContext:
     except (UnicodeDecodeError, ValueError) as exc:
         raise EditError(f"{p.name} is not valid LDtk JSON: {exc}") from exc
     try:
-        level = read_level(doc)
+        read = read_level(doc, level)
     except (ValueError, KeyError, IndexError) as exc:
-        raise EditError(f"Cannot read {p.name}: {exc}") from exc
-    lvl = _level_json(doc)
+        msg = exc.args[0] if isinstance(exc, KeyError) and exc.args else exc
+        raise EditError(f"Cannot read {p.name}: {msg}") from exc
+    level = read
+    lvl = _level_json(doc, level.index)
     layers = lvl.get("layerInstances")
     if not layers:
         raise EditError(f"{p.name}: the level has no layer instances (external level files are "
@@ -364,15 +367,13 @@ def load_context(path: Union[str, Path]) -> EditContext:
     )
 
 
-def _level_json(doc: Dict[str, Any]) -> Dict[str, Any]:
-    levels = list(doc.get("levels") or [])
-    for w in doc.get("worlds") or []:
-        levels += list(w.get("levels") or [])
-    return levels[0]
+def _level_json(doc: Dict[str, Any], index: int = 0) -> Dict[str, Any]:
+    return all_levels(doc)[index]
 
 
 def level_json(ctx: EditContext) -> Dict[str, Any]:
-    return _level_json(ctx.doc)
+    """The edited level's dict in ``ctx.doc``."""
+    return _level_json(ctx.doc, ctx.level.index)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

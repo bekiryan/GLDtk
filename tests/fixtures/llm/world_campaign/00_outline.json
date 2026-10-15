@@ -1,0 +1,69 @@
+{
+ "title": "The Long Road",
+ "levels": [
+  {
+   "id": "forest",
+   "title": "Whispering Forest",
+   "prompt": "A short forest walk with a gold coin.",
+   "size_hint": "small",
+   "difficulty": "easy",
+   "theme": "forest"
+  },
+  {
+   "id": "cave",
+   "title": "Dark Cave",
+   "prompt": "A dark cave where a key lies on a ledge.",
+   "size_hint": "small",
+   "difficulty": "medium",
+   "theme": "cave"
+  },
+  {
+   "id": "castle",
+   "title": "Castle Keep",
+   "prompt": "A castle keep with the final boss.",
+   "size_hint": null,
+   "difficulty": "hard",
+   "theme": "castle"
+  }
+ ],
+ "requirements": [
+  {
+   "id": "W1",
+   "text": "The world has three levels.",
+   "check": {
+    "type": "level_count",
+    "level": null,
+    "entity_kind": null,
+    "subkind": null,
+    "min_count": 3
+   }
+  },
+  {
+   "id": "W2",
+   "text": "The final level has the boss.",
+   "check": {
+    "type": "entity_in_level",
+    "level": "castle",
+    "entity_kind": "Enemy",
+    "subkind": "boss",
+    "min_count": 1
+   }
+  },
+  {
+   "id": "W3",
+   "text": "The key is found in level 2.",
+   "check": {
+    "type": "entity_in_level",
+    "level": "2",
+    "entity_kind": "Key",
+    "subkind": null,
+    "min_count": 1
+   }
+  },
+  {
+   "id": "W4",
+   "text": "It feels like an adventure.",
+   "check": null
+  }
+ ]
+}

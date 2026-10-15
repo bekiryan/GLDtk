@@ -201,6 +201,7 @@ class LevelMeta:
     requirements: List[Any] = field(default_factory=list)
     game_profile_relpath: Optional[str] = None
     spec_json: Optional[Any] = None
+    world_json: Optional[Any] = None  # gldtk_world: the world outline (first level of a world)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -432,7 +433,7 @@ def _make_field_def(
         "regex": None,
         "acceptFileTypes": None,
         "defaultOverride": default_override,
-        "textLanguageMode": "LangJson" if fs.name in ("gldtk_meta", "gldtk_sections", "gldtk_spec") else None,
+        "textLanguageMode": "LangJson" if fs.name in ("gldtk_meta", "gldtk_sections", "gldtk_spec", "gldtk_world") else None,
         "symmetricalRef": False,
         "autoChainRef": True,
         "allowOutOfLevelRef": True,
@@ -954,6 +955,7 @@ def _level_field_values(ir: IRLevel, meta: Optional[LevelMeta]) -> Dict[str, Any
         "gldtk_game_profile": meta.game_profile_relpath if meta else None,
         "gldtk_version": GLDTK_VERSION,
         "gldtk_spec": _spec_text(meta.spec_json) if meta else None,
+        "gldtk_world": _spec_text(meta.world_json) if meta else None,
     }
 
 

@@ -43,6 +43,7 @@ from layout.ldtk_adapter import (
     grid_tile_json,
     to_ldtk_dict_with_warnings,
 )
+from layout.world import LINEAR_LAYOUTS, is_world, link_world
 from spec.level_spec import LevelSpec
 from symbolic.schema import AbstractLevelGraph
 
@@ -141,6 +142,9 @@ def _cfg(ctx: EditContext) -> LDtkConfig:
 
 
 def _rebuild(ctx: EditContext, grid, entities, spec, requirements) -> Stitched:
+    if is_world(ctx.doc):
+        raise EditError(f"{ctx.path.name} has several levels and '{ctx.level.identifier}' has no "
+                        "GLDtk v2 data, so it cannot be edited (regenerate the level instead).")
     ir = ctx.to_ir(grid, [IREntity(e.entity_type, e.col, e.row, dict(e.metadata)) for e in entities])
     sections = []
     for b in ctx.bands:
@@ -287,7 +291,7 @@ def splice(
         return _rebuild(ctx, grid, entities, spec, requirements)
 
     doc = copy.deepcopy(ctx.doc)
-    lvl = _level_json(doc)
+    lvl = _level_json(doc, ctx.level.index)
     warnings: List[str] = []
     layers = _entity_layers(lvl)
     if not layers:
@@ -326,6 +330,13 @@ def splice(
         if ei is None or int(ei.get("defUid", -1)) not in known_defs:
             # The file lacks the GLDtk catalog def for this kind: re-export it whole.
             return _rebuild(ctx, grid, entities, spec, requirements)
+    # A file from before a catalog field existed (the Exit's world ``leads_to`` / ``final``,
+    # v3 Part 17) has no def for it: its new and modified instances get no such field.
+    known_fields = {int(f["uid"]) for d in doc["defs"].get("entities") or []
+                    for f in d.get("fieldDefs") or []}
+    for ei in fresh_by_iid.values():
+        ei["fieldInstances"] = [fi for fi in ei.get("fieldInstances") or []
+                                if int(fi.get("defUid", -1)) in known_fields]
 
     # ── entity instances ──
     main = next((li for li in layers if li.get("__identifier") == "Entities"), layers[0])
@@ -420,6 +431,15 @@ def splice(
         if int(d["uid"]) not in have_defs:
             doc["defs"].setdefault("levelFields", []).append(d)
     doc["nextUid"] = max(int(doc.get("nextUid") or 0), int(fresh.get("nextUid") or 0))
+
+    # ── a world (v3 Part 17): linear coordinates and the cross-level links ──
+    if is_world(doc):
+        if doc.get("worldLayout") in LINEAR_LAYOUTS:
+            for li in _entity_layers(lvl):
+                for ei in li.get("entityInstances") or []:
+                    if ei.get("iid") in modified | added:
+                        ei["__worldX"] = ei["__worldY"] = None
+        link_world(doc)  # rewrites only wrong links: untouched levels stay byte-identical
     return Stitched(doc, warnings)
 
 

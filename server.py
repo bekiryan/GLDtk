@@ -4,7 +4,10 @@ Run:
     python server.py
 
 The GLDtk panel inside LDtk sends requests to this server.
-POST /generate  — run the pipeline and write a .ldtk file.
+POST /generate  — run the pipeline and write a .ldtk file (one level, a multi-level world
+                  after an outline call, or — with ``level`` — one level of an existing world).
+                  Every edit / route / difficulty / undo request takes an optional ``level``
+                  (iid or identifier; default the first level), v3 Part 17.
 GET  /providers — LLM provider names and their default models.
 GET  /profile   — read the project's Game Profile (defaults if missing).
 PUT  /profile   — validate and write the project's Game Profile.
@@ -50,6 +53,7 @@ from api.models import (
     HistoryEntry,
     HistoryResponse,
     LevelStats,
+    LevelSummary,
     LocateRequest,
     LocateResponse,
     PathRequest,
@@ -60,15 +64,19 @@ from api.models import (
     RouteRequest,
     SectionEditRequest,
     UndoResponse,
+    WorldFidelityModel,
 )
 from edit import history as edit_history
 from edit.context import Rect
+from edit.llm import EditLLMFailed
 from edit.entities import edit_entities
 from edit.locate import locate as locate_text
 from edit.outcome import EditOutcome
 from edit.region import edit_region, edit_section
 from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
+from layout.ldtk_reader import all_levels, level_index, read_level
 from layout.route import file_route, unsaved_route
+from layout.world import graft_level, is_world, level_identifier, link_world, new_world_doc, world_levels
 from fidelity.difficulty import apply_to_fidelity, difficulty_of_file
 from game.profile import (
     PROFILE_FILENAME,
@@ -80,6 +88,8 @@ from game.profile import (
 from llm import LLMController, MaxRetriesExceeded
 from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider_with_fallback
 from pipeline import LevelBuildFailed, build_level
+from pipeline.world import WorldLevelInfo, check_world, outline_world, wants_outline
+from spec.world import SIZE_HINT_WIDTH
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -314,10 +324,34 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     if req.height_tiles:
         constraints["height_tiles"] = req.height_tiles
 
-    # ── LLM spec → layout → grid verification → repair ──────────────────
+    # ── one level of an existing world (v3 Part 17) ───────────────────────
+    if req.level:
+        return _regenerate_level(req, profile, profile_path, constraints, density)
+
+    # ── a world: the outline call first (v3 Part 17, see pipeline/world.py) ──
     provider = None
+    if wants_outline(req.description, req.levels):
+        try:
+            provider = provider_factory(req)
+            jobs.report("outline", "Planning the levels")
+            outline = outline_world(req.description, provider, profile, req.levels,
+                                    max_retries=req.max_retries)
+        except EditLLMFailed as exc:
+            return GenerateResponse(success=False, error=f"World outline: {exc}",
+                                    profile_path=str(profile_path),
+                                    warnings=provider_notes(provider))
+        except Exception as exc:
+            return GenerateResponse(success=False, error=f"LLM error: {exc}",
+                                    profile_path=str(profile_path),
+                                    warnings=provider_notes(provider))
+        if len(outline.levels) > 1:
+            return _generate_world(req, outline, provider, profile, profile_path, constraints,
+                                   density)
+        # an outline of one level: the single-level pipeline on the original prompt
+
+    # ── LLM spec → layout → grid verification → repair ──────────────────
     try:
-        provider = provider_factory(req)
+        provider = provider or provider_factory(req)
         controller = LLMController(
             profile=profile,
             provider=provider,
@@ -353,29 +387,11 @@ def generate(req: GenerateRequest) -> GenerateResponse:
 
     spec = built.spec
     ir = built.spec_layout.ir
-    requirements = [r.text for r in spec.requirements]
-    ordered_sections = sorted(spec.sections, key=lambda s: s.order)
-    sections = [s.name for s in ordered_sections]
 
     # ── aesthetic (spec entities only — no random coins / enemies) ───────
     jobs.report("aesthetic", "Tiling and decorating the level")
     try:
-        for band in ir.metadata.get("sections", []):
-            band["mapped_theme"] = section_theme(
-                str(band["theme"]), req.description, req.theme
-            ).identifier
-        theme = section_theme(ordered_sections[0].theme, req.description, req.theme)
-        result = build_aesthetic_layer(
-            description=req.description,
-            graph=spec.to_graph(),
-            node_layouts=built.spec_layout.node_layouts,
-            ir_level=ir,
-            theme_override=theme.identifier,
-            density=density,
-            seed=req.seed,
-            custom_enemy_types=req.enemy_types or None,
-            place_random_entities=False,
-        )
+        result = _dress(built, req.description, req, density, req.seed)
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Aesthetic error: {exc}")
 
@@ -387,26 +403,89 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         # The .ldtk references the theme sheets and the sprite atlas relative to itself.
         copy_aesthetic_assets(result, out.parent)
         edit_history.snapshot(out, edit_history.make_label("generate", req.description))
-        level_meta = LevelMeta(
-            prompt=req.description,
-            requirements=list(spec.requirements),
-            game_profile_relpath=os.path.relpath(Path(profile_path).resolve(), out.parent.resolve()),
-            spec_json=spec,
-        )
-        tw, th = profile.player_tiles()
-        ldtk_cfg = LDtkConfig(player_px=(tw * profile.tile_size, th * profile.tile_size))
         doc, export_warnings = to_ldtk_dict_with_warnings(
-            ir, aesthetic=result.aesthetic, cfg=ldtk_cfg, level_meta=level_meta
+            ir, aesthetic=result.aesthetic, cfg=_ldtk_cfg(profile),
+            level_meta=_level_meta(req.description, spec, profile_path, out),
         )
         out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Serialisation error: {exc}")
 
-    # ── stats ─────────────────────────────────────────────────────────────
-    entity_counts: Dict[str, int] = collections.Counter(
-        e.entity_type for e in ir.entities
+    # before the fidelity report is serialised: a section that misses its stated difficulty
+    # turns its fidelity item into `approximated`
+    difficulty = difficulty_of(out, built.fidelity, req.description)
+    summary = LevelSummary(
+        index=0, identifier=str(doc["levels"][0]["identifier"]), iid=doc["levels"][0]["iid"],
+        title=spec.title, score=built.fidelity.score if built.fidelity else None,
+        verified=built.report.ok, current=True,
     )
-    stats = LevelStats(
+    return GenerateResponse(
+        success=True,
+        preview_ascii=ir.ascii_render({"Start": "S", "Exit": "X"}),
+        stats=_level_stats(built, result),
+        output_path=str(out.resolve()),
+        requirements=[r.text for r in spec.requirements],
+        sections=[s.name for s in sorted(spec.sections, key=lambda s: s.order)],
+        profile_path=str(profile_path.resolve()),
+        verified=built.report.ok,
+        warnings=provider_notes(provider) + built.warnings + export_warnings,
+        fidelity=built.fidelity.to_dict() if built.fidelity else None,
+        route=route_of(out),
+        difficulty=difficulty,
+        levels=[summary],
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Generate helpers (shared by one level, a world and a regenerated level)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _dress(built: Any, description: str, req: GenerateRequest, density: float, seed: int) -> Any:
+    """The aesthetic layer of a built level (spec entities only — no random coins / enemies)."""
+    spec = built.spec
+    ir = built.spec_layout.ir
+    ordered_sections = sorted(spec.sections, key=lambda s: s.order)
+    for band in ir.metadata.get("sections", []):
+        band["mapped_theme"] = section_theme(
+            str(band["theme"]), description, req.theme
+        ).identifier
+    theme = section_theme(ordered_sections[0].theme, description, req.theme)
+    return build_aesthetic_layer(
+        description=description,
+        graph=spec.to_graph(),
+        node_layouts=built.spec_layout.node_layouts,
+        ir_level=ir,
+        theme_override=theme.identifier,
+        density=density,
+        seed=seed,
+        custom_enemy_types=req.enemy_types or None,
+        place_random_entities=False,
+    )
+
+
+def _level_meta(description: str, spec: Any, profile_path: Path, out: Path,
+                world_json: Any = None) -> LevelMeta:
+    return LevelMeta(
+        prompt=description,
+        requirements=list(spec.requirements),
+        game_profile_relpath=os.path.relpath(Path(profile_path).resolve(), out.parent.resolve()),
+        spec_json=spec,
+        world_json=world_json,
+    )
+
+
+def _ldtk_cfg(profile: GameProfile) -> LDtkConfig:
+    tw, th = profile.player_tiles()
+    return LDtkConfig(player_px=(tw * profile.tile_size, th * profile.tile_size))
+
+
+def _level_stats(built: Any, result: Any) -> LevelStats:
+    spec = built.spec
+    entity_counts: Dict[str, int] = collections.Counter(
+        e.entity_type for e in built.spec_layout.ir.entities
+    )
+    return LevelStats(
         theme=result.theme.display_name,
         nodes=len(spec.nodes),
         edges=len(spec.edges),
@@ -417,25 +496,220 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         entities_filled=built.stats.get("entities_filled", 0),
         densify_added=built.stats.get("densify_added", 0),
     )
-    preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 
-    # before the fidelity report is serialised: a section that misses its stated difficulty
-    # turns its fidelity item into `approximated`
-    difficulty = difficulty_of(out, built.fidelity, req.description)
+
+def _outline_constraints(constraints: Dict[str, Any], entry: Any, req: GenerateRequest
+                         ) -> Dict[str, Any]:
+    """The request constraints plus an outline level's difficulty / theme / size hint
+    (the request's own values win)."""
+    cons = dict(constraints)
+    if entry is None:
+        return cons
+    get = entry.get if isinstance(entry, dict) else lambda k: getattr(entry, k, None)
+    if get("difficulty"):
+        cons.setdefault("difficulty", get("difficulty"))
+    if get("theme"):
+        cons.setdefault("theme", get("theme"))
+    if get("size_hint") in SIZE_HINT_WIDTH and not req.width_tiles:
+        cons["width_tiles"] = SIZE_HINT_WIDTH[get("size_hint")]
+    return cons
+
+
+def _build_one(description: str, theme_text: str, cons: Dict[str, Any], provider: Any,
+               profile: GameProfile, req: GenerateRequest, density: float, seed: int):
+    """Build and dress one level of a world; returns ``(built, result)``.  Raises."""
+    controller = LLMController(profile=profile, provider=provider, max_retries=req.max_retries)
+    built = build_level(
+        description, controller, profile, constraints=cons or None, seed=seed,
+        size_override=(req.width_tiles, req.height_tiles), densify=req.densify,
+    )
+    jobs.report("aesthetic", "Tiling and decorating the level")
+    result = _dress(built, f"{theme_text} {description}".strip(), req, density, seed)
+    return built, result
+
+
+def _level_error(where: str, exc: BaseException, profile_path: Path, provider: Any
+                 ) -> GenerateResponse:
+    if isinstance(exc, (MaxRetriesExceeded, LevelBuildFailed)):
+        error = f"{where}: {exc}"
+    else:
+        error = f"{where}: LLM error: {exc}"
+    return GenerateResponse(success=False, error=error, profile_path=str(profile_path),
+                            verified=False, warnings=provider_notes(provider))
+
+
+def _generate_world(req: GenerateRequest, outline: Any, provider: Any, profile: GameProfile,
+                    profile_path: Path, constraints: Dict[str, Any], density: float
+                    ) -> GenerateResponse:
+    """N levels from the outline, sequentially, then one ``.ldtk`` (v3 Part 17)."""
+    n = len(outline.levels)
+    made = []
+    for k, entry in enumerate(outline.levels):
+        with jobs.prefixed(f"Level {k + 1}/{n}: "):
+            jobs.report("level", entry.title)
+            try:
+                built, result = _build_one(entry.prompt, entry.theme,
+                                           _outline_constraints(constraints, entry, req),
+                                           provider, profile, req, density, req.seed + k)
+            except Exception as exc:
+                return _level_error(f"Level {k + 1}/{n} ({entry.title})", exc, profile_path,
+                                    provider)
+        made.append((entry, built, result))
+
+    jobs.report("export", "Writing the world file")
+    identifiers: List[str] = []
+    for k, (entry, built, _) in enumerate(made):
+        identifiers.append(level_identifier(entry.title, k, identifiers))
+        built.spec_layout.ir.identifier = identifiers[-1]
+    world_json = {"version": 1, "prompt": req.description,
+                  "outline": outline.model_dump(mode="json"), "identifiers": identifiers}
+    warnings: List[str] = provider_notes(provider)
+    try:
+        out = Path(req.output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        for _, _, result in made:
+            copy_aesthetic_assets(result, out.parent)
+        edit_history.snapshot(out, edit_history.make_label("generate", req.description))
+        doc = None
+        for k, (entry, built, result) in enumerate(made):
+            fresh, export_warnings = to_ldtk_dict_with_warnings(
+                built.spec_layout.ir, aesthetic=result.aesthetic, cfg=_ldtk_cfg(profile),
+                level_meta=_level_meta(entry.prompt, built.spec, profile_path, out,
+                                       world_json if k == 0 else None),
+            )
+            if doc is None:
+                doc = new_world_doc(fresh)
+            graft_level(doc, fresh)
+            warnings += [f"{identifiers[k]}: {w}" for w in built.warnings + export_warnings]
+        link_world(doc)
+        out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return GenerateResponse(success=False, error=f"Serialisation error: {exc}")
+
+    infos: List[WorldLevelInfo] = []
+    summaries: List[LevelSummary] = []
+    difficulty = None
+    for k, (entry, built, _) in enumerate(made):
+        iid = doc["levels"][k]["iid"]
+        diff = difficulty_of(out, built.fidelity, entry.prompt, level=iid)  # before scoring
+        if k == 0:
+            difficulty = diff
+        infos.append(WorldLevelInfo(entry.id, identifiers[k], iid, entry.title,
+                                    built.spec_layout.ir, built.fidelity, built.report.ok))
+        summaries.append(LevelSummary(
+            index=k, id=entry.id, identifier=identifiers[k], iid=iid, title=entry.title,
+            score=built.fidelity.score if built.fidelity else None, verified=built.report.ok,
+            current=k == 0,
+        ))
+    world = check_world(outline, infos)
+    first, built0, result0 = made[0]
+    spec0 = built0.spec
     return GenerateResponse(
         success=True,
-        preview_ascii=preview,
-        stats=stats,
+        preview_ascii=built0.spec_layout.ir.ascii_render({"Start": "S", "Exit": "X"}),
+        stats=_level_stats(built0, result0),
         output_path=str(out.resolve()),
-        requirements=requirements,
-        sections=sections,
+        requirements=[r.text for r in spec0.requirements],
+        sections=[s.name for s in sorted(spec0.sections, key=lambda s: s.order)],
+        profile_path=str(profile_path.resolve()),
+        verified=world.verified,
+        warnings=warnings,
+        fidelity=built0.fidelity.to_dict() if built0.fidelity else None,
+        route=route_of(out, level=summaries[0].iid),
+        difficulty=difficulty,
+        levels=summaries,
+        world=WorldFidelityModel.model_validate(
+            {**world.to_dict(), "title": outline.title, "levels": [s.model_dump() for s in summaries]}
+        ),
+    )
+
+
+def _regenerate_level(req: GenerateRequest, profile: GameProfile, profile_path: Path,
+                      constraints: Dict[str, Any], density: float) -> GenerateResponse:
+    """Rebuild level ``req.level`` of the file at ``output_path``; the other levels and
+    the links stay (v3 Part 17).  An empty description reuses the level's prompt."""
+    out = Path(req.output_path)
+    try:
+        doc = json.loads(out.read_text(encoding="utf-8"))
+        idx = level_index(doc, req.level)
+        old = read_level(doc, idx)
+        world_json = read_level(doc, 0).world
+    except (OSError, ValueError, KeyError, IndexError) as exc:
+        msg = exc.args[0] if isinstance(exc, KeyError) and exc.args else exc
+        return GenerateResponse(success=False, error=f"Cannot regenerate level {req.level!r}: {msg}",
+                                profile_path=str(profile_path))
+    n = len(all_levels(doc))
+    entries = ((world_json or {}).get("outline") or {}).get("levels") or []
+    entry = entries[idx] if idx < len(entries) and isinstance(entries[idx], dict) else None
+    description = req.description.strip() or (old.prompt or "")
+    provider = None
+    with jobs.prefixed(f"Level {idx + 1}/{n}: "):
+        try:
+            provider = provider_factory(req)
+            built, result = _build_one(description, (entry or {}).get("theme") or "",
+                                       _outline_constraints(constraints, entry, req),
+                                       provider, profile, req, density, req.seed)
+        except Exception as exc:
+            return _level_error(f"Level {old.identifier}", exc, profile_path, provider)
+
+    jobs.report("export", f"Writing {old.identifier} into the world file")
+    ir = built.spec_layout.ir
+    ir.identifier = old.identifier
+    try:
+        copy_aesthetic_assets(result, out.parent)
+        edit_history.snapshot(out, edit_history.make_label(f"regenerate {old.identifier}",
+                                                           description))
+        fresh, export_warnings = to_ldtk_dict_with_warnings(
+            ir, aesthetic=result.aesthetic, cfg=_ldtk_cfg(profile),
+            level_meta=_level_meta(description, built.spec, profile_path, out,
+                                   world_json if idx == 0 else None),
+        )
+        graft_level(doc, fresh, idx)
+        if is_world(doc):
+            link_world(doc)
+        out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    except Exception as exc:
+        return GenerateResponse(success=False, error=f"Serialisation error: {exc}")
+
+    iid = doc["levels"][idx]["iid"] if idx < len(doc.get("levels") or []) else old.level_iid
+    difficulty = difficulty_of(out, built.fidelity, description, level=iid)
+    spec = built.spec
+    return GenerateResponse(
+        success=True,
+        preview_ascii=ir.ascii_render({"Start": "S", "Exit": "X"}),
+        stats=_level_stats(built, result),
+        output_path=str(out.resolve()),
+        requirements=[r.text for r in spec.requirements],
+        sections=[s.name for s in sorted(spec.sections, key=lambda s: s.order)],
         profile_path=str(profile_path.resolve()),
         verified=built.report.ok,
         warnings=provider_notes(provider) + built.warnings + export_warnings,
         fidelity=built.fidelity.to_dict() if built.fidelity else None,
-        route=route_of(out),
+        route=route_of(out, level=iid),
         difficulty=difficulty,
+        levels=levels_summary(out, iid, built.fidelity, built.report.ok),
     )
+
+
+def levels_summary(path: str | Path, level: str | None = None, fidelity: Any = None,
+                   verified: bool | None = None) -> List[LevelSummary]:
+    """Every level of the file; *level* (iid / identifier, None = the first) is
+    ``current`` and gets the *fidelity* score and *verified* flag.  Never raises."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        idx = level_index(doc, level)
+        rows = world_levels(doc)
+    except Exception:
+        return []
+    out = []
+    for row in rows:
+        cur = row["index"] == idx
+        out.append(LevelSummary(
+            **row, current=cur,
+            score=(fidelity.score if fidelity is not None else None) if cur else None,
+            verified=verified if cur else None,
+        ))
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -451,8 +725,9 @@ def _rect_model(r: Rect | None) -> RectModel | None:
     return RectModel(**r.as_dict()) if r is not None else None
 
 
-def edit_response(out: EditOutcome, path: str) -> EditResponse:
-    """An edit outcome in the GenerateResponse shape, plus ``edit``."""
+def edit_response(out: EditOutcome, path: str, level: str | None = None) -> EditResponse:
+    """An edit outcome in the GenerateResponse shape, plus ``edit``; *level* is the edited
+    level of a world (None = the first)."""
     info = EditInfo(mode=out.mode, region=_rect_model(out.rect), snapshot=out.snapshot)
     if not out.success:
         return EditResponse(success=False, error=out.error, warnings=out.warnings, edit=info,
@@ -480,8 +755,9 @@ def edit_response(out: EditOutcome, path: str) -> EditResponse:
         warnings=out.warnings,
         fidelity=out.fidelity.to_dict() if out.fidelity else None,
         edit=info,
-        route=route_of(path),
-        difficulty=difficulty_of(path),
+        route=route_of(path, level=level),
+        difficulty=difficulty_of(path, level=level),
+        levels=levels_summary(path, level, out.fidelity, out.verified),
     )
 
 
@@ -499,9 +775,9 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
     out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries,
-                      densify=req.densify, seed=req.seed)
+                      densify=req.densify, seed=req.seed, level=req.level)
     out.warnings[:0] = provider_notes(provider)
-    return edit_response(out, req.path)
+    return edit_response(out, req.path, req.level)
 
 
 @app.post("/edit/section", response_model=EditResponse)
@@ -511,9 +787,9 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
-                       densify=req.densify, seed=req.seed)
+                       densify=req.densify, seed=req.seed, level=req.level)
     out.warnings[:0] = provider_notes(provider)
-    return edit_response(out, req.path)
+    return edit_response(out, req.path, req.level)
 
 
 @app.post("/edit/entities", response_model=EditResponse)
@@ -527,9 +803,10 @@ def edit_entities_route(req: EntityEditRequest) -> EditResponse:
         rect=_rect(req.rect) if req.rect else None,
         entity_iids=req.entity_iids or None,
         max_retries=req.max_retries,
+        level=req.level,
     )
     out.warnings[:0] = provider_notes(provider)
-    return edit_response(out, req.path)
+    return edit_response(out, req.path, req.level)
 
 
 @app.post("/edit/locate", response_model=LocateResponse)
@@ -539,7 +816,7 @@ def edit_locate_route(req: LocateRequest) -> LocateResponse:
     provider, err = _provider_or_error(req)
     if err:
         return LocateResponse(success=False, error=err)
-    out = locate_text(req.path, req.text, provider, max_retries=req.max_retries)
+    out = locate_text(req.path, req.text, provider, max_retries=req.max_retries, level=req.level)
     return LocateResponse(success=out.success, rect=_rect_model(out.rect),
                           explanation=out.explanation, error=out.error)
 
@@ -550,8 +827,9 @@ def undo_route(req: PathRequest) -> UndoResponse:
     out = UndoResponse(success=res.success, restored_from=res.restored_from,
                        remaining=res.remaining, error=res.error)
     if res.success:  # a failed undo keeps its v2 shape (no ``route`` key)
-        out.route = route_of(req.path)
-        out.difficulty = difficulty_of(req.path)
+        out.route = route_of(req.path, level=req.level)
+        out.difficulty = difficulty_of(req.path, level=req.level)
+        out.levels = levels_summary(req.path, req.level)
     return out
 
 
@@ -560,19 +838,23 @@ def undo_route(req: PathRequest) -> UndoResponse:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def route_of(path: str | Path, project: Dict[str, Any] | None = None) -> RouteModel:
+def route_of(path: str | Path, project: Dict[str, Any] | None = None,
+             level: str | None = None) -> RouteModel:
     """The golden route of the file at *path*, read like an edit reads it (no LLM call).
 
     With *project* (the LDtk JSON open in the editor) that JSON is used instead of the file.
+    *level* (iid / identifier, None = the first) picks the level of a world.
     """
     try:
-        route = file_route(path) if project is None else unsaved_route(path, project)
+        route = (file_route(path, level) if project is None
+                 else unsaved_route(path, project, level))
     except Exception as exc:  # never fail a generate / edit because of the overlay
         return RouteModel(success=False, error=f"Route error: {exc}")
     return RouteModel.model_validate(route.as_dict())
 
 
-def difficulty_of(path: str | Path, fidelity: Any = None, prompt: str | None = None) -> DifficultyModel:
+def difficulty_of(path: str | Path, fidelity: Any = None, prompt: str | None = None,
+                  level: str | None = None) -> DifficultyModel:
     """Per-section difficulty of the file at *path* (no LLM call; v3 Part 15a).
 
     With *fidelity* (the generate response's report, not yet serialised) the
@@ -580,7 +862,7 @@ def difficulty_of(path: str | Path, fidelity: Any = None, prompt: str | None = N
     ``approximated`` there.  Never raises: a failure is ``success: false``.
     """
     try:
-        report = difficulty_of_file(path)
+        report = difficulty_of_file(path, level)
         if fidelity is not None:
             apply_to_fidelity(report, fidelity, prompt)
     except Exception as exc:  # never fail a generate / edit because of the metrics
@@ -588,23 +870,31 @@ def difficulty_of(path: str | Path, fidelity: Any = None, prompt: str | None = N
     return DifficultyModel.model_validate(report.to_dict())
 
 
+_LEVEL_QUERY = "Level of a world: iid or identifier; None = the first level (v3 Part 17)"
+
+
 @app.get("/difficulty", response_model=DifficultyModel)
-def difficulty_route(path: str = Query(..., description=".ldtk path")) -> DifficultyModel:
-    return difficulty_of(path)
+def difficulty_route(path: str = Query(..., description=".ldtk path"),
+                     level: str | None = Query(None, description=_LEVEL_QUERY)) -> DifficultyModel:
+    return difficulty_of(path, level=level)
 
 
 @app.get("/route", response_model=RouteModel)
-def route_route(path: str = Query(..., description=".ldtk path")) -> RouteModel:
-    return route_of(path)
+def route_route(path: str = Query(..., description=".ldtk path"),
+                level: str | None = Query(None, description=_LEVEL_QUERY)) -> RouteModel:
+    return route_of(path, level=level)
 
 
 @app.post("/route", response_model=RouteModel)
 def route_unsaved_route(req: RouteRequest) -> RouteModel:
-    return route_of(req.path, req.project)
+    return route_of(req.path, req.project, level=req.level)
 
 
 @app.get("/history", response_model=HistoryResponse)
-def history_route(path: str = Query(..., description=".ldtk path")) -> HistoryResponse:
+def history_route(path: str = Query(..., description=".ldtk path"),
+                  level: str | None = Query(None, description="Accepted for symmetry; snapshots "
+                                                              "are per file (every level)")
+                  ) -> HistoryResponse:
     snaps = edit_history.list_snapshots(path)
     return HistoryResponse(snapshots=[HistoryEntry(**s.as_dict()) for s in reversed(snaps)])
 

@@ -1,0 +1,107 @@
+{
+ "title": "Castle Keep",
+ "size": {
+  "width_tiles": 40,
+  "height_tiles": 15
+ },
+ "sections": [
+  {
+   "id": "keep",
+   "name": "Keep",
+   "theme": "castle",
+   "difficulty": "hard",
+   "gravity_scale": 1.0,
+   "description": "Keep",
+   "order": 0
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "type": "Start",
+   "x": 0,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "keep"
+  },
+  {
+   "id": "mid",
+   "type": "Platform",
+   "x": 64,
+   "y": 32,
+   "w": 96,
+   "h": 16,
+   "section": "keep"
+  },
+  {
+   "id": "exit",
+   "type": "Exit",
+   "x": 176,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "keep"
+  }
+ ],
+ "edges": [
+  {
+   "from": "start",
+   "to": "mid",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0
+  },
+  {
+   "from": "mid",
+   "to": "exit",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0
+  }
+ ],
+ "entities": [
+  {
+   "id": "player",
+   "kind": "Start",
+   "anchor": "start",
+   "section": "keep",
+   "description": "player",
+   "sprite": "",
+   "facing": "right"
+  },
+  {
+   "id": "boss",
+   "kind": "Enemy",
+   "anchor": "mid",
+   "section": "keep",
+   "description": "the final boss",
+   "sprite": "",
+   "archetype": "boss",
+   "health": 20,
+   "damage": 3
+  },
+  {
+   "id": "door",
+   "kind": "Exit",
+   "anchor": "exit",
+   "section": "keep",
+   "description": "exit",
+   "sprite": "",
+   "requires_key": false
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "text": "The final boss is here.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Enemy",
+    "subkind": "boss",
+    "min_count": 1
+   }
+  }
+ ]
+}
