@@ -33,8 +33,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 17 | Multi-level worlds | strong | ✅ backend + sidebar (Levels select, level list with scores, all calls target the current level, regenerate one level; LDtk WorldRender null-guard for the in-place swap) | see git log (both repos) |
 | 20 | Short hops + walk-first paths (user feedback) | strong | ✅ effort-based route cost, comfort pass (hop 4, rise 3, drop 6 tiles; profile `design`), Section.style; replayed three-sections moves 10–15 → 3–4 tiles; tall zigzag towers keep 5-row climbs (warning) | see git log |
 | 21 | Terrain from section types: corridor, parkour, labyrinth, arena, shaft, hub (user feedback; user chose section types) | strong | ⬜ after 17a + 20 | |
-| 18 | Packaged Mac app | medium | ⬜ last | |
-| | **v4** ([plan](../v4/PLAN.md), requested 2026-10-15): 22 soft-lock detection, 23 mission/space graphs, 24 complexity target, 25 noise terrain fill + endless chunks, 26 pattern library (RAG), 27 design memory | | ⬜ after v3 wrap-up | |
+| 18 | Packaged Mac app | medium | ⏳ running (main checkout + ldtk-src) | |
+| | **v4** ([plan](../v4/PLAN.md), requested 2026-10-15): 22 soft-lock detection, 23 mission/space graphs, 24 complexity target, 25 noise terrain fill + endless chunks, 26 pattern library (RAG), 27 design memory | | ⏳ 22 (soft-locks) and 27a (design memory backend) running in worktrees; others after Part 21 | |
 | 19 | Armenian README | — | ⬜ last (orchestrator) | |
 
 ## Notes
