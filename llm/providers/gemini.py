@@ -176,4 +176,5 @@ class GeminiProvider:
 
 
 _TRANSIENT_STATUSES = {500, 502, 503, 504}
-_FALLBACK_STATUSES = _TRANSIENT_STATUSES | {429}
+# 404: the model was retired (gemini-2.5-flash is gone for new users).
+_FALLBACK_STATUSES = _TRANSIENT_STATUSES | {404, 429}

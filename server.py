@@ -64,7 +64,7 @@ from game.profile import (
     save_profile,
 )
 from llm import LLMController, MaxRetriesExceeded
-from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider
+from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider_with_fallback
 from pipeline import LevelBuildFailed, build_level
 
 
@@ -105,8 +105,16 @@ load_env_file(Path(__file__).resolve().parent / ".env")
 
 
 def default_provider_factory(req: Any) -> LLMProvider:
-    """*req* is any request with ``provider`` and ``model`` (generate or edit)."""
-    return make_provider(req.provider, model=req.model)
+    """*req* is any request with ``provider`` and ``model`` (generate or edit).
+
+    Gemini with its default model falls back to a local model (``GLDTK_LOCAL_FALLBACK``).
+    """
+    return make_provider_with_fallback(req.provider, model=req.model)
+
+
+def provider_notes(provider: Any) -> List[str]:
+    """Fallback switches made while answering (e.g. Gemini 429 → local model)."""
+    return list(getattr(provider, "notes", None) or [])
 
 
 provider_factory: Callable[[Any], LLMProvider] = default_provider_factory
@@ -251,10 +259,12 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         constraints["height_tiles"] = req.height_tiles
 
     # ── LLM spec → layout → grid verification → repair ──────────────────
+    provider = None
     try:
+        provider = provider_factory(req)
         controller = LLMController(
             profile=profile,
-            provider=provider_factory(req),
+            provider=provider,
             max_retries=req.max_retries,
         )
         built = build_level(
@@ -268,7 +278,8 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         )
     except MaxRetriesExceeded as exc:
         return GenerateResponse(
-            success=False, error=str(exc), profile_path=str(profile_path)
+            success=False, error=str(exc), profile_path=str(profile_path),
+            warnings=provider_notes(provider),
         )
     except LevelBuildFailed as exc:
         return GenerateResponse(
@@ -276,10 +287,12 @@ def generate(req: GenerateRequest) -> GenerateResponse:
             error=str(exc),
             profile_path=str(profile_path),
             verified=False,
+            warnings=provider_notes(provider),
         )
     except Exception as exc:
         return GenerateResponse(
-            success=False, error=f"LLM error: {exc}", profile_path=str(profile_path)
+            success=False, error=f"LLM error: {exc}", profile_path=str(profile_path),
+            warnings=provider_notes(provider),
         )
 
     spec = built.spec
@@ -357,7 +370,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         sections=sections,
         profile_path=str(profile_path.resolve()),
         verified=built.report.ok,
-        warnings=built.warnings + export_warnings,
+        warnings=provider_notes(provider) + built.warnings + export_warnings,
         fidelity=built.fidelity.to_dict() if built.fidelity else None,
     )
 
@@ -419,6 +432,7 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
     out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries)
+    out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path)
 
 
@@ -428,6 +442,7 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries)
+    out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path)
 
 
@@ -442,6 +457,7 @@ def edit_entities_route(req: EntityEditRequest) -> EditResponse:
         entity_iids=req.entity_iids or None,
         max_retries=req.max_retries,
     )
+    out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path)
 
 
