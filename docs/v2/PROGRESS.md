@@ -29,7 +29,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 13 | Route overlay (API + canvas) | strong | ✅ API + canvas overlay, app-tested (hand edits refetch via POST /route) | see git log (both repos) |
 | 14 | Live progress + Cancel | strong | ✅ app-tested (real retry/fallback messages, cancel mid-backoff writes nothing) | see git log (both repos) |
 | 15 | Difficulty curve | medium | ✅ metrics + sidebar chart (hover flashes the band); scale provisional (few real hard samples); hand edits refresh on save | see git log (both repos) |
-| 16 | Play mode | strong | ⬜ wave 4 | |
+| 16 | Play mode | strong | ✅ client-only (canvas modal, profile physics within ~1 px of the verifier, ghost route, pickups/lives/checkpoints/keys/win) | see git log (ldtk-src) |
 | 17 | Multi-level worlds | strong | ◐ 17a backend merged (outline call, linked levels, `level` on all edit/route/difficulty/undo calls); 17b sidebar after Part 16 | see git log |
 | 20 | Short hops + walk-first paths (user feedback) | strong | ⏳ running | |
 | 21 | Terrain from section types: corridor, parkour, labyrinth, arena, shaft, hub (user feedback; user chose section types) | strong | ⬜ after 17a + 20 | |
