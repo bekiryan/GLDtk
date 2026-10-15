@@ -103,3 +103,11 @@ OUTPUT ONLY THE JSON OBJECT {"col", "row", "w", "h", "explanation"}.\
 """
 
 __all__ = ["ENTITY_SYSTEM_PROMPT", "LOCATE_SYSTEM_PROMPT", "REGION_SYSTEM_PROMPT"]
+
+
+def with_preferences(content: str) -> str:
+    """*content* plus the learned "designer preferences" block (design memory, v4 Part 27);
+    unchanged when memory is off or has no confident rule."""
+    from memory.prefs import with_block
+
+    return with_block(content)

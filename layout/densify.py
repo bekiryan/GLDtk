@@ -76,6 +76,10 @@ from .verify import GridReport, gravity_field_of, verify_grid
 
 FILL_PREFIX = "fill_"
 MIN_WIDTH, MAX_WIDTH = 3, 8  # tiles
+import contextvars as _cv
+
+# Design memory (v4 Part 27): multiplier on the platform budget, set per request.
+DENSITY_SCALE: "_cv.ContextVar[float]" = _cv.ContextVar("densify_scale", default=1.0)
 TILES_PER_PLATFORM = 50  # target: about one platform per this many empty tiles
 MIN_EMPTINESS = 4  # a fill platform's centre is at least this far (Chebyshev) from any tile
 EMPTINESS_CAP = 10
@@ -250,7 +254,7 @@ class _Densifier:
                         if self.grid[r][c] == TileValue.EMPTY)
             standable = sum(1 for n in layout.node_layouts if layout.standable(n)
                             and self._in(layout.rect(n)[1], layout.rect(n)[0]))
-        self.budget = min(MAX_ADDED, max(0, round(empty / TILES_PER_PLATFORM) - standable))
+        self.budget = min(MAX_ADDED, max(0, round(empty / TILES_PER_PLATFORM * DENSITY_SCALE.get()) - standable))
         # Cells within a jump of a node the player can reach (fill candidates).
         g = gravity_for(profile, 1.0)
         ts = float(layout.tile_size)

@@ -63,7 +63,7 @@ from .context import (
 )
 from .llm import EditLLMFailed, run_structured
 from .outcome import EditOutcome, add_requirements, base_spec, failure, finish, spec_entity
-from .prompts import REGION_SYSTEM_PROMPT
+from .prompts import REGION_SYSTEM_PROMPT, with_preferences
 from .stitch import RegionNode, apply_region
 
 MAX_REPAIR_ROUNDS = 4
@@ -158,7 +158,7 @@ def build_region_messages(
         lines.append("  " + json.dumps(_entity_brief(e, rect), ensure_ascii=False))
     lines += ["", "MAP (region and surroundings):", region_view(ctx, rect, seams), ""]
     lines += ["GAME PROFILE (fixed for this game):", ctx.profile.summary_for_prompt()]
-    return [{"role": "user", "content": "\n".join(lines)}]
+    return [{"role": "user", "content": with_preferences("\n".join(lines))}]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

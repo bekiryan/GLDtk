@@ -30,7 +30,7 @@ from .check import LevelCheck, make_baseline, preexisting_blocker, verify_level
 from .context import Cell, EditContext, EditError, Rect, SpanRect, load_context
 from .llm import EditLLMFailed, run_structured
 from .outcome import EditOutcome, add_requirements, base_spec, failure, finish, spec_entity
-from .prompts import ENTITY_SYSTEM_PROMPT
+from .prompts import ENTITY_SYSTEM_PROMPT, with_preferences
 
 _NOT_FIELDS = {"id", "anchor", "section"}
 
@@ -155,7 +155,7 @@ def build_entity_messages(ctx: EditContext, scope: Scope, prompt: str) -> List[D
                      f"{n} free cell(s)")
     if not scope.platforms:
         lines.append("  none (entities can be modified or removed, not added)")
-    return [{"role": "user", "content": "\n".join(lines)}]
+    return [{"role": "user", "content": with_preferences("\n".join(lines))}]
 
 
 def _parser(scope: Scope):
