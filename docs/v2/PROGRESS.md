@@ -23,6 +23,16 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 10 | Evaluation harness | light | ✅ | see git log |
 | 6 | AI theme/sprite generation | medium | ✅ code done, not tested on real images (pulled forward) | see git log |
 | **M4** | **Final review** | | ◐ cleanup done; PRs open: bekiryan/GLDtk#1, bekiryan/ldtk#1 (waiting for the user to merge) | |
+| | **v3** ([plan](../v3/PLAN.md), requested 2026-10-15) | | | |
+| 11 | Physics accuracy (cross-section gravity, headroom, exact wall jumps) | strong | ⏳ running (wave 1) | |
+| 12 | Densify inside edits | medium | ⏳ running (wave 1) | |
+| 13 | Route overlay (API + canvas) | strong | ⏳ running (wave 1) | |
+| 14 | Live progress + Cancel | strong | ⬜ wave 2 | |
+| 15 | Difficulty curve | medium | ⬜ wave 3 | |
+| 16 | Play mode | strong | ⬜ wave 4 | |
+| 17 | Multi-level worlds | strong | ⬜ wave 5 | |
+| 18 | Packaged Mac app | medium | ⬜ wave 6 | |
+| 19 | Armenian README | — | ⬜ last (orchestrator) | |
 
 ## Notes
 - 2026-10-13: Design interview complete. Baseline committed. `.env` (git-ignored) holds `GEMINI_API_KEY`. Ollama is installed but has no models.
@@ -99,6 +109,8 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - The `ldtk-src` `feat/v2` branch now tracks `origin`.
   - README rewritten for v2; `example.py` uses the v2 path; `plan.md`, `ui/` and `ldtk-integration/` removed.
   - The user chose "merge to main" as deployment. `gh` is not installed and the GitHub connector was down, so prefilled PR links were handed to the user.
+- 2026-10-15: **Edit fix** (`b6deef5`). The user's section edit failed because the file had been hand-edited (Start moved inside a solid tile, two extra Exits), so nothing was reachable and every new entity was blamed. Edits now stop before the LLM call with the real cause. Repair of an unreachable region entity first adds a stepping stone to its ledge, then falls back to moving the entity.
+- 2026-10-15: **v3 started** at the user's request: the M4 suggestions except variants, CI and the full eval run. Plan and specs are in `docs/v3/`. Haxe parts run one at a time (a single `ldtk-src` working tree); Python-only parts run in parallel worktrees.
 
 ## Next steps (resume here)
 1. Merge the two PRs: https://github.com/bekiryan/GLDtk/pull/1 and https://github.com/bekiryan/ldtk/pull/1.
