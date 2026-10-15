@@ -267,12 +267,15 @@ def level_route(
     return route
 
 
-def file_route(path: Union[str, Path]) -> Route:
-    """The golden route of an ``.ldtk`` file, read like an edit reads it (hand edits count)."""
+def file_route(path: Union[str, Path], level: Optional[str] = None) -> Route:
+    """The golden route of an ``.ldtk`` file, read like an edit reads it (hand edits count).
+
+    *level* (an iid or identifier; None = the first level) picks the level of a world.
+    """
     from edit.context import EditError, load_context
 
     try:
-        ctx = load_context(path)
+        ctx = load_context(path, level)
     except EditError as exc:
         return Route(ok=False, error=str(exc))
     spans = ctx.extract(ctx.grid)
@@ -281,7 +284,8 @@ def file_route(path: Union[str, Path]) -> Route:
     return route
 
 
-def unsaved_route(path: Union[str, Path], project: Dict[str, Any]) -> Route:
+def unsaved_route(path: Union[str, Path], project: Dict[str, Any],
+                  level: Optional[str] = None) -> Route:
     """The golden route of *project* (the LDtk JSON open in the editor, not saved yet).
 
     The JSON is written to a hidden temporary file next to *path*, so the Game
@@ -299,7 +303,7 @@ def unsaved_route(path: Union[str, Path], project: Dict[str, Any]) -> Route:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(project, f)
-        route = file_route(tmp)
+        route = file_route(tmp, level)
         if route.error:
             route.error = route.error.replace(Path(tmp).name, p.name).replace(tmp, str(p))
         return route

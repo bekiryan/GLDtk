@@ -1,0 +1,103 @@
+{
+ "title": "Dark Cave",
+ "size": {
+  "width_tiles": 40,
+  "height_tiles": 15
+ },
+ "sections": [
+  {
+   "id": "depths",
+   "name": "Depths",
+   "theme": "cave",
+   "difficulty": "medium",
+   "gravity_scale": 1.0,
+   "description": "Depths",
+   "order": 0
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "type": "Start",
+   "x": 0,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "depths"
+  },
+  {
+   "id": "mid",
+   "type": "Platform",
+   "x": 64,
+   "y": 32,
+   "w": 96,
+   "h": 16,
+   "section": "depths"
+  },
+  {
+   "id": "exit",
+   "type": "Exit",
+   "x": 176,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "depths"
+  }
+ ],
+ "edges": [
+  {
+   "from": "start",
+   "to": "mid",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0
+  },
+  {
+   "from": "mid",
+   "to": "exit",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0
+  }
+ ],
+ "entities": [
+  {
+   "id": "player",
+   "kind": "Start",
+   "anchor": "start",
+   "section": "depths",
+   "description": "player",
+   "sprite": "",
+   "facing": "right"
+  },
+  {
+   "id": "key",
+   "kind": "Key",
+   "anchor": "mid",
+   "section": "depths",
+   "description": "a key",
+   "sprite": "key"
+  },
+  {
+   "id": "door",
+   "kind": "Exit",
+   "anchor": "exit",
+   "section": "depths",
+   "description": "exit",
+   "sprite": "",
+   "requires_key": false
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "text": "A key lies on a ledge.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Key",
+    "min_count": 1
+   }
+  }
+ ]
+}

@@ -556,14 +556,17 @@ def edit_region(
     ctx: Optional[EditContext] = None,
     densify: bool = True,
     seed: int = 0,
+    level: Optional[str] = None,
 ) -> EditOutcome:
     """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring).
+
+    *level* (an iid or identifier; None = the first level) picks the level of a world.
 
     With *densify*, a verified result is filled with extra platforms inside the rect
     (as generate does for a whole level), seeded by *seed*.
     """
     try:
-        ctx = ctx or load_context(path)
+        ctx = ctx or load_context(path, level)
     except EditError as exc:
         return failure(mode, str(exc), rect)
     clipped = rect.clipped(ctx.width, ctx.height)
@@ -682,10 +685,11 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 
 
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
-                 *, max_retries: int = 3, densify: bool = True, seed: int = 0) -> EditOutcome:
-    """A region edit over the section's band (column or row band)."""
+                 *, max_retries: int = 3, densify: bool = True, seed: int = 0,
+                 level: Optional[str] = None) -> EditOutcome:
+    """A region edit over the section's band (column or row band) of *level*."""
     try:
-        ctx = load_context(path)
+        ctx = load_context(path, level)
         rect = section_rect(ctx, section_id)
     except EditError as exc:
         return failure("section", str(exc))

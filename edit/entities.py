@@ -378,10 +378,11 @@ def edit_entities(
     rect: Optional[Rect] = None,
     entity_iids: Optional[List[str]] = None,
     max_retries: int = 3,
+    level: Optional[str] = None,
 ) -> EditOutcome:
     mode = "entities"
     try:
-        ctx = load_context(path)
+        ctx = load_context(path, level)
         if rect is not None:
             clipped = rect.clipped(ctx.width, ctx.height)
             if clipped is None:

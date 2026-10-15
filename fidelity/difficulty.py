@@ -435,15 +435,17 @@ def apply_to_fidelity(report: DifficultyReport, fidelity: Any, prompt: Optional[
     return changed
 
 
-def difficulty_of_file(path: Any) -> DifficultyReport:
+def difficulty_of_file(path: Any, level: Optional[str] = None) -> DifficultyReport:
     """The difficulty of an ``.ldtk`` file, read like an edit reads it (hand edits count).
+
+    *level* (an iid or identifier; None = the first level) picks the level of a world.
 
     Raises :class:`edit.context.EditError` when the file cannot be read.
     """
     from edit.context import load_context
     from layout.route import level_route
 
-    ctx = load_context(path)
+    ctx = load_context(path, level)
     spans = ctx.extract(ctx.grid)
     route = level_route(ctx.grid, ctx.entities, ctx.profile, ctx.gravity_scale_at, spans.graph)
     return measure_difficulty(ctx.grid, ctx.entities, ctx.bands, ctx.profile, route, ctx.level.prompt)

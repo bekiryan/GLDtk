@@ -39,6 +39,30 @@ class GenerateRequest(BaseModel):
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
     )
+    levels: Optional[int] = Field(
+        None, ge=1, le=8,
+        description="Number of levels (v3 Part 17): 1 = one level, no outline call; 2-8 = a world "
+                    "of exactly that many levels; None = decided by the outline call when the "
+                    "prompt mentions several levels, else one level",
+    )
+    level: Optional[str] = Field(
+        None,
+        description="Regenerate only this level (iid or identifier) of the existing world at "
+                    "output_path, keeping the other levels and the links (v3 Part 17)",
+    )
+
+
+class LevelSummary(BaseModel):
+    """One level of the written file (v3 Part 17), for the sidebar's level list."""
+
+    index: int  # position in the file (= the world order)
+    id: Optional[str] = None  # outline level id ("forest"); None outside a generated world
+    identifier: str  # LDtk identifier ("Forest_1")
+    iid: Optional[str] = None  # LDtk level iid
+    title: str = ""
+    score: Optional[float] = None  # fidelity score (None when unknown, e.g. levels an edit skipped)
+    verified: Optional[bool] = None  # None when not checked by this request
+    current: bool = False  # the level this response's preview / fidelity / route are about
 
 
 class LevelStats(BaseModel):
@@ -114,6 +138,7 @@ class RouteRequest(BaseModel):
 
     path: str = Field(..., description="Path of the .ldtk file the project belongs to")
     project: Dict[str, Any] = Field(..., description="The LDtk project JSON")
+    level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
 
 
 class SectionDifficultyModel(BaseModel):
@@ -138,6 +163,16 @@ class DifficultyModel(BaseModel):
     warnings: List[str] = Field(default_factory=list)  # level-wide (the curve)
 
 
+class WorldFidelityModel(FidelityModel):
+    """The world fidelity report (v3 Part 17): ``items`` are the world requirements
+    (W1 …); ``score`` is the mean of their score and every level's score;
+    ``verified`` is True when every level verified."""
+
+    title: str = ""
+    requirements_score: Optional[float] = None  # the world requirements alone
+    levels: List[LevelSummary] = Field(default_factory=list)
+
+
 class GenerateResponse(BaseModel):
     success: bool
     preview_ascii: Optional[str] = None
@@ -153,6 +188,10 @@ class GenerateResponse(BaseModel):
     route: Optional[RouteModel] = None  # golden route of the written file (v3 Part 13)
     cancelled: bool = False  # the job was cancelled; nothing was written (v3 Part 14)
     difficulty: Optional[DifficultyModel] = None  # per-section difficulty (v3 Part 15a)
+    # v3 Part 17: every level of the file (one entry for a single-level file).  For a world
+    # the fields above describe the ``current`` level (the first one after a world generate).
+    levels: List[LevelSummary] = Field(default_factory=list)
+    world: Optional["WorldFidelityModel"] = None  # world report (a multi-level generate only)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -180,6 +219,7 @@ class EditRequestBase(BaseModel):
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
     )
+    level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
 
 
 class RegionEditRequest(EditRequestBase):
@@ -207,6 +247,7 @@ class LocateRequest(BaseModel):
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
     )
+    level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
 
 
 class EditInfo(BaseModel):
@@ -229,6 +270,9 @@ class LocateResponse(BaseModel):
 
 class PathRequest(BaseModel):
     path: str
+    level: Optional[str] = Field(
+        None, description="Level whose route / difficulty the answer carries (iid or identifier; "
+                          "None = the first); the undo itself restores the whole file")
 
 
 class UndoResponse(BaseModel):
@@ -238,6 +282,7 @@ class UndoResponse(BaseModel):
     error: Optional[str] = None
     route: Optional[RouteModel] = None  # golden route of the restored file
     difficulty: Optional[DifficultyModel] = None  # difficulty of the restored file
+    levels: Optional[List[LevelSummary]] = None  # the restored file's levels (v3 Part 17)
 
 
 class HistoryEntry(BaseModel):
@@ -276,3 +321,7 @@ class CancelRequest(BaseModel):
 class CancelResponse(BaseModel):
     job_id: str
     running: bool  # False: the job had finished or was not known yet
+
+
+GenerateResponse.model_rebuild()
+EditResponse.model_rebuild()
