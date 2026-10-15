@@ -103,6 +103,19 @@ def check_expectations(expect: Dict[str, Any], built: Any) -> List[str]:
     return out
 
 
+def measure_record_difficulty(built: Any, profile: GameProfile, prompt: str) -> Optional[Dict[str, Any]]:
+    """Per-section difficulty of the built level for the result record (an error dict if it fails)."""
+    try:
+        from fidelity.difficulty import measure_difficulty
+
+        ir = built.spec_layout.ir
+        report = measure_difficulty(ir.grid, ir.entities, ir.metadata.get("sections") or [], profile,
+                                    prompt=prompt)
+        return report.to_dict()
+    except Exception as exc:  # a measuring problem must not fail a prompt
+        return {"error": f"{type(exc).__name__}: {exc}", "sections": [], "overall": None}
+
+
 def run_prompt(
     entry: Dict[str, Any],
     provider: Any,
@@ -151,6 +164,7 @@ def run_prompt(
             rec["fidelity_counts"] = built.fidelity.counts()
             rec["fidelity_items"] = built.fidelity.to_dict()["items"]
         rec["expect_failures"] = check_expectations(entry.get("expect", {}), built)
+        rec["difficulty"] = measure_record_difficulty(built, profile, entry["prompt"])
         rec["warnings"] = len(built.warnings)
         rec["size_tiles"] = [built.spec.size.width_tiles, built.spec.size.height_tiles]
         rec["sections"] = len(built.spec.sections)

@@ -12,6 +12,7 @@ POST /edit/region, /edit/section, /edit/entities — regional edits (Part 8).
 POST /edit/locate — text location → rect (writes nothing).
 POST /undo      — restore the newest history snapshot.
 GET  /history   — the snapshots of a .ldtk file.
+GET  /difficulty — per-section difficulty scores of a .ldtk file (v3 Part 15a, no LLM).
 GET  /route     — the golden Start → Exit route of a .ldtk file (v3 Part 13).
 POST /route     — the same for the project JSON open in LDtk (unsaved edits).
 """
@@ -35,6 +36,7 @@ from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
 from aesthetic.themes import THEMES, Theme, detect_theme
 from api import art_routes
 from api.models import (
+    DifficultyModel,
     EditInfo,
     EditResponse,
     EntityEditRequest,
@@ -61,6 +63,7 @@ from edit.outcome import EditOutcome
 from edit.region import edit_region, edit_section
 from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
 from layout.route import file_route, unsaved_route
+from fidelity.difficulty import apply_to_fidelity, difficulty_of_file
 from game.profile import (
     PROFILE_FILENAME,
     GameProfile,
@@ -366,6 +369,9 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     )
     preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 
+    # before the fidelity report is serialised: a section that misses its stated difficulty
+    # turns its fidelity item into `approximated`
+    difficulty = difficulty_of(out, built.fidelity, req.description)
     return GenerateResponse(
         success=True,
         preview_ascii=preview,
@@ -378,6 +384,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         warnings=provider_notes(provider) + built.warnings + export_warnings,
         fidelity=built.fidelity.to_dict() if built.fidelity else None,
         route=route_of(out),
+        difficulty=difficulty,
     )
 
 
@@ -424,6 +431,7 @@ def edit_response(out: EditOutcome, path: str) -> EditResponse:
         fidelity=out.fidelity.to_dict() if out.fidelity else None,
         edit=info,
         route=route_of(path),
+        difficulty=difficulty_of(path),
     )
 
 
@@ -488,6 +496,7 @@ def undo_route(req: PathRequest) -> UndoResponse:
                        remaining=res.remaining, error=res.error)
     if res.success:  # a failed undo keeps its v2 shape (no ``route`` key)
         out.route = route_of(req.path)
+        out.difficulty = difficulty_of(req.path)
     return out
 
 
@@ -506,6 +515,27 @@ def route_of(path: str | Path, project: Dict[str, Any] | None = None) -> RouteMo
     except Exception as exc:  # never fail a generate / edit because of the overlay
         return RouteModel(success=False, error=f"Route error: {exc}")
     return RouteModel.model_validate(route.as_dict())
+
+
+def difficulty_of(path: str | Path, fidelity: Any = None, prompt: str | None = None) -> DifficultyModel:
+    """Per-section difficulty of the file at *path* (no LLM call; v3 Part 15a).
+
+    With *fidelity* (the generate response's report, not yet serialised) the
+    sections whose score contradicts a difficulty the *prompt* stated are marked
+    ``approximated`` there.  Never raises: a failure is ``success: false``.
+    """
+    try:
+        report = difficulty_of_file(path)
+        if fidelity is not None:
+            apply_to_fidelity(report, fidelity, prompt)
+    except Exception as exc:  # never fail a generate / edit because of the metrics
+        return DifficultyModel(success=False, error=f"Difficulty error: {exc}")
+    return DifficultyModel.model_validate(report.to_dict())
+
+
+@app.get("/difficulty", response_model=DifficultyModel)
+def difficulty_route(path: str = Query(..., description=".ldtk path")) -> DifficultyModel:
+    return difficulty_of(path)
 
 
 @app.get("/route", response_model=RouteModel)
