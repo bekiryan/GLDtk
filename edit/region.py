@@ -123,7 +123,8 @@ def _entity_brief(ent: IREntity, rect: Rect) -> Dict[str, Any]:
 
 
 def build_region_messages(
-    ctx: EditContext, rect: Rect, seams: List[Seam], prompt: str, region_entities: List[IREntity]
+    ctx: EditContext, rect: Rect, seams: List[Seam], prompt: str, region_entities: List[IREntity],
+    examples: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     lines = [f"REQUEST: {prompt.strip()}", ""]
     if ctx.level.prompt:
@@ -160,6 +161,8 @@ def build_region_messages(
         lines.append("  " + json.dumps(_entity_brief(e, rect), ensure_ascii=False))
     lines += ["", "MAP (region and surroundings):", region_view(ctx, rect, seams), ""]
     lines += ["GAME PROFILE (fixed for this game):", ctx.profile.summary_for_prompt()]
+    if examples:  # pattern library (Part 26a)
+        lines += ["", examples]
     return [{"role": "user", "content": with_preferences("\n".join(lines))}]
 
 
@@ -617,6 +620,7 @@ def edit_region(
     densify: bool = True,
     seed: int = 0,
     level: Optional[str] = None,
+    patterns: Optional[int] = None,
 ) -> EditOutcome:
     """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring).
 
@@ -690,7 +694,13 @@ def edit_region(
     stats: Dict[str, Any] = {"llm_attempts": 0, "grid_repairs": 0, "layout_retries": 0,
                              "seams": len(seams)}
     parse = _parser(ctx, rect, seams, outside_ids)
-    messages = build_region_messages(ctx, rect, seams, prompt, region_old)
+    examples = None
+    if patterns:  # pattern-library examples (Part 26a): the prompt and the sections in the region
+        from patterns.prompt import examples_block
+
+        examples, used = examples_block([prompt] + [b.name for b in ctx.bands_in(rect)], patterns)
+        stats["patterns"] = used
+    messages = build_region_messages(ctx, rect, seams, prompt, region_old, examples)
     try:
         run = run_structured(provider, REGION_SYSTEM_PROMPT, messages, RegionSpec, parse, max_retries,
                              what="the region")
@@ -758,7 +768,8 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
                  *, max_retries: int = 3, densify: bool = True, seed: int = 0,
-                 level: Optional[str] = None, structure: Optional[str] = None) -> EditOutcome:
+                 level: Optional[str] = None, structure: Optional[str] = None,
+                 patterns: Optional[int] = None) -> EditOutcome:
     """A region edit over the section's band (column or row band) of *level*.
 
     With *structure* (or a prompt like "make this a labyrinth", v3 Part 21) the
@@ -776,7 +787,7 @@ def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
     if structure:
         return restructure_section(ctx, section_id, structure, prompt, seed=seed)
     return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries,
-                       ctx=ctx, densify=densify, seed=seed)
+                       ctx=ctx, densify=densify, seed=seed, patterns=patterns)
 
 
 __all__ = [

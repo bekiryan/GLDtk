@@ -90,6 +90,7 @@ from game.profile import (
 from llm import LLMController, MaxRetriesExceeded
 from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider_with_fallback
 from pipeline import LevelBuildFailed, build_level
+from patterns import routes as pattern_routes
 from pipeline.world import WorldLevelInfo, check_world, outline_world, wants_outline
 from spec.world import SIZE_HINT_WIDTH
 
@@ -163,6 +164,7 @@ provider_factory: Callable[[Any], LLMProvider] = default_provider_factory
 
 app = FastAPI(title="GLDtk Companion", version="0.1.0")
 app.include_router(art_routes.router)
+app.include_router(pattern_routes.router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -420,6 +422,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
             provider=provider,
             max_retries=req.max_retries,
         )
+        patterns_used = attach_patterns(controller, req)
         built = build_level(
             req.description,
             controller,
@@ -496,6 +499,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         route=route_of(out),
         difficulty=difficulty,
         levels=[summary],
+        patterns_used=patterns_used,
     )
 
 
@@ -580,10 +584,30 @@ def _outline_constraints(constraints: Dict[str, Any], entry: Any, req: GenerateR
     return cons
 
 
+def attach_patterns(controller: Any, req: GenerateRequest, description: str | None = None
+                    ) -> List[Dict[str, str]]:
+    """Pattern-library examples for the generate prompt (Part 26a); [] and no change when off."""
+    if not req.patterns:
+        return []
+    from patterns.prompt import examples_block
+
+    text = description or req.description
+    controller.examples, used = examples_block([text, req.theme or ""], req.patterns)
+    return used
+
+
+def _pattern_note(out: EditOutcome) -> EditOutcome:
+    used = out.stats.get("patterns")
+    if used:
+        out.warnings.append("Pattern examples: " + ", ".join(f"{u['id']} ({u['title']})" for u in used))
+    return out
+
+
 def _build_one(description: str, theme_text: str, cons: Dict[str, Any], provider: Any,
                profile: GameProfile, req: GenerateRequest, density: float, seed: int):
     """Build and dress one level of a world; returns ``(built, result)``.  Raises."""
     controller = LLMController(profile=profile, provider=provider, max_retries=req.max_retries)
+    attach_patterns(controller, req, description)
     built = build_level(
         description, controller, profile, constraints=cons or None, seed=seed,
         size_override=(req.width_tiles, req.height_tiles), densify=req.densify,
@@ -842,9 +866,9 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
     if err:
         return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
     out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries,
-                      densify=req.densify, seed=req.seed, level=req.level)
+                      densify=req.densify, seed=req.seed, level=req.level, patterns=req.patterns)
     out.warnings[:0] = provider_notes(provider)
-    return edit_response(out, req.path, req.level)
+    return edit_response(_pattern_note(out), req.path, req.level)
 
 
 @app.post("/edit/section", response_model=EditResponse)
@@ -856,9 +880,9 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
                        densify=req.densify, seed=req.seed, level=req.level,
-                       structure=req.structure)
+                       structure=req.structure, patterns=req.patterns)
     out.warnings[:0] = provider_notes(provider)
-    return edit_response(out, req.path, req.level)
+    return edit_response(_pattern_note(out), req.path, req.level)
 
 
 @app.post("/edit/entities", response_model=EditResponse)

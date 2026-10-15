@@ -623,6 +623,7 @@ class LLMController:
 
         self._schema = LevelSpec.json_schema()
         self.stats = GenerationStats()
+        self.examples: Optional[str] = None  # pattern-library reference block (Part 26a)
 
         # Import here to avoid circular imports at module load time
         from .patcher import SymbolicPatcher
@@ -661,7 +662,7 @@ class LLMController:
             If no valid spec could be produced within *max_retries* attempts.
             ``exc.stats`` / ``self.stats`` hold the run's bookkeeping.
         """
-        messages = build_generate_messages(description, constraints, self._profile)
+        messages = build_generate_messages(description, constraints, self._profile, self.examples)
         return self._run(description, messages, "the level spec")
 
     def repair_spec(
@@ -683,7 +684,7 @@ class LLMController:
         ------
         MaxRetriesExceeded
         """
-        messages = build_generate_messages(description, constraints, self._profile)
+        messages = build_generate_messages(description, constraints, self._profile, self.examples)
         spec_json = json.dumps(spec.model_dump(by_alias=True))
         messages = build_grid_repair_messages(description, spec_json, errors, messages)
         return self._run(description, messages, "a repaired level spec")
@@ -706,7 +707,7 @@ class LLMController:
         ------
         MaxRetriesExceeded
         """
-        messages = build_generate_messages(description, constraints, self._profile)
+        messages = build_generate_messages(description, constraints, self._profile, self.examples)
         spec_json = json.dumps(spec.model_dump(by_alias=True))
         messages = build_completeness_messages(description, spec_json, missing, messages)
         return self._run(description, messages, "the missing requirements")
