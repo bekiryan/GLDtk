@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -72,6 +72,47 @@ class FidelityModel(BaseModel):
     items: List[FidelityItemModel] = Field(default_factory=list)
 
 
+class RouteStepModel(BaseModel):
+    """One move of the golden route (``layout/route.py``)."""
+
+    model_config = {"populate_by_name": True}
+
+    kind: str  # walk | jump | fall | double_jump | dash | wall_jump
+    from_cell: List[int] = Field(default_factory=list, alias="from")  # [col, row]
+    to: List[int] = Field(default_factory=list)  # [col, row]
+    points: List[List[float]] = Field(default_factory=list)  # [[x, y]…] level px, y down
+    ability: Optional[str] = None
+
+
+class SpanModel(BaseModel):
+    col: int
+    row: int
+    w: int
+
+
+class RouteModel(BaseModel):
+    """The cheapest Start → Exit route on the final grid (v3 Part 13).
+
+    ``success`` is False (with ``error``) when there is no path; the reachable
+    spans and the unreachable required entities are filled in either way.
+    """
+
+    success: bool
+    error: Optional[str] = None
+    steps: List[RouteStepModel] = Field(default_factory=list)
+    length_px: float = 0.0
+    reachable_spans: List[SpanModel] = Field(default_factory=list)
+    unreachable_required: List[str] = Field(default_factory=list)  # entity iids
+    level_iid: Optional[str] = None
+
+
+class RouteRequest(BaseModel):
+    """POST /route: the project as it is open in LDtk (unsaved hand edits count)."""
+
+    path: str = Field(..., description="Path of the .ldtk file the project belongs to")
+    project: Dict[str, Any] = Field(..., description="The LDtk project JSON")
+
+
 class GenerateResponse(BaseModel):
     success: bool
     preview_ascii: Optional[str] = None
@@ -84,6 +125,7 @@ class GenerateResponse(BaseModel):
     verified: bool = False  # the final tile grid was proven beatable
     warnings: List[str] = Field(default_factory=list)  # layout / entity / repair notes
     fidelity: Optional[FidelityModel] = None  # per-requirement report on the final level
+    route: Optional[RouteModel] = None  # golden route of the written file (v3 Part 13)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +202,7 @@ class UndoResponse(BaseModel):
     restored_from: Optional[str] = None
     remaining: int = 0
     error: Optional[str] = None
+    route: Optional[RouteModel] = None  # golden route of the restored file
 
 
 class HistoryEntry(BaseModel):
