@@ -115,7 +115,7 @@ def test_arcs_are_sampled_about_every_4px(client, monkeypatch, tmp_path):
     for s in arcs:
         gaps = [math.dist(a, b) for a, b in zip(s.points, s.points[1:])]
         assert max(gaps) <= 4.0 + 1e-6
-        assert len(s.points) > 10
+        assert len(s.points) >= 3 and len(s.points) >= math.dist(s.points[0], s.points[-1]) / 4.0
     walks = [s for s in route.steps if s.kind == "walk"]
     assert all(len(s.points) == 2 and s.points[0][1] == s.points[1][1] for s in walks)
 

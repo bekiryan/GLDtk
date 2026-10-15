@@ -118,6 +118,7 @@ class SectionBand:
     row_start: int = 0
     row_end: int = 0  # inclusive
     orientation: str = "horizontal"
+    style: Optional[str] = None  # walk | parkour | mixed; None = mixed (v3 Part 20)
 
     def contains(self, col: int, row: Optional[int] = None) -> bool:
         if not self.col_start <= col <= self.col_end:
@@ -136,6 +137,7 @@ class SectionBand:
             "gravity_scale": self.gravity_scale,
             "theme": self.theme,
             "difficulty": self.difficulty,
+            "style": self.style,
         }
 
 
@@ -428,6 +430,7 @@ def _band(
         row_start=row_start,
         row_end=row_end,
         orientation=orientation,
+        style=sec.style,
     )
 
 

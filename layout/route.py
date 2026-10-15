@@ -7,8 +7,13 @@ file), the Start / Exit footing of ``edit.check`` and the trajectories the
 extractor accepted (``symbolic.physics.trajectory_candidates`` /
 ``trajectory_hits``).  No physics is re-implemented here.
 
-* The path is the cheapest one by move cost: walk < fall < jump < ability
-  (``MOVE_COST``), with the distance as a small tie-breaker.
+* The path is the cheapest one by *effort* (v3 Part 20, :func:`move_cost`):
+  walking is cheap and grows with distance, a hop grows with the square of
+  its gap, rise and drop measured against the Game Profile's comfort limits
+  (``profile.design``), and a hop beyond those limits pays a penalty larger
+  than two comfortable hops plus the walk over the same ground, so a route
+  that can use intermediate platforms uses them.  An ability move costs more
+  again.  See "Move cost" below.
 * Every step has a ``kind`` (walk, jump, fall, double_jump, dash, wall_jump),
   ``from`` / ``to`` cells and ``points``: a polyline of the player's feet in
   level pixels (x right, y down, the LDtk convention).  An arc is the
@@ -21,6 +26,32 @@ extractor accepted (``symbolic.physics.trajectory_candidates`` /
 Coordinates: the extractor works in Y-up pixels where the surface of tile row
 ``r`` is at ``(H − 1 − r) · ts``; in level pixels (Y-down) that surface is at
 ``r · ts``, so ``y_down = (H − 1) · ts − y_up``.
+
+Move cost
+---------
+For a move from span A to span B (rects ``(row, col0, col1)``), in tiles:
+
+  g = empty columns between A and B (0 when they overlap horizontally)
+  r = rows B is above A (rise),  d = rows B is below A (drop)
+  x = |Δx| of the move (launch → landing): the ground it covers
+  H, R, D = design.comfort_hop_tiles, comfort_rise_tiles, comfort_drop_tiles
+
+  walk           W·x                                    (W = WALK_COST_PER_TILE = 0.1)
+  fall / jump    base + (g/H)² + (r/R)² + (d/D)² + W·x
+                 + LONG_PENALTY   when g > H or r > R or d > D
+  ability move   MOVE_COST["ability"] + (g/H)² + (r/R)² + (d/D)² + W·x + LONG_PENALTY
+
+  base = MOVE_COST["fall"] (0.8) or MOVE_COST["jump"] (1.0).
+
+A comfortable hop costs at most ``COMFORT_HOP_MAX`` = 1 + 2 = 3 plus its walk
+term (at most two of the three ratios are non-zero, each ≤ 1).  A hop beyond
+the limits has a ratio > 1, so it costs more than 1 + 1 + LONG_PENALTY + W·x =
+9 + W·x, with ``LONG_PENALTY = 2·COMFORT_HOP_MAX + 1`` = 7: more than two (even
+three) comfortable hops plus the walk over the same ground.  On A, B, C in
+a row with comfortable gaps, A→B→C therefore beats one long jump A→C, and an
+ability move (MOVE_COST["ability"] = 3 > 1) costs more than the same plain jump
+even when that jump is long.  Walking along one span is not an edge and is not
+charged; it is about the same for every route over the same ground.
 """
 
 from __future__ import annotations
@@ -42,10 +73,13 @@ from .verify import REQUIRED_KINDS
 
 Point = Tuple[float, float]
 Cell = Tuple[int, int]  # (col, row)
+Rect = Tuple[int, int, int]  # (row, col_start, col_end)
 
 POINT_SPACING_PX = 4.0
-MOVE_COST: Dict[str, float] = {"walk": 1.0, "fall": 2.0, "jump": 3.0, "ability": 5.0}
-DISTANCE_COST_PER_TILE = 0.01  # tie-breaker between moves of the same kind
+MOVE_COST: Dict[str, float] = {"walk": 0.0, "fall": 0.8, "jump": 1.0, "ability": 3.0}
+WALK_COST_PER_TILE = 0.1  # W: every move pays for the ground it covers
+COMFORT_HOP_MAX = MOVE_COST["jump"] + 2.0  # most a comfortable hop costs (minus W·x)
+LONG_PENALTY = 2 * COMFORT_HOP_MAX + 1.0  # > two comfortable hops over the same ground
 
 
 @dataclass
@@ -113,10 +147,53 @@ def _edge_kind(edge: LevelEdge) -> Tuple[str, Optional[str]]:
     return "jump", None
 
 
-def _edge_cost(edge: LevelEdge, tile_size: float) -> float:
+def span_rect(graph: AbstractLevelGraph, span_id: str) -> Rect:
+    """``(row, col_start, col_end)`` of a span of an extracted graph."""
+    m = graph.get_node(span_id).metadata
+    return (int(m["row"]), int(m["col_start"]), int(m["col_end"]))
+
+
+def move_measure(src: Rect, dst: Rect) -> Tuple[int, int, int]:
+    """``(gap, rise, drop)`` in tiles of a move between two spans (see "Move cost")."""
+    gap = max(0, dst[1] - src[2] - 1, src[1] - dst[2] - 1)
+    return gap, max(0, src[0] - dst[0]), max(0, dst[0] - src[0])
+
+
+def is_comfortable(src: Rect, dst: Rect, profile: GameProfile) -> bool:
+    """Is the move between the spans within the profile's comfort limits?"""
+    return profile.design.is_comfortable(*move_measure(src, dst))
+
+
+def move_cost(edge: LevelEdge, src: Rect, dst: Rect, profile: GameProfile) -> float:
+    """Effort of the move *edge* from span *src* to span *dst* (see "Move cost")."""
     kind, ability = _edge_kind(edge)
-    base = MOVE_COST["ability"] if ability else MOVE_COST[kind]
-    return base + DISTANCE_COST_PER_TILE * (abs(edge.dx) + abs(edge.dy)) / tile_size
+    walk = WALK_COST_PER_TILE * abs(edge.dx) / float(profile.tile_size)
+    if kind == "walk":
+        return walk
+    d = profile.design
+    gap, rise, drop = move_measure(src, dst)
+    effort = ((gap / d.comfort_hop_tiles) ** 2 + (rise / d.comfort_rise_tiles) ** 2
+              + (drop / d.comfort_drop_tiles) ** 2)
+    if ability:
+        return MOVE_COST["ability"] + effort + walk + LONG_PENALTY
+    long = 0.0 if d.is_comfortable(gap, rise, drop) else LONG_PENALTY
+    return MOVE_COST[kind] + effort + walk + long
+
+
+def cheapest_path(
+    graph: AbstractLevelGraph, source: str, targets: Sequence[str], profile: GameProfile
+) -> Optional[List[str]]:
+    """The cheapest span path (by :func:`move_cost`) from *source* to any of *targets*."""
+    g = graph.nx_graph
+    rects = {sid: span_rect(graph, sid) for sid in g.nodes}
+    costs, paths = nx.single_source_dijkstra(
+        g, source,
+        weight=lambda u, v, data: move_cost(data["data"], rects[u], rects[v], profile),
+    )
+    reached = [t for t in targets if t in costs]
+    if not reached:
+        return None
+    return paths[min(reached, key=lambda t: (costs[t], t))]
 
 
 def _resample(points: Sequence[Point], spacing: float = POINT_SPACING_PX) -> List[Point]:
@@ -213,16 +290,13 @@ def level_route(
         return route
 
     g = graph.nx_graph
-    costs, paths = nx.single_source_dijkstra(
-        g, start_span, weight=lambda u, v, d: _edge_cost(d["data"], ts)
-    )
-    reached = [s for s in exit_spans if s in costs]
-    if not reached:
+    path = cheapest_path(graph, start_span, sorted(exit_spans), profile)
+    if path is None:
         e0 = exits[0]
         route.error = (f"the Exit (column {e0.col}, row {e0.row}) cannot be reached from the "
                        "Start (a jump is out of reach or its arc is blocked)")
         return route
-    target = min(reached, key=lambda s: costs[s])
+    target = path[-1]
     exit_ent = exit_spans[target]
 
     def to_px(p: Point) -> Point:
@@ -245,7 +319,6 @@ def level_route(
 
     span_row = spans.rects[start_span][0]
     cur: Point = ((start.col + 0.5) * ts, span_row * ts)
-    path = paths[target]
     for u, v in zip(path, path[1:]):
         edge: LevelEdge = g.edges[u, v]["data"]
         kind, ability = _edge_kind(edge)
@@ -257,8 +330,11 @@ def level_route(
             continue
         pts = [to_px(p) for p in traj]
         walk(cur, (pts[0][0], cur[1]), span_row)
-        steps.append(RouteStep(kind, cell_of(pts[0][0], span_row), cell_of(pts[-1][0], dst_row),
-                               _resample(pts), ability))
+        # A walk-off launches past the span's edge: the step's cells stay on its spans.
+        (_r0, a0, a1), (_r1, b0, b1) = spans.rects[u], spans.rects[v]
+        c_from = min(max(cell_of(pts[0][0], span_row)[0], a0), a1)
+        c_to = min(max(cell_of(pts[-1][0], dst_row)[0], b0), b1)
+        steps.append(RouteStep(kind, (c_from, span_row), (c_to, dst_row), _resample(pts), ability))
         cur, span_row = pts[-1], dst_row
     walk(cur, ((exit_ent.col + 0.5) * ts, cur[1]), span_row)
 
@@ -314,4 +390,16 @@ def unsaved_route(path: Union[str, Path], project: Dict[str, Any],
             pass
 
 
-__all__ = ["MOVE_COST", "Route", "RouteStep", "file_route", "level_route", "unsaved_route"]
+__all__ = [
+    "MOVE_COST",
+    "Route",
+    "RouteStep",
+    "cheapest_path",
+    "file_route",
+    "is_comfortable",
+    "level_route",
+    "move_cost",
+    "move_measure",
+    "span_rect",
+    "unsaved_route",
+]

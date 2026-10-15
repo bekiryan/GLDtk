@@ -43,7 +43,9 @@ def test_generate_with_fake_provider_writes_ldtk(client, monkeypatch, tmp_path, 
     assert body["sections"] == ["Grassy Meadow", "Dungeon"]
     assert body["requirements"][0] == "There is a grassy meadow section."
     assert len(body["requirements"]) == 6
-    assert body["stats"]["nodes"] == 6
+    # the fixture's 6 nodes + 1 comfort platform in the 7-tile gap p2 → p3 (v3 Part 20)
+    assert body["stats"]["comfort_added"] == 1
+    assert body["stats"]["nodes"] == 7
 
     doc = json.loads(out.read_text(encoding="utf-8"))
     level = doc["levels"][0]

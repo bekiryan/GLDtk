@@ -14,6 +14,16 @@ Derived limits (Y-up, g = gravity, v = jump_v, vmax = run_speed)
   wall jump envelope   Δy ≤ h + max_climb_px,  |Δx| ≤ R + push_px
 
 Heights and reaches scale with 1 / gravity_scale (g_eff = g · gravity_scale).
+
+Design comfort limits (``design``, v3 Part 20)
+-----------------------------------------------
+Physics says what the player *can* do; ``design`` says what a normal move
+*should* be: a hop clears at most ``comfort_hop_tiles`` empty columns, rises
+at most ``comfort_rise_tiles`` rows, and a fall drops at most
+``comfort_drop_tiles`` rows.  The golden route prefers such moves
+(``layout/route.py``) and the comfort pass (``layout/comfort.py``) adds
+platforms until the golden path is made of them (outside parkour sections).
+A profile without ``design`` gets the defaults.
 """
 
 from __future__ import annotations
@@ -96,6 +106,23 @@ class Player(_ProfileModel):
     height_px: float = Field(24.0, gt=0, description="Player hitbox height, px.")
 
 
+class Design(_ProfileModel):
+    comfort_hop_tiles: int = Field(
+        4, ge=1, le=30, description="Horizontal gap (empty columns) of a normal jump, tiles."
+    )
+    comfort_rise_tiles: int = Field(
+        3, ge=1, le=30, description="How far a normal jump goes up, tiles."
+    )
+    comfort_drop_tiles: int = Field(
+        6, ge=1, le=60, description="How far a normal fall goes down, tiles."
+    )
+
+    def is_comfortable(self, gap: float, rise: float, drop: float) -> bool:
+        """Is a move clearing *gap* columns, rising *rise* and dropping *drop* rows normal?"""
+        return (gap <= self.comfort_hop_tiles and rise <= self.comfort_rise_tiles
+                and drop <= self.comfort_drop_tiles)
+
+
 class GameProfile(_ProfileModel):
     version: int = 1
     name: str = "Untitled game"
@@ -103,6 +130,7 @@ class GameProfile(_ProfileModel):
     physics: Physics = Field(default_factory=Physics)
     abilities: Abilities = Field(default_factory=Abilities)
     player: Player = Field(default_factory=Player)
+    design: Design = Field(default_factory=Design)
 
     @field_validator("tile_size")
     @classmethod
@@ -173,6 +201,13 @@ class GameProfile(_ProfileModel):
         lines.append(
             "Limits above are for gravity_scale 1.0; heights and reaches scale "
             "with 1 / gravity_scale."
+        )
+        d = self.design
+        lines.append(
+            f"Comfortable moves (design): a normal hop clears at most {d.comfort_hop_tiles} "
+            f"empty tiles across and rises at most {d.comfort_rise_tiles} tiles; a normal fall "
+            f"drops at most {d.comfort_drop_tiles} tiles. Build the golden path from walks and "
+            "such hops between neighbouring platforms; longer jumps only in parkour sections."
         )
         if self.player.description:
             lines.append(f"Player: {self.player.description}")

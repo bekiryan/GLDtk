@@ -15,8 +15,9 @@ phases, in this priority:
 3. **fill**: platforms 3–8 tiles wide in the emptiest cells — the cell with
    the largest Chebyshev distance (capped at ``EMPTINESS_CAP``) to any tile
    first, seeded-random among ties — among the cells within a plain jump of
-   a node the player can reach, while a cell at least ``MIN_EMPTINESS``
-   tiles from every tile exists, up to about one platform per
+   a node the player can reach (cells within *comfortable* reach of one —
+   the Game Profile's ``design`` limits, v3 Part 20 — first), while a cell
+   at least ``MIN_EMPTINESS`` tiles from every tile exists, up to about one platform per
    ``TILES_PER_PLATFORM`` empty tiles in all (at most ``MAX_ADDED``).
 
 Every addition must:
@@ -30,10 +31,13 @@ Every addition must:
   hitbox sweeps along one collision-free trajectory per edge of a spanning
   tree of the grid's reachable spans (first the spans reachable without
   passing an Exit, then the rest), so every span reachable before stays
-  reachable by the same move — in particular no tile lies on a golden-path arc;
-* be reachable from a node the player can reach and reach one back
-  (``move_between``: the oracle's collision-aware reach with the profile's
-  abilities and the section's gravity).  The trajectories of those two moves
+  reachable by the same move — in particular no tile lies on a golden-path arc —
+  plus the arcs of the golden route (the cheapest path by effort,
+  ``layout.route.cheapest_path``), so the short hops the comfort pass made stay
+  the route;
+* be reachable from a node the player can reach and reach one back, trying
+  the nodes within comfortable reach first (``move_between``: the oracle's
+  collision-aware reach with the profile's abilities and the section's gravity).  The trajectories of those two moves
   join the protected cells.
 
 The additions are not trusted blindly: the layout is re-rasterised, the
@@ -64,6 +68,7 @@ from symbolic.physics import (
 
 from .ir import IREntity, IRLevel, TileValue
 from .repair import _swept_cells
+from .route import move_measure
 from .spec_entities import place_spec_entities
 from .spec_layout import Rect, SectionBand, SpecLayout
 from .sugiyama import NodeLayout
@@ -154,6 +159,20 @@ def protected_cells(layout: SpecLayout, report: GridReport, profile: GameProfile
     return cells
 
 
+def route_cells(layout: SpecLayout, report: GridReport, profile: GameProfile) -> Set[Cell]:
+    """Cells swept along the golden route (cheapest Start → Exit path by effort)."""
+    from .route import cheapest_path
+
+    graph = report.graph
+    if graph is None or report.start_span is None or not report.exit_spans:
+        return set()
+    path = cheapest_path(graph, report.start_span, sorted(report.exit_spans), profile)
+    cells: Set[Cell] = set()
+    for u, v in zip(path or [], (path or [])[1:]):
+        cells |= _edge_cells(layout, profile, graph.get_edge(u, v))
+    return cells
+
+
 def _entity_cells(layout: SpecLayout) -> Set[Cell]:
     """Every entity cell (the Start's whole hitbox), so re-placing finds the same cells."""
     cells: Set[Cell] = set()
@@ -214,7 +233,8 @@ class _Densifier:
         self.grid = layout.ir.grid
         self.field = gravity_field_of(layout, profile)
         self.bounds = bounds
-        self.protected = protected_cells(layout, report, profile) | set(extra_protected or ())
+        self.protected = (protected_cells(layout, report, profile)
+                          | route_cells(layout, report, profile) | set(extra_protected or ()))
         self.avoid = _entity_cells(layout)
         self.reachable: List[str] = sorted(
             n for n in (report.reachable_nodes if reachable is None else reachable)
@@ -237,6 +257,11 @@ class _Densifier:
         self.rise = max(1, int(max_jump_height(g, profile.physics.jump_v) / ts))
         self.reach = max(1, int(flat_jump_reach(g, profile.physics.jump_v, profile.physics.run_speed) / ts))
         self.near = [[False] * layout.width for _ in range(layout.height)]
+        # Cells within comfortable reach (design limits) of a reachable node: tried first.
+        d = profile.design
+        self.comfy = [[False] * layout.width for _ in range(layout.height)]
+        self.comfy_up, self.comfy_down = d.comfort_rise_tiles, d.comfort_drop_tiles
+        self.comfy_hop = d.comfort_hop_tiles
         for nid in self.reachable:
             self._mark_near(layout.rect(nid))
         n = 1
@@ -254,6 +279,13 @@ class _Densifier:
         for r in range(max(0, row - self.rise), min(lay.height, row + self.rise + 1)):
             line = self.near[r]
             for c in range(max(0, c0 - self.reach), min(lay.width, c1 + self.reach + 1)):
+                line[c] = True
+        # A platform centred here is comfortable when its edge is within the hop
+        # (a fill platform is at least MIN_WIDTH wide, so half of it lies toward the source).
+        hop = self.comfy_hop + 1 + MIN_WIDTH // 2
+        for r in range(max(0, row - self.comfy_up), min(lay.height, row + self.comfy_down + 1)):
+            line = self.comfy[r]
+            for c in range(max(0, c0 - hop), min(lay.width, c1 + hop + 1)):
                 line[c] = True
 
     # ── checks ──────────────────────────────────────────────────────────
@@ -297,7 +329,15 @@ class _Densifier:
 
         pool = self.reachable + self.added
         cells: Set[Cell] = set()
-        for src in nearest(sources if sources is not None else pool):
+        design = self.profile.design
+
+        def comfortable_first(ids: List[str], into: bool) -> List[str]:
+            def ok(n: str) -> bool:
+                a, b = (lay.rect(n), rect) if into else (rect, lay.rect(n))
+                return design.is_comfortable(*move_measure(a, b))
+            return sorted(nearest(ids), key=lambda n: not ok(n))  # stable: nearest within each
+
+        for src in comfortable_first(sources if sources is not None else pool, True):
             s = lay.rect(src)
             move = move_between(self.grid, s, rect, self.profile, lay.gravity_scale_of(s),
                                 gravity_field=self.field)
@@ -308,7 +348,7 @@ class _Densifier:
         else:
             return None
         scale = lay.gravity_scale_of(rect)
-        for dst in nearest(targets if targets is not None else pool):
+        for dst in comfortable_first(targets if targets is not None else pool, False):
             move = move_between(self.grid, rect, lay.rect(dst), self.profile, scale,
                                 gravity_field=self.field)
             if move is not None:
@@ -424,7 +464,8 @@ class _Densifier:
             ]
             if not cells:
                 return
-            cells.sort(key=lambda t: (-t[0], self.rng.random()))
+            # comfortable positions first, then the emptiest (seeded random among equals)
+            cells.sort(key=lambda t: (not self.comfy[t[1]][t[2]], -t[0], self.rng.random()))
             placed = False
             for _d, r, c in cells:
                 if len(self.added) >= self.budget or tries >= MAX_FILL_TRIES:

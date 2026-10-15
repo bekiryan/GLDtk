@@ -10,7 +10,9 @@ returns an unverified level.
        re-prompt for what the fill cannot meet
     3. ``layout_spec`` → ``place_spec_entities`` → ``verify_grid``
        → ``repair_grid`` (deterministic, bounded) → ``verify_grid``;
-       once verified, ``densify`` (``layout/densify.py``) adds ``fill_N``
+       once verified, the comfort pass (``layout/comfort.py``) adds ``hop_N``
+       platforms until the golden path is short hops (outside parkour
+       sections; it never fails a level), then ``densify`` (``layout/densify.py``) adds ``fill_N``
        platforms to the empty regions and re-verifies (it drops what breaks
        verification, so it never fails a level)
     4. still failing → ``controller.repair_spec`` with the grid errors
@@ -30,6 +32,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from api import jobs
 from fidelity import FidelityReport, check_level, fill_missing
 from game.profile import GameProfile
+from layout.comfort import make_comfortable
 from layout.densify import densify as densify_layout
 from layout.repair import repair_grid
 from layout.spec_entities import place_spec_entities
@@ -112,7 +115,7 @@ def build_level(
     (either may be None); it is applied after the completeness fill, so it
     wins over a size requirement.  *densify* False skips the densify step.
 
-    ``stats`` adds ``densify_added`` (fill platforms kept), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
+    ``stats`` adds ``comfort_added`` (comfort-pass platforms kept), ``densify_added`` (fill platforms kept), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
     (entities the deterministic fill added, over all fills).
 
     Raises ``MaxRetriesExceeded`` (LLM) or :class:`LevelBuildFailed` (grid).
@@ -126,6 +129,7 @@ def build_level(
         "completeness_reprompts": 0,
         "entities_filled": 0,
         "densify_added": 0,
+        "comfort_added": 0,
     }
 
     def absorb_llm_stats() -> None:
@@ -170,6 +174,12 @@ def build_level(
         spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
         stats["grid_repairs"] += len(applied)
         repairs += applied
+        if report.ok:
+            jobs.report("comfort", "Shortening long jumps")
+            comfy = make_comfortable(spec_layout, report, profile, spec)
+            report = comfy.report or report
+            stats["comfort_added"] = len(comfy.added)
+            notes += comfy.notes
         if report.ok and densify:
             jobs.report("densify", "Adding fill platforms")
             dense = densify_layout(spec_layout, report, profile, spec, seed=seed)

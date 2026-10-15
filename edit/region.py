@@ -8,7 +8,10 @@
        footing of kept entities win), place its entities
     4. verify the whole level (``check.verify_level``); on failure repair
        deterministically inside the region (stepping stones, moving region
-       entities), then at most one LLM re-prompt with the errors
+       entities), then at most one LLM re-prompt with the errors; once it
+       verifies, the comfort pass (``layout.comfort.comfort_grid``) shortens
+       long golden-path moves that start or end in the region with platforms
+       inside it, then densify fills the region
     5. still failing → an error, nothing written; otherwise ``outcome.finish``
        snapshots and writes the file
 
@@ -26,6 +29,7 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 from pydantic import Field
 
 from api import jobs
+from layout.comfort import comfort_grid
 from layout.densify import densify_grid
 from layout.ir import IREntity, TileValue
 from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
@@ -501,6 +505,63 @@ class _Attempt:
     repairs: List[str] = field(default_factory=list)
     fills: List[RegionNode] = field(default_factory=list)  # densify's fill platforms
     dropped_fills: int = 0
+    hops: List[RegionNode] = field(default_factory=list)  # the comfort pass's platforms
+    comfort_notes: List[str] = field(default_factory=list)
+
+
+def _section_bands(ctx: EditContext) -> List[SectionBand]:
+    return [SectionBand(id=b.id, name=b.name, col_start=b.col_start, col_end=b.col_end,
+                        gravity_scale=b.gravity_scale, theme=b.theme or "",
+                        difficulty=b.difficulty, row_start=b.row_start, row_end=b.row_end,
+                        orientation=b.orientation, style=b.raw.get("style"))
+            for b in ctx.bands]
+
+
+def _new_node_ids(ctx: EditContext, rects, prefix: str, taken: Set[str]) -> List[RegionNode]:
+    out: List[RegionNode] = []
+    for row, c0, c1 in rects:
+        n = 1
+        while f"{prefix}{n}" in taken:
+            n += 1
+        taken.add(f"{prefix}{n}")
+        out.append(RegionNode(f"{prefix}{n}", c0, row, c1 - c0 + 1, "Platform"))
+    return out
+
+
+def _comfort_region(
+    ctx: EditContext, rect: Rect, grid, entities: List[IREntity], locks: Locks,
+    baseline: Baseline, check: LevelCheck, name,
+) -> Tuple[List[List[Any]], LevelCheck, List[RegionNode], List[str]]:
+    """Shorten long golden-path moves touching *rect* with platforms inside it (v3 Part 20).
+
+    Kept clear: the locked seams and their headroom and every entity's cell and
+    headroom.  Platforms that break verification are removed, so this never fails
+    an edit.
+    """
+    ph = ctx.player_h
+    forbidden: Set[Cell] = set(locks.solid) | set(locks.clear)
+    for e in entities:
+        for d in range(0, ph + 1):
+            forbidden.add((e.col, e.row - d))
+    latest = [check]
+
+    def recheck(g):
+        c = verify_level(ctx, g, entities, baseline, name)
+        if not c.ok:
+            return None
+        latest[0] = c
+        return c.spans.graph, c.start_span, set(c.exit_spans)
+
+    res = comfort_grid(
+        grid, entities, (rect.col, rect.row, rect.right, rect.bottom), ctx.profile,
+        sections=_section_bands(ctx), graph=check.spans.graph, start_span=check.start_span,
+        exit_spans=set(check.exit_spans), forbidden=forbidden, check=recheck,
+        tile_size=ctx.tile_size,
+    )
+    if not res.added:
+        return grid, check, [], res.warnings
+    taken = {n.id for n in ctx.spec.nodes} if ctx.spec else set()
+    return res.grid, latest[0], _new_node_ids(ctx, res.added, "hop_", taken), res.notes
 
 
 def _densify_region(
@@ -518,10 +579,7 @@ def _densify_region(
     for e in entities:
         for d in range(0, ph + 1):
             protected.add((e.col, e.row - d))
-    sections = [SectionBand(id=b.id, name=b.name, col_start=b.col_start, col_end=b.col_end,
-                            gravity_scale=b.gravity_scale, theme=b.theme or "",
-                            difficulty=b.difficulty, row_start=b.row_start, row_end=b.row_end,
-                            orientation=b.orientation) for b in ctx.bands]
+    sections = _section_bands(ctx)
     spans = check.spans
     res = densify_grid(
         grid, entities, (rect.col, rect.row, rect.right, rect.bottom), ctx.profile,
@@ -610,13 +668,20 @@ def edit_region(
             jobs.report("repair", f"Repairing the region ({len(check.messages())} problem(s))")
             check, repairs = repair_region(ctx, rect, grid, entities, region_iids, locks,
                                            baseline, check, name)
+        hops: List[RegionNode] = []
+        comfort_notes: List[str] = []
+        if check.ok:
+            jobs.report("comfort", "Shortening long jumps")
+            grid, check, hops, comfort_notes = _comfort_region(
+                ctx, rect, grid, entities, locks, baseline, check, name)
         fills: List[RegionNode] = []
         dropped = 0
         if densify and check.ok:
             jobs.report("densify", "Adding fill platforms")
             grid, check, fills, dropped = _densify_region(
                 ctx, rect, grid, entities, locks, baseline, check, name, seed)
-        return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped)
+        return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped,
+                        hops, comfort_notes)
 
     stats: Dict[str, Any] = {"llm_attempts": 0, "grid_repairs": 0, "layout_retries": 0,
                              "seams": len(seams)}
@@ -652,6 +717,7 @@ def edit_region(
 
     stats["grid_repairs"] = len(result.repairs)
     stats["densify_added"] = len(result.fills)
+    stats["comfort_added"] = len(result.hops)
     densify_notes: List[str] = []
     if result.fills:
         densify_notes.append(f"densify: added {len(result.fills)} fill platform(s)"
@@ -666,13 +732,15 @@ def edit_region(
         )
 
     all_nodes = dict(result.nodes)
+    all_nodes.update({n.id: n for n in result.hops})
     all_nodes.update({n.id: n for n in result.fills})
     spec = _updated_spec(ctx, rect, run.value, all_nodes, removed_ids, result.placed)
     return finish(
         ctx, mode=mode, label_prompt=prompt, grid=result.grid, entities=result.entities,
         spec=spec, check=result.check, rect=rect, removed=removed,
         added={str(e.metadata["iid"]) for e in result.placed},
-        warnings=run.notes + result.warnings + result.repairs + densify_notes, stats=stats,
+        warnings=run.notes + result.warnings + result.repairs + result.comfort_notes
+        + densify_notes, stats=stats,
     )
 
 

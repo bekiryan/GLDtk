@@ -76,6 +76,10 @@ class LevelSize(_SpecModel):
     height_tiles: int = Field(..., ge=15, le=100, description="Level height in 16 px tiles.")
 
 
+SectionStyle = Literal["walk", "parkour", "mixed"]
+"""How a section plays (v3 Part 20; ``layout/comfort.py``). None means "mixed"."""
+
+
 class Section(_SpecModel):
     id: str = Field(..., description="Unique section id, no spaces.")
     name: str = Field(..., description="Human-readable section name.")
@@ -88,6 +92,12 @@ class Section(_SpecModel):
         ge=0,
         description="Position of the section, 0-based: left to right in a horizontal level, "
         "bottom to top in a vertical one.",
+    )
+    style: Optional[SectionStyle] = Field(
+        None,
+        description='How the section plays: "walk" (walking, fighting and short hops), '
+        '"parkour" (long precise jumps, only when the description asks for parkour or precise '
+        'platforming) or "mixed" (mostly short hops, an occasional longer jump); null = mixed.',
     )
 
 

@@ -75,6 +75,7 @@ class LevelStats(BaseModel):
     completeness_reprompts: int = 0  # LLM re-prompts for unmet requirements (0 or 1)
     entities_filled: int = 0  # entities the deterministic completeness fill added
     densify_added: int = 0  # fill platforms the densify step added
+    comfort_added: int = 0  # platforms the comfort pass added for short hops (v3 Part 20)
 
 
 class FidelityItemModel(BaseModel):
