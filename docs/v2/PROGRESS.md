@@ -31,7 +31,9 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 15 | Difficulty curve | medium | ✅ metrics + sidebar chart (hover flashes the band); scale provisional (few real hard samples); hand edits refresh on save | see git log (both repos) |
 | 16 | Play mode | strong | ⬜ wave 4 | |
 | 17 | Multi-level worlds | strong | ⬜ wave 5 | |
-| 18 | Packaged Mac app | medium | ⬜ wave 6 | |
+| 20 | Short hops + walk-first paths (user feedback) | strong | ⏳ running | |
+| 21 | Terrain from section types: corridor, parkour, labyrinth, arena, shaft, hub (user feedback; user chose section types) | strong | ⬜ after 17a + 20 | |
+| 18 | Packaged Mac app | medium | ⬜ last | |
 | 19 | Armenian README | — | ⬜ last (orchestrator) | |
 
 ## Notes

@@ -14,7 +14,9 @@ were left out. Branch: `feat/v2`, in both repos, continuing PR #1. Each part has
 | 15 | Difficulty curve | 7 | Python + Haxe | 3 |
 | 16 | Play mode | 5 | Haxe (+ Python route data) | 4 |
 | 17 | Multi-level worlds | 8 | Python + Haxe | 5 |
-| 18 | Packaged Mac app | 12 | Python + ldtk-src build | 6 |
+| 20 | Short hops, walk-first paths (user feedback) | — | Python | 4 (parallel) |
+| 21 | Terrain from section structure types (user feedback) | — | Python (+ small Haxe) | after 17a and 20 |
+| 18 | Packaged Mac app | 12 | Python + ldtk-src build | last |
 | 19 | Armenian README | 11 | docs | last (orchestrator) |
 
 **Waves:** parts that touch the Haxe sidebar (`ldtk-src`, a single working tree) run one at a time.
@@ -33,3 +35,13 @@ Python-only parts run alongside them, each in its own worktree.
 - **Packaged app:**
   - an unsigned `.dmg` for this Mac (no Apple notarization);
   - the backend is bundled with PyInstaller and started by the Electron main process.
+
+**User feedback on 2026-10-15:**
+1. Levels should be full designs, not just platforms: floors, walls, ceilings, corridors,
+   labyrinths and arenas, in the style of Blasphemous 2, Neon Abyss 2, Sonic Origins and Spelunky 2.
+   They should be mostly walking, fighting and short hops, with some parkour.
+2. Paths should not be all jumps. Jumps should be short, from one platform to the next.
+
+The user chose **section structure types**: the LLM picks the types, and deterministic
+generators carve the terrain. This became Parts 20 and 21. The Mac app moved to the end so it
+packages the final version.
