@@ -29,7 +29,7 @@ The layout is mutated in place and returned.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from game.profile import GameProfile
 from spec.level_spec import LevelSpec
@@ -220,11 +220,36 @@ def _nudge_hop_blockers(
     return True
 
 
-def _insert_stepping_stone(
-    layout: SpecLayout, profile: GameProfile, spec: LevelSpec, a: str, b: str, applied: List[str]
-) -> bool:
+def find_stone(
+    layout: SpecLayout,
+    profile: GameProfile,
+    ra: Rect,
+    rb: Rect,
+    *,
+    widths: Sequence[int] = (STONE_WIDTH,),
+    accept: Optional[Callable[[Rect], bool]] = None,
+    links: Optional[Callable[[Rect], bool]] = None,
+    allowed: Optional[Callable[[Rect], bool]] = None,
+    max_candidates: int = _MAX_STONE_CANDIDATES,
+) -> Optional[Tuple[Rect, bool]]:
+    """Where to put a stepping stone between the spans *ra* and *rb*, or None.
+
+    Candidates lie in the window around the two spans, nearest the hop's
+    midpoint first (wider first at equal distance).  A stone must keep every
+    walk's headroom (:func:`_keeps_headroom`), conflict with no node and be
+    reachable from *ra* (``move_between``, collision-aware, the level's
+    gravity).  Returns ``(stone, True)`` for the first stone that also reaches
+    *rb*, else ``(stone, False)`` for the reachable stone nearest *rb* that is
+    at least 2 tiles closer to it than *ra* (the caller continues from it).
+
+    The size bound (v3 Part 20): *widths* are the stone widths tried; *accept*
+    filters candidates before any physics check (the comfort pass keeps only
+    stones within comfortable reach of *ra*); *links* is an extra condition on
+    the stone → *rb* move for a full link (comfortable as well); *allowed*
+    restricts where a stone may go (an edit's rectangle).  With the defaults
+    this is repair's 3-tile stepping stone.  The grid is left unchanged.
+    """
     grid = layout.ir.grid
-    ra, rb = layout.rect(a), layout.rect(b)
     height, width = layout.height, layout.width
     min_row = layout.player_tiles[1]
     target = _centre(layout, rb)
@@ -232,9 +257,18 @@ def _insert_stepping_stone(
     r_lo = max(min_row, min(ra[0], rb[0]) - 2)
     r_hi = min(height - 1, max(ra[0], rb[0]) + 4)
     c_lo = max(0, min(ra[1], rb[1]) - 2)
-    c_hi = min(width - STONE_WIDTH, max(ra[2], rb[2]) + 2)
-    cands = [(r, c) for r in range(r_lo, r_hi + 1) for c in range(c_lo, c_hi + 1)]
-    cands.sort(key=lambda rc: (_dist((rc[1] + STONE_WIDTH / 2.0, rc[0]), mid), rc[0], rc[1]))
+    cands: List[Tuple[float, int, int, int, int]] = []
+    for w in widths:
+        c_hi = min(width - w, max(ra[2], rb[2]) + 2)
+        for r in range(r_lo, r_hi + 1):
+            for c in range(c_lo, c_hi + 1):
+                rect: Rect = (r, c, c + w - 1)
+                if accept is not None and not accept(rect):
+                    continue
+                if allowed is not None and not allowed(rect):
+                    continue
+                cands.append((_dist((c + w / 2.0, r), mid), -w, r, c, w))
+    cands.sort()
 
     stone_id = "stone1"
     k = 1
@@ -244,43 +278,52 @@ def _insert_stepping_stone(
     scale_a = layout.gravity_scale_of(ra)
     gfield = gravity_field_of(layout, profile)
     base = _dist(_centre(layout, ra), target)
-    partial: Optional[Tuple[float, int, int]] = None
+    partial: Optional[Tuple[float, Rect]] = None
 
     layout.node_kinds[stone_id] = "Platform"
     layout.node_layouts[stone_id] = NodeLayout(stone_id, 0, 0, STONE_WIDTH, 1)
-    chosen: Optional[Tuple[int, int]] = None
     try:
-        for row, col in cands[:_MAX_STONE_CANDIDATES]:
-            layout.node_layouts[stone_id].row = row
-            layout.node_layouts[stone_id].col = col
+        for _d, _w, row, col, w in cands[:max_candidates]:
+            nl = layout.node_layouts[stone_id]
+            nl.row, nl.col, nl.width = row, col, w
             if not layout.row_is_free(stone_id, row):
                 continue
-            if not _keeps_headroom(layout, range(col, col + STONE_WIDTH), row, True, set()):
+            if not _keeps_headroom(layout, range(col, col + w), row, True, set()):
                 continue  # never create a low ceiling (or a stone without headroom)
-            stone: Rect = (row, col, col + STONE_WIDTH - 1)
-            saved = grid[row][col : col + STONE_WIDTH]
-            grid[row][col : col + STONE_WIDTH] = [TileValue.SOLID] * STONE_WIDTH
+            stone: Rect = (row, col, col + w - 1)
+            saved = grid[row][col : col + w]
+            grid[row][col : col + w] = [TileValue.SOLID] * w
             try:
                 if move_between(grid, ra, stone, profile, scale_a, gfield) is None:
                     continue
                 scale_s = layout.gravity_scale_of(stone)
-                if move_between(grid, stone, rb, profile, scale_s, gfield) is not None:
-                    chosen = (row, col)
-                    break
+                if (links is None or links(stone)) and move_between(
+                    grid, stone, rb, profile, scale_s, gfield
+                ) is not None:
+                    return stone, True
                 d = _dist(_centre(layout, stone), target)
                 if d < base - 2 and (partial is None or d < partial[0]):
-                    partial = (d, row, col)
+                    partial = (d, stone)
             finally:
-                grid[row][col : col + STONE_WIDTH] = saved
+                grid[row][col : col + w] = saved
     finally:
         del layout.node_layouts[stone_id]
         del layout.node_kinds[stone_id]
+    return (partial[1], False) if partial is not None else None
 
-    if chosen is None and partial is not None:
-        chosen = (partial[1], partial[2])
-    if chosen is None:
+
+def _insert_stepping_stone(
+    layout: SpecLayout, profile: GameProfile, spec: LevelSpec, a: str, b: str, applied: List[str]
+) -> bool:
+    found = find_stone(layout, profile, layout.rect(a), layout.rect(b))
+    if found is None:
         return False
-    row, col = chosen
+    row, col, _end = found[0]
+    stone_id = "stone1"
+    k = 1
+    while stone_id in layout.node_layouts:
+        k += 1
+        stone_id = f"stone{k}"
     layout.node_layouts[stone_id] = NodeLayout(stone_id, col, row, STONE_WIDTH, 1)
     layout.node_kinds[stone_id] = "Platform"
     section = layout.section_at(col + STONE_WIDTH // 2, row).id

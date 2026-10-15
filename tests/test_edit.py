@@ -33,6 +33,13 @@ from llm import FakeProvider
 
 ROOT = Path(__file__).resolve().parent.parent
 REGION = Rect(10, 10, 11, 10)  # columns 10..20, rows 10..19: p2, coin2, the spikes
+# The base level keeps the fixture's 7-tile gap p2 → p3: comfort limits wide enough that the
+# comfort pass (v3 Part 20, tested in test_comfort.py) adds nothing, here and in edits.
+WIDE_DESIGN = {"design": {"comfort_hop_tiles": 30, "comfort_rise_tiles": 30, "comfort_drop_tiles": 60}}
+
+
+def write_wide_profile(directory: Path) -> None:
+    (directory / "gldtk.game.json").write_text(json.dumps(WIDE_DESIGN), encoding="utf-8")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +51,7 @@ REGION = Rect(10, 10, 11, 10)  # columns 10..20, rows 10..19: p2, coin2, the spi
 def base_level(tmp_path_factory) -> bytes:
     fx = (ROOT / "tests/fixtures/llm/valid_two_sections.json").read_text(encoding="utf-8")
     out = tmp_path_factory.mktemp("base") / "level.ldtk"
+    write_wide_profile(out.parent)
     old = server.provider_factory
     server.provider_factory = lambda req: FakeProvider([fx])
     try:
@@ -60,6 +68,7 @@ def base_level(tmp_path_factory) -> bytes:
 def level(tmp_path, base_level) -> Path:
     p = tmp_path / "level.ldtk"
     p.write_bytes(base_level)
+    write_wide_profile(tmp_path)
     return p
 
 

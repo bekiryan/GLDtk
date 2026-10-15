@@ -182,7 +182,8 @@ def run_prompt(
     rec["llm_attempts"] = stats.get("llm_attempts", 0)
     rec["patches"] = len(stats.get("patches_applied", []))
     rec["patches_applied"] = list(stats.get("patches_applied", []))
-    for k in ("completeness_reprompts", "entities_filled", "layout_retries", "grid_repairs"):
+    for k in ("completeness_reprompts", "entities_filled", "layout_retries", "grid_repairs",
+              "comfort_added", "densify_added"):
         rec[k] = stats.get(k, 0)
     return rec
 

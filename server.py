@@ -416,6 +416,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         completeness_reprompts=built.stats.get("completeness_reprompts", 0),
         entities_filled=built.stats.get("entities_filled", 0),
         densify_added=built.stats.get("densify_added", 0),
+        comfort_added=built.stats.get("comfort_added", 0),
     )
     preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 
@@ -466,6 +467,7 @@ def edit_response(out: EditOutcome, path: str) -> EditResponse:
         layout_retries=out.stats.get("layout_retries", 0),
         grid_repairs=out.stats.get("grid_repairs", 0),
         densify_added=out.stats.get("densify_added", 0),
+        comfort_added=out.stats.get("comfort_added", 0),
     )
     sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)] if spec else []
     return EditResponse(
