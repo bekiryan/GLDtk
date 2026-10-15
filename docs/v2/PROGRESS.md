@@ -32,9 +32,9 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 16 | Play mode | strong | ✅ client-only (canvas modal, profile physics within ~1 px of the verifier, ghost route, pickups/lives/checkpoints/keys/win) | see git log (ldtk-src) |
 | 17 | Multi-level worlds | strong | ✅ backend + sidebar (Levels select, level list with scores, all calls target the current level, regenerate one level; LDtk WorldRender null-guard for the in-place swap) | see git log (both repos) |
 | 20 | Short hops + walk-first paths (user feedback) | strong | ✅ effort-based route cost, comfort pass (hop 4, rise 3, drop 6 tiles; profile `design`), Section.style; replayed three-sections moves 10–15 → 3–4 tiles; tall zigzag towers keep 5-row climbs (warning) | see git log |
-| 21 | Terrain from section types: corridor, parkour, labyrinth, arena, shaft, hub (user feedback; user chose section types) | strong | ⬜ after 17a + 20 | |
-| 18 | Packaged Mac app | medium | ⏳ running (main checkout + ldtk-src) | |
-| | **v4** ([plan](../v4/PLAN.md), requested 2026-10-15): 22 soft-lock detection, 23 mission/space graphs, 24 complexity target, 25 noise terrain fill + endless chunks, 26 pattern library (RAG), 27 design memory | | ⏳ 22 (soft-locks) and 27a (design memory backend) running in worktrees; others after Part 21 | |
+| 21 | Terrain from section types (corridor, parkour, labyrinth, arena, shaft, hub, open) | strong | ✅ Python (generators carve from rock, joined ports, logical anchors, per-section seed retries, `structure` check, section edits change structure without an LLM call); Haxe dropdown follow-up pending | see git log |
+| 18 | Packaged Mac app | medium | ✅ GLDtk.app 322 MB / dmg 144 MB, unsigned; bundled backend with --check, /settings key form, server dies with the app; `scripts/build_mac_app.sh` | see git log (both repos) |
+| | **v4** ([plan](../v4/PLAN.md), requested 2026-10-15): 22 soft-lock detection, 23 mission/space graphs, 24 complexity target, 25 noise terrain fill + endless chunks, 26 pattern library (RAG), 27 design memory | | 27a ✅ merged; 22, 25a, 26a running; 23, 24, 26b, 27b next | |
 | 19 | Armenian README | — | ⬜ last (orchestrator) | |
 
 ## Notes
