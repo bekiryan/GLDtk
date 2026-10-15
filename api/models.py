@@ -116,6 +116,28 @@ class RouteRequest(BaseModel):
     project: Dict[str, Any] = Field(..., description="The LDtk project JSON")
 
 
+class SectionDifficultyModel(BaseModel):
+    """One section's measured difficulty (``fidelity/difficulty.py``, v3 Part 15a)."""
+
+    id: str
+    name: str
+    label: str  # easy | medium | hard (what the section was asked to be)
+    score: float  # 0..10
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)  # non-empty = the score does not fit the label
+
+
+class DifficultyModel(BaseModel):
+    """Difficulty per section, in level order; no LLM call (GET /difficulty, and a field of
+    GenerateResponse / EditResponse / UndoResponse)."""
+
+    success: bool = True
+    error: Optional[str] = None
+    sections: List[SectionDifficultyModel] = Field(default_factory=list)
+    overall: Optional[float] = None  # mean score, weighted by section length
+    warnings: List[str] = Field(default_factory=list)  # level-wide (the curve)
+
+
 class GenerateResponse(BaseModel):
     success: bool
     preview_ascii: Optional[str] = None
@@ -130,6 +152,7 @@ class GenerateResponse(BaseModel):
     fidelity: Optional[FidelityModel] = None  # per-requirement report on the final level
     route: Optional[RouteModel] = None  # golden route of the written file (v3 Part 13)
     cancelled: bool = False  # the job was cancelled; nothing was written (v3 Part 14)
+    difficulty: Optional[DifficultyModel] = None  # per-section difficulty (v3 Part 15a)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -214,6 +237,7 @@ class UndoResponse(BaseModel):
     remaining: int = 0
     error: Optional[str] = None
     route: Optional[RouteModel] = None  # golden route of the restored file
+    difficulty: Optional[DifficultyModel] = None  # difficulty of the restored file
 
 
 class HistoryEntry(BaseModel):

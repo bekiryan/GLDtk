@@ -62,10 +62,25 @@ def aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         "wall_p95_s": p95(walls),
         "llm_calls_total": sum(r.get("llm_calls", 0) for r in records),
         "expect_failed": sum(1 for r in records if r.get("expect_failures")),
+        "difficulty_by_label": difficulty_by_label(records),
     }
     for f in MEAN_FIELDS:
         out[f + "_mean"] = _mean(r[f] for r in records if r.get(f) is not None)
     return out
+
+
+def difficulty_by_label(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Section difficulty scores (v3 Part 15a) grouped by the section's label: n, mean, min, max."""
+    scores: Dict[str, List[float]] = defaultdict(list)
+    for r in records:
+        for s in (r.get("difficulty") or {}).get("sections") or []:
+            if s.get("score") is not None:
+                scores[s.get("label", "?")].append(float(s["score"]))
+    order = {"easy": 0, "medium": 1, "hard": 2}
+    return {
+        label: {"n": len(xs), "mean": _mean(xs), "min": min(xs), "max": max(xs)}
+        for label, xs in sorted(scores.items(), key=lambda kv: order.get(kv[0], 9))
+    }
 
 
 def group_key(r: Dict[str, Any]) -> str:
@@ -141,6 +156,13 @@ def render_report(records: List[Dict[str, Any]], summary: Optional[Dict[str, Any
             + (", ".join(f"{k} x{v}" for k, v in s["failures"].items()) or "none")
             + f"; expectation failures: {s['expect_failed']}"
         )
+    diff_rows = [(key, label, d) for key, s in summary.items()
+                 for label, d in (s.get("difficulty_by_label") or {}).items()]
+    if diff_rows:
+        lines += ["", "## Difficulty by section label", "",
+                  "| provider/model | label | sections | mean score | min | max |", "|---|---|---|---|---|---|"]
+        for key, label, d in diff_rows:
+            lines.append(f"| {key} | {label} | {d['n']} | {_f(d['mean'], 1)} | {_f(d['min'], 1)} | {_f(d['max'], 1)} |")
     lines += ["", "## Per prompt", "", "| prompt | tags | status | fidelity | calls | wall | notes |", "|---|---|---|---|---|---|---|"]
     for r in records:
         status = "ok" if r.get("verified") else (r.get("failure") or {}).get("type", "failed")
