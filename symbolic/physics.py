@@ -26,14 +26,25 @@ The player's abilities live in the per-project Game Profile
 (``game/profile.py``).  :func:`check_double_jump`, :func:`check_dash_jump` and
 :func:`check_wall_jump` extend the plain arc; :func:`reachable` is the single
 entry point used by the validator and the extractor, and :func:`best_ability`
-picks the cheapest way to make a move.  Every check takes the *effective*
-gravity ``g = gravity · gravity_scale`` of the section the move starts in.
+picks the cheapest way to make a move.  Every closed-form check takes one
+*effective* gravity ``g = gravity · gravity_scale``.
+
+Cross-section moves (v3)
+------------------------
+Sections may scale gravity, and a move can cross a section border.  The
+entry points take an optional :class:`~symbolic.gravity.GravityField`; when the
+move stays inside one region of it, the closed forms above are used with that
+region's gravity (the fast path).  Otherwise the trajectory is integrated
+piecewise: the gravity is the one of the section holding the hitbox centre,
+switching exactly at the border (``symbolic/gravity.py``).
 """
 
 from __future__ import annotations
 
 import math
 from typing import TYPE_CHECKING, Iterator, List, Optional, Sequence, Tuple, Union
+
+from .gravity import INF, Flight, GravityField
 
 if TYPE_CHECKING:  # pragma: no cover
     from game.profile import GameProfile
@@ -368,26 +379,96 @@ def ability_enabled(profile: "GameProfile", ability: str) -> bool:
     return bool(getattr(profile.abilities, ability).enabled)
 
 
+def _move_box(
+    p1: Tuple[float, float],
+    p2: Tuple[float, float],
+    profile: "GameProfile",
+    field: GravityField,
+    ability: Optional[str],
+) -> Tuple[float, float, float, float]:
+    """Feet box ``(xlo, xhi, ylo, yhi)`` a move with *ability* can sweep.
+
+    The rise uses the weakest gravity of the field, so the box is safe.
+    """
+    phys = profile.physics
+    ab = profile.abilities
+    v2 = phys.jump_v**2
+    if ability == "double_jump":
+        v2 += ab.double_jump.jump_v**2
+    rise = v2 / (2.0 * field.g_min)
+    extra = ab.dash.distance_px if ability == "dash" else 0.0
+    return (
+        min(p1[0], p2[0]) - extra,
+        max(p1[0], p2[0]) + extra,
+        min(p1[1], p2[1]),
+        max(p1[1], p2[1]) + rise,
+    )
+
+
+def move_gravity(
+    p1: Tuple[float, float],
+    p2: Tuple[float, float],
+    profile: "GameProfile",
+    gravity_scale: float = 1.0,
+    ability: Optional[str] = None,
+    gravity_field: Optional[GravityField] = None,
+) -> Optional[float]:
+    """The single gravity a move feels, or None if it may cross a border.
+
+    Without a field this is ``gravity_for(profile, gravity_scale)``.  With one,
+    it is the gravity of the region holding the whole move (fast path), or
+    None when the move's box spans regions with different gravity.
+    """
+    if gravity_field is None:
+        return gravity_for(profile, gravity_scale)
+    box = _move_box(p1, p2, profile, gravity_field, ability)
+    return gravity_field.uniform_g(*box)
+
+
 def reachable(
     p1: Tuple[float, float],
     p2: Tuple[float, float],
     profile: "GameProfile",
     gravity_scale: float = 1.0,
     ability: Optional[str] = None,
+    gravity_field: Optional[GravityField] = None,
 ) -> bool:
     """Can the player move from p1 to p2 under *profile*?
 
     ``ability=None`` is a plain jump; otherwise the named ability is used —
     and it must be enabled in the profile (a disabled ability never helps).
     Gravity is ``gravity_for(profile, gravity_scale)``; ``run_speed`` caps |vx|.
+
+    With *gravity_field*, a move inside one gravity region uses the closed
+    forms with that region's gravity; a move that may cross a border is
+    integrated piecewise (any physically valid candidate trajectory, ignoring
+    tiles).  Wall jumps then use the envelope with the weakest gravity — the
+    exact wall-jump check needs the tile grid (:func:`trajectory_clear`).
     """
+    if ability is not None and not ability_enabled(profile, ability):
+        return False
+    if gravity_field is not None:
+        g_move = move_gravity(p1, p2, profile, gravity_scale, ability, gravity_field)
+        if g_move is None:
+            if ability == "wall_jump":
+                box = _move_box(p1, p2, profile, gravity_field, ability)
+                g_lo = gravity_field.g_min_over(box[0], box[1], box[2], INF)
+                ab = profile.abilities
+                return check_wall_jump(
+                    p1, p2, g_lo, ab.wall_jump.jump_v, ab.wall_jump.max_climb_px,
+                    ab.wall_jump.push_px, profile.physics.jump_v, profile.physics.run_speed,
+                )
+            for _ in trajectory_candidates(
+                [[0]], p1, p2, profile, gravity_scale, ability, gravity_field
+            ):
+                return True
+            return False
+        gravity_scale = g_move / profile.physics.gravity
     g = gravity_for(profile, gravity_scale)
     phys = profile.physics
     vmax = phys.run_speed
     if ability is None:
         return check_jump_arc(p1, p2, g, phys.jump_v, vmax)
-    if not ability_enabled(profile, ability):
-        return False
     ab = profile.abilities
     if ability == "dash":
         if not ab.dash.air:
@@ -413,18 +494,20 @@ def best_ability(
     p2: Tuple[float, float],
     profile: "GameProfile",
     gravity_scale: float = 1.0,
+    gravity_field: Optional[GravityField] = None,
 ) -> Union[str, None, bool]:
     """Cheapest way to make the move.
 
     Returns ``None`` if a plain jump works, else the first *enabled* ability
     in :data:`ABILITY_ORDER` (dash → double_jump → wall_jump) that works, else
-    ``False`` (impossible with this profile).
+    ``False`` (impossible with this profile).  *gravity_field* as in
+    :func:`reachable`.
     """
-    if reachable(p1, p2, profile, gravity_scale, None):
+    if reachable(p1, p2, profile, gravity_scale, None, gravity_field):
         return None
     for ability in ABILITY_ORDER:
         if ability_enabled(profile, ability) and reachable(
-            p1, p2, profile, gravity_scale, ability
+            p1, p2, profile, gravity_scale, ability, gravity_field
         ):
             return ability
     return False
@@ -543,19 +626,31 @@ def _double_jump_trajectories(
 
 
 def _dash_trajectories(
-    p1: Sample, p2: Sample, g: float, jump_v: float, vmax: float, dash_px: float
+    p1: Sample,
+    p2: Sample,
+    g: float,
+    jump_v: float,
+    vmax: float,
+    dash_px: float,
+    field: Optional[GravityField] = None,
 ) -> Iterator[List[Sample]]:
     """Plain arc to the dash-shortened target, with the dash segment inserted.
 
     The dash is the same instantaneous horizontal shift as
     :func:`check_dash_jump`; here its segment is sampled at a few points of the
-    arc (middle first) and must be clear too.
+    arc (middle first) and must be clear too.  With a row-band *field* the
+    arcs are the piecewise ones (exact: their vertical motion ignores x).
     """
     dx = p2[0] - p1[0]
     sign = 1.0 if dx >= 0 else -1.0
     dash = min(dash_px, abs(dx))
     reduced_target = (p2[0] - sign * dash, p2[1])
-    for arc in _plain_trajectories(p1, reduced_target, g, jump_v, vmax):
+    arcs = (
+        _plain_trajectories(p1, reduced_target, g, jump_v, vmax)
+        if field is None
+        else _field_plain_trajectories(p1, reduced_target, field, jump_v, vmax)
+    )
+    for arc in arcs:
         last = len(arc) - 1
         for frac in _DASH_SPLITS:
             k = round(frac * last)
@@ -567,25 +662,174 @@ def _dash_trajectories(
             yield path
 
 
+# ── Piecewise gravity (moves that may cross a section border) ─────────────────
+
+
+def _flight_samples(fl: Flight, t_end: float, end: Optional[Sample] = None) -> List[Sample]:
+    return fl.samples(t_end, SAMPLE_STEP_PX, _MAX_SAMPLES, end)
+
+
+def _landing_times(field: GravityField, p1: Sample, dx: float, dy: float, v: float) -> List[float]:
+    """Flight times (> 0, latest first) of a launch at vy=v with constant vx
+    that lands Δy higher and Δx away, under *field*.
+
+    Column bands: exact closed form with the path-weighted gravity
+    G = 2∫₀¹(1−σ)·g(x1+σΔx)dσ.  Row bands: exact roots of the piecewise y(t).
+    """
+    if field.axis == "y":
+        times = Flight(field, p1, v, [(INF, 0.0)]).roots_y(p1[1] + dy)
+        return sorted((t for t in times if t > _EPS), reverse=True)
+    big_g = 2.0 * field.path_moment(p1[0], dx, 0.0, 1.0, 1.0)
+    disc = v * v - 2.0 * big_g * dy
+    if disc < 0.0:
+        return []
+    root = math.sqrt(disc)
+    return [t for t in ((v + root) / big_g, (v - root) / big_g) if t > _EPS]
+
+
+def _field_plain_trajectories(
+    p1: Sample, p2: Sample, field: GravityField, jump_v: float, vmax: float
+) -> Iterator[List[Sample]]:
+    """:func:`_plain_trajectories` under piecewise gravity (same candidates)."""
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    launches: List[float] = [0.0] if dy < 0.0 else []
+    launches += [jump_v * frac for frac in LAUNCH_FRACTIONS]
+    for v in launches:
+        for t in _landing_times(field, p1, dx, dy, v):
+            vx = dx / t
+            if abs(vx) > vmax + _EPS:
+                continue
+            yield _flight_samples(Flight(field, p1, v, [(INF, vx)]), t, p2)
+
+
+def _field_double_jump_trajectories(
+    p1: Sample, p2: Sample, field: GravityField, v1: float, v2: float, vmax: float
+) -> Iterator[List[Sample]]:
+    """:func:`_double_jump_trajectories` under piecewise gravity.
+
+    Column bands: the second jump happens at a fraction φ of the flight; then
+    y(T) − y1 = a·T − c·T² with a = v1·φ + v2·(1−φ) and
+    c = ∫₀^φ(φ−σ)g dσ + ∫_φ¹(1−σ)g dσ, solved exactly for T.  Row bands: τ is
+    sampled over the first arc (until it is back at launch height) and the
+    second arc's landing times are exact roots.
+    """
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    steps = _DOUBLE_JUMP_TAU_STEPS
+    plans: List[Tuple[float, float]] = []  # (tau, total time)
+    if field.axis == "y":
+        first = Flight(field, p1, v1, [(INF, 0.0)])
+        back = first.roots_y(p1[1])
+        if not back:
+            return
+        tau_max = back[-1]
+        for k in range(1, steps + 1):
+            tau = tau_max * k / steps
+            mid = (0.0, first.y(tau))
+            for s in sorted(Flight(field, mid, v2, [(INF, 0.0)]).roots_y(p2[1]), reverse=True):
+                if s > _EPS:
+                    plans.append((tau, tau + s))
+    else:
+        for k in range(1, steps + 1):
+            phi = k / (steps + 1)
+            a = v1 * phi + v2 * (1.0 - phi)
+            c = field.path_moment(p1[0], dx, 0.0, phi, phi) + field.path_moment(
+                p1[0], dx, phi, 1.0, 1.0
+            )
+            disc = a * a - 4.0 * c * dy
+            if c <= 0.0 or disc < 0.0:
+                continue
+            root = math.sqrt(disc)
+            for t in ((a + root) / (2.0 * c), (a - root) / (2.0 * c)):
+                if t > _EPS:
+                    plans.append((phi * t, t))
+    for tau, total in plans:
+        vx = dx / total
+        if abs(vx) > vmax + _EPS:
+            continue
+        f1 = Flight(field, p1, v1, [(INF, vx)])
+        mid = f1.point(tau)
+        f2 = Flight(field, mid, v2, [(INF, vx)])
+        yield _flight_samples(f1, tau) + _flight_samples(f2, total - tau, p2)[1:]
+
+
+def _field_dash_trajectories(
+    p1: Sample, p2: Sample, field: GravityField, jump_v: float, vmax: float, dash_px: float
+) -> Iterator[List[Sample]]:
+    """:func:`_dash_trajectories` under piecewise gravity.
+
+    Row bands reuse the plain piecewise arcs (vertical motion ignores x).
+    Column bands: the dash at fraction f of the flight shifts every later x by
+    the dash, so G = 2[∫₀^f(1−σ)g(x1+σD)dσ + ∫_f¹(1−σ)g(x1+dash+σD)dσ] with
+    D the dash-shortened Δx; exact per split.
+    """
+    if field.axis != "x":
+        yield from _dash_trajectories(p1, p2, field.g_min, jump_v, vmax, dash_px, field)
+        return
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    sign = 1.0 if dx >= 0 else -1.0
+    dash = min(dash_px, abs(dx))
+    shift = sign * dash
+    reduced = dx - shift
+    launches: List[float] = [0.0] if dy < 0.0 else []
+    launches += [jump_v * frac for frac in LAUNCH_FRACTIONS]
+    for frac in _DASH_SPLITS:
+        big_g = 2.0 * (
+            field.path_moment(p1[0], reduced, 0.0, frac, 1.0)
+            + field.path_moment(p1[0] + shift, reduced, frac, 1.0, 1.0)
+        )
+        for v in launches:
+            disc = v * v - 2.0 * big_g * dy
+            if disc < 0.0:
+                continue
+            root = math.sqrt(disc)
+            for t in ((v + root) / big_g, (v - root) / big_g):
+                if t <= _EPS:
+                    continue
+                vx = reduced / t
+                if abs(vx) > vmax + _EPS:
+                    continue
+                tk = frac * t
+                f1 = Flight(field, p1, v, [(INF, vx)])
+                xk, yk = f1.point(tk)
+                pre = _flight_samples(f1, tk) if tk > 0.0 else [p1]
+                seg = _segment((xk, yk), (xk + shift, yk))
+                f2 = Flight(field, (xk + shift, yk), f1.vy(tk), [(INF, vx)])
+                post = _flight_samples(f2, t - tk, p2)
+                yield pre[:-1] + seg + post[1:]
+
+
+# ── Walls and wall jumps ─────────────────────────────────────────────────────
+
+WALL_TILE_EXCLUDED = (0, 2)
+"""Tile values that are never part of a wall: empty and hazard."""
+
+
 def find_walls(
     grid: Sequence[Sequence[int]],
     p1: Sample,
     p2: Sample,
     profile: "GameProfile",
     tile_size: float,
-    min_height_tiles: int = 3,
+    min_height_tiles: Optional[int] = None,
 ) -> List[Tuple[int, int, int]]:
     """Solid vertical runs (``col, row_top, row_bottom``) usable for a wall jump.
 
-    A wall is ≥ ``min_height_tiles`` stacked non-empty tiles in one column, within
-    ``push_px`` (plus a tile) of the horizontal span of the hop, overlapping the
+    A wall is ≥ ``min_height_tiles`` (default: the player's height in tiles)
+    stacked solid tiles in one column (hazards do not count), within
+    ``push_px`` (plus a tile) of the hop's horizontal span, overlapping the
     hop's height range (plus the player's height).  Sorted by distance to the
-    hop's midpoint.
+    hop's midpoint.  This is only an existence test; ``trajectory_clear`` with
+    ``ability="wall_jump"`` decides whether the walls can actually be used.
     """
     height = len(grid)
     if height == 0:
         return []
     width = len(grid[0])
+    if min_height_tiles is None:
+        min_height_tiles = profile.player_tiles()[1]
     push = profile.abilities.wall_jump.push_px
     lo_x = min(p1[0], p2[0]) - push - tile_size
     hi_x = max(p1[0], p2[0]) + push + tile_size
@@ -598,11 +842,11 @@ def find_walls(
     for c in range(c0, c1 + 1):
         r = 0
         while r < height:
-            if grid[r][c] == 0:
+            if grid[r][c] in WALL_TILE_EXCLUDED:
                 r += 1
                 continue
             top = r
-            while r + 1 < height and grid[r + 1][c] != 0:
+            while r + 1 < height and grid[r + 1][c] not in WALL_TILE_EXCLUDED:
                 r += 1
             bottom = r
             r += 1
@@ -621,34 +865,13 @@ def _wall_jump_trajectories(
     p1: Sample,
     p2: Sample,
     profile: "GameProfile",
-    g: float,
+    field: GravityField,
     tile_size: float,
 ) -> Iterator[List[Sample]]:
-    """Approximate wall-jump paths: to the wall face, climb it, over to the target.
+    """Exact wall-jump paths on the grid (see :mod:`symbolic.walljump`)."""
+    from .walljump import wall_jump_paths
 
-    Requires the graph-level envelope (:func:`check_wall_jump`) and a real wall
-    (:func:`find_walls`).  The path is a polyline p1 → wall face → up the face to
-    just above the target height → across → down onto p2.
-    """
-    wj = profile.abilities.wall_jump
-    phys = profile.physics
-    if not check_wall_jump(
-        p1, p2, g, wj.jump_v, wj.max_climb_px, wj.push_px, phys.jump_v, phys.run_speed
-    ):
-        return
-    half = profile.player.width_px / 2.0 + _CONTACT_EPS * 2
-    top_y = max(p1[1], p2[1]) + LAND_TOLERANCE_PX
-    for col, _top, _bottom in find_walls(grid, p1, p2, profile, tile_size):
-        left_face = col * tile_size - half
-        right_face = (col + 1) * tile_size + half
-        faces = (left_face, right_face) if p1[0] <= col * tile_size else (right_face, left_face)
-        for face in faces:
-            start_y = p1[1] + _CONTACT_EPS * 10
-            path = _segment(p1, (face, start_y))
-            path += _segment((face, start_y), (face, top_y))[1:]
-            path += _segment((face, top_y), (p2[0], top_y))[1:]
-            path += _segment((p2[0], top_y), p2)[1:]
-            yield path
+    yield from wall_jump_paths(grid, p1, p2, profile, field, tile_size)
 
 
 def trajectory_candidates(
@@ -658,27 +881,52 @@ def trajectory_candidates(
     profile: "GameProfile",
     gravity_scale: float = 1.0,
     ability: Optional[str] = None,
+    gravity_field: Optional[GravityField] = None,
 ) -> Iterator[List[Sample]]:
-    """Every candidate path (feet polylines) for the move, physics only.
+    """Every candidate path (feet polylines) for the move.
 
     ``ability=None`` is a plain move (walk-off drop or jump at 100/85/70 % of
     jump_v, both flight-time roots).  An ability adds its own candidates on top
-    of the plain ones; a disabled ability adds nothing.
+    of the plain ones; a disabled ability adds nothing.  Plain, dash and
+    double-jump candidates are physics only; wall-jump candidates come from a
+    search over the grid's walls (``symbolic/walljump.py``) and each one it
+    yields is already collision-free.
+
+    *gravity_field* (optional) gives the gravity per section; a move that may
+    cross a border is integrated piecewise.  Without it the gravity is
+    ``gravity_for(profile, gravity_scale)`` everywhere.
     """
-    g = gravity_for(profile, gravity_scale)
     phys = profile.physics
     vmax = phys.run_speed
-    yield from _plain_trajectories(p1, p2, g, phys.jump_v, vmax)
+    g = move_gravity(p1, p2, profile, gravity_scale, None, gravity_field)
+    if g is not None:
+        yield from _plain_trajectories(p1, p2, g, phys.jump_v, vmax)
+    elif gravity_field is not None:
+        yield from _field_plain_trajectories(p1, p2, gravity_field, phys.jump_v, vmax)
     if ability is None or not ability_enabled(profile, ability):
         return
     ab = profile.abilities
+    if ability == "wall_jump":
+        field = gravity_field or GravityField.uniform(gravity_for(profile, gravity_scale))
+        yield from _wall_jump_trajectories(grid, p1, p2, profile, field, float(profile.tile_size))
+        return
+    g = move_gravity(p1, p2, profile, gravity_scale, ability, gravity_field)
     if ability == "double_jump":
-        yield from _double_jump_trajectories(p1, p2, g, phys.jump_v, ab.double_jump.jump_v, vmax)
-    elif ability == "dash":
-        if ab.dash.air:
+        if g is not None:
+            yield from _double_jump_trajectories(
+                p1, p2, g, phys.jump_v, ab.double_jump.jump_v, vmax
+            )
+        elif gravity_field is not None:
+            yield from _field_double_jump_trajectories(
+                p1, p2, gravity_field, phys.jump_v, ab.double_jump.jump_v, vmax
+            )
+    elif ability == "dash" and ab.dash.air:
+        if g is not None:
             yield from _dash_trajectories(p1, p2, g, phys.jump_v, vmax, ab.dash.distance_px)
-    else:
-        yield from _wall_jump_trajectories(grid, p1, p2, profile, g, float(profile.tile_size))
+        elif gravity_field is not None:
+            yield from _field_dash_trajectories(
+                p1, p2, gravity_field, phys.jump_v, vmax, ab.dash.distance_px
+            )
 
 
 def trajectory_hits(
@@ -745,6 +993,7 @@ def trajectory_clear(
     gravity_scale: float = 1.0,
     ability: Optional[str] = None,
     tile_size: Optional[float] = None,
+    gravity_field: Optional[GravityField] = None,
 ) -> bool:
     """True if some physically valid trajectory from p1 to p2 is collision-free.
 
@@ -752,10 +1001,13 @@ def trajectory_clear(
     hitbox (``profile.player``) is swept along every candidate of
     :func:`trajectory_candidates`; the move is clear if any candidate touches no
     solid or hazard tile (landing on the target surface is allowed).
+    *gravity_field* as in :func:`trajectory_candidates`.
     """
     ts = float(tile_size or profile.tile_size)
     hitbox = (profile.player.width_px, profile.player.height_px)
-    for samples in trajectory_candidates(grid, p1, p2, profile, gravity_scale, ability):
+    for samples in trajectory_candidates(
+        grid, p1, p2, profile, gravity_scale, ability, gravity_field
+    ):
         if not trajectory_hits(grid, samples, p2, ts, hitbox):
             return True
     return False

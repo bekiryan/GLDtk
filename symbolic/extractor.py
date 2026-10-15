@@ -44,6 +44,20 @@ plain move, then with each enabled ability.  Pairs further apart than the
 profile can possibly reach are pruned before any arc is sampled.  Hazard spans
 are kept as nodes but get no edges (nobody stands on, or lands on, a hazard).
 Edges carry ``metadata["launch"]`` / ``["land"]`` (the feet points used).
+
+Physics accuracy (v3, Part 11)
+------------------------------
+* **Headroom.**  In collision mode a surface tile is standable only with
+  ``headroom`` empty tiles above it (default: the player's height in tiles,
+  ``profile.player_tiles()[1]``).  Spans are split at blocked tiles, so no
+  walk or launch point passes under a low ceiling (:func:`low_ceiling_cells`
+  lists the blocked tiles).
+* **Cross-section gravity.**  ``gravity_field`` (or one built from
+  ``gravity_scale_at_cell`` / ``gravity_scale_at``) makes every move feel the
+  gravity of the section the hitbox centre is in, switching at the border.
+  ``metadata["gravity_scale"]`` is still the scale where the move starts.
+* **Wall jumps** are accepted only by the exact grid search
+  (``symbolic/walljump.py``).
 """
 
 from __future__ import annotations
@@ -52,6 +66,7 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple
 
+from .gravity import INF, GravityField
 from .physics import (
     ABILITY_ORDER,
     ability_enabled,
@@ -127,6 +142,8 @@ def extract_graph(
     gravity_scale_at: Optional[GravityScaleAt] = None,
     collision: bool = False,
     gravity_scale_at_cell: Optional[GravityScaleAtCell] = None,
+    gravity_field: Optional[GravityField] = None,
+    headroom: Optional[int] = None,
 ) -> AbstractLevelGraph:
     """Build an AbstractLevelGraph from a 2-D tile grid.
 
@@ -146,6 +163,11 @@ def extract_graph(
         *profile*, or the default GameProfile when None).
     gravity_scale_at_cell : optional ``(col, row) -> gravity_scale``; wins
         over *gravity_scale_at*.
+    gravity_field : optional :class:`~symbolic.gravity.GravityField` for
+        collision mode (moves across a section border feel both gravities).
+        Built from the scale function when not given.
+    headroom : empty tiles a surface tile needs above it to be standable
+        (collision mode only; default ``profile.player_tiles()[1]``; 0 = off).
 
     Returns
     -------
@@ -176,7 +198,13 @@ def extract_graph(
         def scale_at(col: int, _row: int) -> float:
             return col_scale(col)
 
-    spans = _collect_spans(grid, height, width)
+    if collision:
+        assert profile is not None
+        if headroom is None:
+            headroom = profile.player_tiles()[1]
+    else:
+        headroom = 0
+    spans = _collect_spans(grid, height, width, headroom)
     nodes = _spans_to_nodes(spans, height, tile_size)
 
     graph = AbstractLevelGraph()
@@ -185,7 +213,16 @@ def extract_graph(
 
     if collision:
         assert profile is not None
-        _add_collision_edges(graph, nodes, grid, profile, scale_at)
+        field = gravity_field
+        if field is None and scale_at is not None:
+            field = GravityField.from_cells(profile, width, height, scale_at)
+        if ability_enabled(profile, "wall_jump"):
+            from .walljump import cached_wall_runs
+
+            with cached_wall_runs(grid):
+                _add_collision_edges(graph, nodes, grid, profile, scale_at, field)
+        else:
+            _add_collision_edges(graph, nodes, grid, profile, scale_at, field)
         return graph
 
     _add_edges(
@@ -206,13 +243,54 @@ def extract_graph(
 # ---------------------------------------------------------------------------
 
 
-def _collect_spans(grid: Grid, height: int, width: int) -> List[_Span]:
+def has_headroom(grid: Grid, col: int, row: int, headroom: int) -> bool:
+    """True if the *headroom* tiles above ``(col, row)`` are empty (above the
+    top row counts as open)."""
+    for r in range(max(0, row - headroom), row):
+        if grid[r][col] != TILE_EMPTY:
+            return False
+    return True
+
+
+def low_ceiling_cells(
+    grid: Grid, row: int, col_start: int, col_end: int, headroom: int
+) -> List[Tuple[int, int]]:
+    """``(col, ceiling_row)`` for each standable-looking tile of a run whose
+    headroom is blocked; ``ceiling_row`` is the lowest blocking tile above it.
+
+    Only solid (non-hazard) surface tiles are considered.
+    """
+    out: List[Tuple[int, int]] = []
+    if headroom <= 0 or not grid:
+        return out
+    width = len(grid[0])
+    for c in range(max(0, col_start), min(width - 1, col_end) + 1):
+        if grid[row][c] not in _SOLID_TILES:
+            continue
+        for r in range(row - 1, max(-1, row - headroom - 1), -1):
+            if grid[r][c] != TILE_EMPTY:
+                out.append((c, r))
+                break
+    return out
+
+
+def _collect_spans(grid: Grid, height: int, width: int, headroom: int = 0) -> List[_Span]:
+    """Horizontal runs of surface tiles.
+
+    With ``headroom > 0`` a solid / start / exit tile without that many empty
+    tiles above it is not a surface (nobody can stand there), so runs split
+    at it.  Hazard runs are kept regardless.
+    """
     spans: List[_Span] = []
     for row in range(height):
         col = 0
         while col < width:
             tile = grid[row][col]
-            if tile not in _SURFACE_TILES:
+            if tile not in _SURFACE_TILES or (
+                headroom > 0
+                and tile != TILE_HAZARD
+                and not has_headroom(grid, col, row, headroom)
+            ):
                 col += 1
                 continue
 
@@ -225,7 +303,15 @@ def _collect_spans(grid: Grid, height: int, width: int) -> List[_Span]:
 
             # For hazard and solid tiles, merge adjacent same-type runs.
             end = col
-            while end + 1 < width and grid[row][end + 1] == tile:
+            while (
+                end + 1 < width
+                and grid[row][end + 1] == tile
+                and (
+                    headroom <= 0
+                    or tile == TILE_HAZARD
+                    or has_headroom(grid, end + 1, row, headroom)
+                )
+            ):
                 end += 1
             spans.append(_Span(tile, row, col, end))
             col = end + 1
@@ -507,20 +593,45 @@ def _could_reach(profile: "GameProfile", g: float, gap: float, dy: float) -> boo
     return gap <= vmax * t + extra + slack
 
 
+def _pruning_gravity(
+    field: Optional[GravityField],
+    profile: "GameProfile",
+    gravity_scale: float,
+    src: Tuple[int, int, int],
+    dst: Tuple[int, int, int],
+    height: int,
+    ts: float,
+) -> float:
+    """A gravity no stronger than any the move can feel (safe for pruning)."""
+    if field is None:
+        return gravity_for(profile, gravity_scale)
+    if field.is_uniform:
+        return field.gs[0]
+    if profile.abilities.wall_jump.enabled:
+        return field.g_min  # kicks can leave the hop's box
+    x_lo = min(src[1], dst[1]) * ts - profile.abilities.dash.distance_px
+    x_hi = (max(src[2], dst[2]) + 1) * ts + profile.abilities.dash.distance_px
+    y_lo = (height - 1 - max(src[0], dst[0])) * ts
+    return field.g_min_over(x_lo, x_hi, y_lo, INF)
+
+
 def move_between(
     grid: Grid,
     src: Tuple[int, int, int],
     dst: Tuple[int, int, int],
     profile: "GameProfile",
     gravity_scale: float = 1.0,
+    gravity_field: Optional[GravityField] = None,
 ) -> Optional[Tuple[Optional[str], Point, Point]]:
     """Cheapest collision-free move between two spans, or None.
 
     Returns ``(ability, launch, land)`` — ability None for a plain move.
+    *gravity_scale* is the source section's scale; with *gravity_field* the
+    move instead feels the gravity of each section it passes through.
     """
     height = len(grid)
     ts = float(profile.tile_size)
-    g = gravity_for(profile, gravity_scale)
+    g = _pruning_gravity(gravity_field, profile, gravity_scale, src, dst, height, ts)
     dy = (src[0] - dst[0]) * ts
     gap = max(0.0, (dst[1] - src[2] - 1) * ts, (src[1] - dst[2] - 1) * ts)
     if not _could_reach(profile, g, gap, dy):
@@ -531,7 +642,9 @@ def move_between(
     ]
     for ability in abilities:
         for p1, p2 in pairs:
-            if trajectory_clear(grid, p1, p2, profile, gravity_scale, ability, ts):
+            if trajectory_clear(
+                grid, p1, p2, profile, gravity_scale, ability, ts, gravity_field
+            ):
                 return ability, p1, p2
     return None
 
@@ -542,6 +655,7 @@ def _add_collision_edges(
     grid: Grid,
     profile: "GameProfile",
     gravity_scale_at: Optional[GravityScaleAtCell],
+    gravity_field: Optional[GravityField] = None,
 ) -> None:
     standable = [n for n in nodes.values() if n.node_type != NodeType.HAZARD]
     rects = {
@@ -566,7 +680,7 @@ def _add_collision_edges(
                     LevelEdge(src.id, dst.id, EdgeType.WALK, p2[0] - p1[0], 0.0, (vx, 0.0), meta)
                 )
                 continue
-            move = move_between(grid, s, d, profile, scale)
+            move = move_between(grid, s, d, profile, scale, gravity_field)
             if move is None:
                 continue
             ability, p1, p2 = move

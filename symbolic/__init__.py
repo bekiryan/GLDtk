@@ -19,6 +19,7 @@ from .physics import (
     required_launch_velocity,
     trajectory_clear,
 )
+from .gravity import GravityField
 from .extractor import extract_graph, move_between, span_point_pairs
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "extract_graph",
     "move_between",
     "span_point_pairs",
+    "GravityField",
 ]
