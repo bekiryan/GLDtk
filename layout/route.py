@@ -22,6 +22,8 @@ extractor accepted (``symbolic.physics.trajectory_candidates`` /
 * ``reachable_spans`` are the spans reachable from the Start (to shade them),
   and ``unreachable_required`` the iids of required entities (``REQUIRED_KINDS``,
   signs exempt) the player cannot reach.
+* ``softlock_spans`` are the spans where the player gets stuck (v4 Part 22,
+  :func:`layout.softlock.find_softlocks`, keys included), to shade them red.
 
 Coordinates: the extractor works in Y-up pixels where the surface of tile row
 ``r`` is at ``(H − 1 − r) · ts``; in level pixels (Y-down) that surface is at
@@ -69,6 +71,7 @@ from symbolic.physics import trajectory_candidates, trajectory_hits
 from symbolic.schema import AbstractLevelGraph, EdgeType, LevelEdge
 
 from .ir import IREntity
+from .softlock import find_softlocks, items_from_entities
 from .verify import REQUIRED_KINDS
 
 Point = Tuple[float, float]
@@ -113,6 +116,7 @@ class Route:
     steps: List[RouteStep] = field(default_factory=list)
     reachable_spans: List[Tuple[int, int, int]] = field(default_factory=list)  # (col, row, w)
     unreachable_required: List[str] = field(default_factory=list)  # entity iids
+    softlock_spans: List[Tuple[int, int, int]] = field(default_factory=list)  # (col, row, w)
     level_iid: Optional[str] = None
 
     @property
@@ -127,6 +131,7 @@ class Route:
             "length_px": round(self.length_px, 1),
             "reachable_spans": [{"col": c, "row": r, "w": w} for c, r, w in self.reachable_spans],
             "unreachable_required": list(self.unreachable_required),
+            "softlock_spans": [{"col": c, "row": r, "w": w} for c, r, w in self.softlock_spans],
             "level_iid": self.level_iid,
         }
 
@@ -278,6 +283,14 @@ def level_route(
         key for e in entities if _is_required(e) and (key := _entity_key(e))
         and spans.under(e, depth=1 if e.entity_type == "Exit" else 4) not in reach
     ]
+
+    if start_span is not None and set(exit_spans) & reach:
+        items = items_from_entities(entities, lambda e: spans.under(
+            e, depth=1 if e.entity_type in ("Start", "Exit") else 4))
+        trapped = find_softlocks(graph, start_span, exit_spans, items).span_ids
+        route.softlock_spans = sorted(
+            (c0, row, c1 - c0 + 1) for sid in trapped for row, c0, c1 in [spans.rects[sid]]
+        )
 
     if start is None:
         route.error = "the level has no Start entity"

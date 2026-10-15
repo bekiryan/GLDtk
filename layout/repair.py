@@ -16,7 +16,10 @@ a path makes reachability-based entity fixes premature), then entities:
   walker's headroom; if that fails, repair the failing hop as above;
 * ENTITY_UNREACHABLE / ENTITY_BLOCKED / KEY_LOCK_ORDER: move the entity to the
   nearest reachable non-hazard platform in its section (warning
-  "moved X from A to B").
+  "moved X from A to B");
+* SOFTLOCK: ``layout.softlock_repair`` (a stone chain out of the trap, or the
+  key moved before it); a round of soft-lock fixes that makes the level worse
+  is undone, and the next rounds go on without them.
 
 No stone and no nudge may create a low ceiling: a platform never lands where
 it would leave a standable tile (its own or one below it) with fewer empty
@@ -403,7 +406,8 @@ def _move_entity(
 
 
 def _repair_round(
-    layout: SpecLayout, report: GridReport, profile: GameProfile, spec: LevelSpec
+    layout: SpecLayout, report: GridReport, profile: GameProfile, spec: LevelSpec,
+    softlocks: bool = True,
 ) -> List[str]:
     applied: List[str] = []
     by_code: Dict[str, List[GridError]] = {}
@@ -447,6 +451,10 @@ def _repair_round(
     for err in by_code.get("KEY_LOCK_ORDER", []):
         for sid in err.entity_ids[:1]:
             _move_entity(layout, spec, sid, report.pre_exit_nodes, applied)
+    if by_code.get("SOFTLOCK") and softlocks:
+        from .softlock_repair import repair_softlocks  # (imports this module)
+
+        applied += repair_softlocks(layout, report, profile, spec)
     return applied
 
 
@@ -466,16 +474,29 @@ def repair_grid(
     Returns ``(spec_layout, applied)`` — the (mutated) layout and a description
     of every repair, in order.  Call ``verify_grid`` again for the final report.
     """
+    from .softlock_repair import error_score, restore, snapshot
+
     profile = profile or GameProfile()
     applied: List[str] = []
+    soft_ok = True
     for _ in range(MAX_ROUNDS):
         if report.ok:
             break
-        done = _repair_round(spec_layout, report, profile, spec)
+        soft = soft_ok and any(e.code == "SOFTLOCK" for e in report.errors)
+        snap = snapshot(spec_layout) if soft else None
+        done = _repair_round(spec_layout, report, profile, spec, softlocks=soft)
         if not done:
             break
-        applied += done
         spec_layout.rasterise()
         place_spec_entities(spec, spec_layout)
-        report = verify_grid(spec_layout, profile, spec)
+        new = verify_grid(spec_layout, profile, spec)
+        before, after = error_score(report), error_score(new)
+        if snap is not None and (after[0] > before[0] or after[1] > before[1]):
+            restore(spec_layout, snap)  # a soft-lock repair never makes the level worse:
+            spec_layout.rasterise()  # undo the round and go on without soft-lock fixes
+            place_spec_entities(spec, spec_layout)
+            soft_ok = False
+            continue
+        applied += done
+        report = new
     return spec_layout, applied
