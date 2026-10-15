@@ -105,6 +105,8 @@ class EditRequestBase(BaseModel):
     provider: str = Field("gemini", description="gemini | anthropic | ollama | openai | deepseek")
     model: Optional[str] = Field(None, description="None = provider default model")
     seed: int = Field(42)
+    densify: bool = Field(True, description="Region/section edits: fill the rect with extra "
+                                            "platforms; ignored by entity edits")
     max_retries: int = Field(3, ge=1, le=10)
 
 
