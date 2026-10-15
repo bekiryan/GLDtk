@@ -79,6 +79,8 @@ class Hit:
 
     @property
     def title(self) -> str:
+        if self.pattern.get("kind") == "level":
+            return self.pattern.get("title") or "level"
         return (self.pattern.get("label") or {}).get("title") or f"{self.pattern['features']['structure']} fragment"
 
 
@@ -91,8 +93,10 @@ def retrieve(
     embedder: Any = None,
     mmr_lambda: float = MMR_LAMBDA,
     exclude: Optional[set] = None,
+    kind: str = "pattern",
 ) -> List[Hit]:
-    """The *k* best patterns for *query_text*, diverse (max-marginal relevance)."""
+    """The *k* best patterns (``kind="pattern"``) or whole levels (``kind="level"``) for
+    *query_text*, diverse (max-marginal relevance)."""
     store = store or PatternStore()
     if k <= 0 or not store.vectors or not store.embedder:
         return []
@@ -103,7 +107,8 @@ def retrieve(
     cands: List[Hit] = []
     for pid, vrec in store.vectors.items():
         rec = store.patterns.get(pid)
-        if rec is None or (exclude and pid in exclude) or not accept(rec):
+        if rec is None or (exclude and pid in exclude) or rec.get("kind", "pattern") != kind \
+                or not accept(rec):
             continue
         if filters and filters.hard and not filters.matches(rec):
             continue

@@ -56,3 +56,14 @@ def add_pattern_file(req: AddPatternRequest) -> Dict[str, Any]:
 @router.get("/patterns/stats")
 def pattern_stats() -> Dict[str, Any]:
     return PatternStore().stats()
+
+
+@router.get("/patterns/levels")
+def similar_levels(query: str = Query("", description="what to look for"),
+                   k: int = Query(3, ge=1, le=20)) -> Dict[str, Any]:
+    """Whole levels (kind "level") similar to *query*, without their full ASCII."""
+    hits = retrieve(query, k, store=PatternStore(), kind="level")
+    return {"query": query, "levels": [
+        {"id": h.id, "title": h.title, "source": h.pattern["source"],
+         "origin_path": h.pattern["origin_path"], "level": h.pattern["level"],
+         "score": round(h.score, 4)} for h in hits]}

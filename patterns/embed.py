@@ -109,6 +109,15 @@ def embed_text(rec: Dict[str, Any]) -> str:
     """The text a pattern is embedded as: its label when it has one, plus geometry words."""
     lab = rec.get("label") or {}
     f = rec.get("features") or {}
+    if rec.get("kind") == "level":  # whole level: its prompt and section styles
+        secs = rec.get("sections") or []
+        parts = [rec.get("prompt", ""), f.get("structure", "")]
+        parts += [" ".join(str(s.get(k, "")) for k in ("name", "theme", "style")) for s in secs]
+        if f.get("hazards"):
+            parts.append("hazard spikes lava")
+        if f.get("enemies"):
+            parts.append("enemy combat")
+        return " ".join(p for p in parts if p)
     parts = [lab.get("title", ""), lab.get("purpose", ""), lab.get("mood", ""),
              " ".join(lab.get("mechanics") or []), lab.get("structure_type") or f.get("structure", ""),
              " ".join(lab.get("tags") or [])]

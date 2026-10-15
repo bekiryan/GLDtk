@@ -366,6 +366,7 @@ class ChunksRequest(BaseModel):
                                                      "file's last Chunk_<k> level (0 if none)")
     theme: Optional[str] = Field(None, description="Theme of this chunk group (default cave)")
     orientation: str = Field("horizontal", pattern="^(horizontal|vertical)$")
+    job_id: Optional[str] = Field(None, description="Client-made id for GET /progress and POST /cancel")
 
 
 class ChunkInfo(BaseModel):
@@ -385,3 +386,4 @@ class ChunksResponse(BaseModel):
     output_path: Optional[str] = None
     chunks: List[ChunkInfo] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
+    cancelled: bool = False

@@ -925,7 +925,7 @@ def edit_locate_route(req: LocateRequest) -> LocateResponse:
 
 @app.post("/undo", response_model=UndoResponse, response_model_exclude_unset=True)
 def undo_route(req: PathRequest) -> UndoResponse:
-    memory_hooks.before(req.path)
+    memory_hooks.before(req.path, approve=False)
     snaps = edit_history.list_snapshots(req.path)
     undone_mode = (snaps[-1].label.split(":")[0] or None) if snaps else None
     res = edit_history.undo(req.path)
@@ -947,7 +947,7 @@ def undo_route(req: PathRequest) -> UndoResponse:
 
 def memory_summary() -> Dict[str, Any]:
     prefs = memory_store.load_prefs()
-    return {"enabled": prefs["enabled"], "rules": prefs["rules"], "stats": prefs["stats"],
+    return {"enabled": prefs["enabled"], "patterns_auto_add": prefs["patterns_auto_add"], "rules": prefs["rules"], "stats": prefs["stats"],
             "event_count": prefs["event_count"], "dir": str(memory_store.memory_dir())}
 
 
@@ -964,6 +964,8 @@ def put_memory(body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
         prefs = memory_store.load_prefs()
         if "enabled" in body:
             prefs["enabled"] = bool(body["enabled"])
+        if "patterns_auto_add" in body:
+            prefs["patterns_auto_add"] = bool(body["patterns_auto_add"])
         rules = {r.get("id"): r for r in prefs["rules"]}
         for r in body.get("rules") or []:
             rid = str(r.get("id") or f"user{len(rules) + 1}")
@@ -994,7 +996,12 @@ def scan_memory(body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     path = body.get("path")
     if not path:
         raise HTTPException(status_code=422, detail="path is required")
-    return memory_handedit.scan(path)
+    res = memory_handedit.scan(path)
+    if res.get("edited"):  # the user saved the level after GLDtk wrote it: it is kept
+        from memory import approve as memory_approve
+
+        memory_approve.approve(path)
+    return res
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1065,6 +1072,8 @@ def history_route(path: str = Query(..., description=".ldtk path"),
 
 
 @app.post("/chunks", response_model=ChunksResponse)
+@job_route(lambda: ChunksResponse(success=False, error="Cancelled", cancelled=True),
+           "Appending chunks")
 def chunks_route(req: ChunksRequest) -> ChunksResponse:
     """Append N endless chunks to a world file (v4 Part 25a, ``pipeline/chunks.py``)."""
     from pipeline.chunks import chunks_response

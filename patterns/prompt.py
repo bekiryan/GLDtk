@@ -53,12 +53,21 @@ def examples_block(
             seen.add(h.id)
             hits.append(h)
     hits = hits[:MAX_PATTERNS]
-    if not hits:
+    first = next((q.strip() for q in queries if q and q.strip()), "")
+    lv = retrieve(first, 1, filters, store=store, kind="level") if first else []
+    if not hits and not lv:
         return "", []
-    parts = [HEADER]
+    parts = [HEADER] if hits else []
     for i, h in enumerate(hits, 1):
         parts.append(f"Pattern {i}: {describe(h)}\n{crop(h.pattern['ascii'])}")
-    return "\n\n".join(parts), [{"id": h.id, "title": h.title} for h in hits]
+    used = [{"id": h.id, "title": h.title} for h in hits]
+    for h in lv:  # one short summary of a similar approved level (no ASCII)
+        f = h.pattern["features"]
+        parts.append(f"Similar approved level \"{h.title}\": {f['width']}x{f['height']} tiles, "
+                     f"{f['platforms']} platforms, {f['structure']}, {f['hazards']} hazard tiles, "
+                     f"{f['enemies']} enemies, max gap {f['max_gap']}.")
+        used.append({"id": h.id, "title": h.title})
+    return "\n\n".join(parts), used
 
 
 __all__ = ["HEADER", "crop", "describe", "examples_block"]

@@ -58,6 +58,7 @@ class IngestReport:
     added: int = 0
     duplicates: int = 0
     rejected: int = 0  # stored but not accepted (no Start->Exit route in the window)
+    levels_added: int = 0  # whole-level entries (kind "level", Part 26c)
     skipped_files: Dict[str, str] = field(default_factory=dict)
     mapped_files: Dict[str, int] = field(default_factory=dict)  # file -> patterns added
     notes: List[str] = field(default_factory=list)
@@ -66,6 +67,7 @@ class IngestReport:
         self.added += other.added
         self.duplicates += other.duplicates
         self.rejected += other.rejected
+        self.levels_added += other.levels_added
         self.skipped_files.update(other.skipped_files)
         self.mapped_files.update(other.mapped_files)
         self.notes += other.notes
@@ -298,6 +300,65 @@ def make_id(source: str, origin: str, level: str, ascii_text: str) -> str:
     return hashlib.sha1(f"{source}|{origin}|{level}|{ascii_text}".encode()).hexdigest()[:12]
 
 
+# ── whole-level entries (Part 26c) ──────────────────────────────────────────
+
+THUMB_W, THUMB_H = 60, 20
+
+
+def thumbnail(grid: Sequence[Sequence[Any]], ents: Sequence[IREntity],
+              max_w: int = THUMB_W, max_h: int = THUMB_H) -> str:
+    """The whole level as ASCII of at most *max_w* x *max_h*: each character covers a block of
+    tiles (hazard beats solid beats empty; Start / Exit / Enemy / Pickup are overlaid)."""
+    h, w = len(grid), len(grid[0]) if grid else 0
+    if not h or not w:
+        return ""
+    sx, sy = -(-w // max_w), -(-h // max_h)  # block size, ceil
+    cols, rows = -(-w // sx), -(-h // sy)
+    cells = [["." for _ in range(cols)] for _ in range(rows)]
+    for r in range(rows):
+        for c in range(cols):
+            vals = [int(grid[y][x]) for y in range(r * sy, min(h, (r + 1) * sy))
+                    for x in range(c * sx, min(w, (c + 1) * sx))]
+            n_solid = vals.count(int(TileValue.SOLID))
+            if int(TileValue.HAZARD) in vals:
+                cells[r][c] = "^"
+            elif n_solid * 2 >= len(vals) or (n_solid and sx * sy == 1):
+                cells[r][c] = "#"
+    for e in ents:  # rarer kinds last so Start / Exit win
+        ch = ENTITY_CHARS.get(e.entity_type)
+        if ch and 0 <= e.row < h and 0 <= e.col < w:
+            cells[e.row // sy][e.col // sx] = ch
+    return "\n".join("".join(r) for r in cells)
+
+
+def ingest_level(store: PatternStore, grid: List[List[Any]], entities: List[IREntity], *,
+                 source: str, license: str, origin_path: str, level: str,
+                 prompt: str = "", sections: Optional[List[Dict[str, Any]]] = None,
+                 profile: Optional[GameProfile] = None) -> bool:
+    """Add one whole-level entry (``kind`` "level"); False when it is already there (same file,
+    level and content) or the level is empty.  The label stays None: it is filled lazily."""
+    if not grid or not grid[0]:
+        return False
+    profile = profile or GameProfile()
+    content = hashlib.sha1(json.dumps(
+        [[int(v) for v in row] for row in grid] + [[e.entity_type, e.col, e.row] for e in entities]
+    ).encode()).hexdigest()
+    pid = make_id("level:" + source, origin_path, level, content)
+    if pid in store.patterns:
+        return False
+    ents = guess_start_exit(grid, list(entities))
+    feats = window_features(grid, ents, profile)
+    secs = [{k: s[k] for k in ("name", "theme", "difficulty", "style") if s.get(k)} for s in sections or []]
+    title = (prompt or "").strip().split("\n")[0][:60] or f"{feats['structure']} level"
+    return store.add({
+        "id": pid, "kind": "level", "source": source, "license": license, "origin_path": origin_path,
+        "level": level, "title": title, "prompt": (prompt or "")[:300], "sections": secs,
+        "window": {"col": 0, "row": 0, "w": len(grid[0]), "h": len(grid)},
+        "ascii": thumbnail(grid, ents), "features": feats, "accepted": accept_features(feats),
+        "label": None,
+    })
+
+
 # ── public entry points ─────────────────────────────────────────────────────
 
 
@@ -352,7 +413,7 @@ def ingest_grid(
 
 def add_path(store: PatternStore, path: Any, level: Optional[str] = None, *,
              source: Optional[str] = None, license: Optional[str] = None,
-             profile: Optional[GameProfile] = None) -> IngestReport:
+             profile: Optional[GameProfile] = None, with_levels: bool = False) -> IngestReport:
     """Ingest an ``.ldtk`` file: a GLDtk export (``gldtk_version`` set) through the GLDtk reader,
     anything else as a foreign project through the name mapping.  *level* picks one level."""
     p = Path(path)
@@ -383,6 +444,11 @@ def add_path(store: PatternStore, path: Any, level: Optional[str] = None, *,
             rep.merge(ingest_grid(store, rl.grid, rl.entities, source=source or "gldtk",
                                   license=license or GLDTK_LICENSE, origin_path=str(p),
                                   level=rl.identifier, profile=profile))
+            if with_levels and ingest_level(
+                    store, rl.grid, rl.entities, source=source or "gldtk",
+                    license=license or GLDTK_LICENSE, origin_path=str(p), level=rl.identifier,
+                    prompt=rl.prompt or "", sections=rl.sections, profile=profile):
+                rep.levels_added += 1
     else:
         subset = dict(doc)
         subset["levels"] = [levels[i] for i in sel]
@@ -391,7 +457,7 @@ def add_path(store: PatternStore, path: Any, level: Optional[str] = None, *,
                                   license=license or SAMPLE_LICENSE, origin_path=str(p),
                                   level=ident, profile=profile))
     n = rep.added - n0
-    if n or rep.duplicates:
+    if n or rep.duplicates or rep.levels_added:
         rep.mapped_files[p.name] = n
     else:
         rep.skipped_files[p.name] = "no level mapped"
@@ -407,4 +473,4 @@ def ingest_samples(store: PatternStore, directory: Any, profile: Optional[GamePr
 
 
 __all__ = ["IngestReport", "OPEN_CORPORA_HOOK", "SKIP_FILES", "accept_features", "add_path",
-           "guess_start_exit", "ingest_grid", "ingest_samples", "map_intgrid_values", "window_features"]
+           "guess_start_exit", "ingest_grid", "ingest_level", "thumbnail", "ingest_samples", "map_intgrid_values", "window_features"]

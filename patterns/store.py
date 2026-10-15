@@ -71,12 +71,14 @@ class PatternStore:
         return True
 
     def stats(self) -> Dict[str, Any]:
-        recs = list(self.patterns.values())
+        allrecs = list(self.patterns.values())
+        recs = [r for r in allrecs if r.get("kind", "pattern") == "pattern"]
         by_source: Dict[str, int] = {}
         for r in recs:
             by_source[r["source"]] = by_source.get(r["source"], 0) + 1
         return {
             "patterns": len(recs),
+            "levels": len(allrecs) - len(recs),
             "accepted": sum(1 for r in recs if r.get("accepted")),
             "labelled": sum(1 for r in recs if r.get("label")),
             "embedded": len(self.vectors),
