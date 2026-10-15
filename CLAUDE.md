@@ -75,7 +75,7 @@ Prompt (+ retrieved patterns from patterns/, + design-memory rules from memory/)
 
 **Comfort limits:** `GameProfile.design` (`comfort_hop_tiles`, `comfort_rise_tiles`, `comfort_drop_tiles`) say what a normal move should be; the route prefers walking and the comfort pass adds platforms. Default physics numbers: see the Game Profile (`game/profile.py`), not this file.
 
-**Structure types:** each `Section` has a structure type (corridor, parkour, labyrinth, arena, shaft, hub, open) and a `style`. `layout/terrain/` generators carve from rock; a section edit that only changes structure makes no LLM call. Mission graphs (`mission/`: grammar, space embedding, item-state verify) add keys, locks, ability gates and loops. Rock fill and chunks never touch the protected route (arcs, headroom, comfort platforms).
+**Structure types:** each `Section` has a structure type (corridor, parkour, labyrinth, arena, shaft, hub, open) and a `style` (walk | mixed | parkour; null = mixed; only parkour keeps long jumps). `layout/terrain/` generators carve from rock; a section edit that only changes structure makes no LLM call. Mission graphs (`mission/`: grammar, space embedding, item-state verify) add keys, locks, ability gates and loops. Rock fill and chunks never touch the protected route (arcs, headroom, comfort platforms).
 
 **Multi-level files:** a world is several LDtk levels; `GenerateRequest.level` regenerates one level, and `level` (iid or identifier) on `/route`, `/difficulty` and the edit endpoints selects which level they act on (default: the first).
 

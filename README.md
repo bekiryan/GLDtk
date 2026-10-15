@@ -213,8 +213,9 @@ terrain from solid rock, so levels have floors, walls, ceilings and rooms, not o
 | `open` | open ground and a few platforms |
 
 Paths are mostly **walking, fighting and short hops**: the comfort limits in the Game Profile cap a hop,
-a rise and a drop, and the route prefers walking. Sections also have a **style** (for example
-sparse or dense). Select a section and use **Make this section a…** to re-carve it as another type
+a rise and a drop, and the route prefers walking. Sections also have a **style**: `walk` (every
+jump comfortable), `mixed` (the default; an occasional longer jump) or `parkour` (long jumps up to the
+physics limit, only when the prompt asks for it). Select a section and use **Make this section a…** to re-carve it as another type
 without an LLM call.
 
 ### Soft-lock detection
