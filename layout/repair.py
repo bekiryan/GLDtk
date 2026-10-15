@@ -12,9 +12,16 @@ a path makes reachability-based entity fixes premature), then entities:
   the gap, at the position nearest the hop's midpoint that the collision-aware
   oracle accepts from both ends (or, failing that, from the source end and
   closer to the target — the next round continues from it);
+* LOW_CEILING: nudge the platform that forms the low ceiling out of the
+  walker's headroom; if that fails, repair the failing hop as above;
 * ENTITY_UNREACHABLE / ENTITY_BLOCKED / KEY_LOCK_ORDER: move the entity to the
   nearest reachable non-hazard platform in its section (warning
   "moved X from A to B").
+
+No stone and no nudge may create a low ceiling: a platform never lands where
+it would leave a standable tile (its own or one below it) with fewer empty
+tiles above than the player is tall (:func:`_keeps_headroom`).  Moves are
+checked with the level's gravity per section (``gravity_field_of``).
 
 The layout is mutated in place and returned.
 """
@@ -33,7 +40,7 @@ from .ir import TileValue
 from .spec_entities import place_spec_entities
 from .spec_layout import Rect, SpecLayout
 from .sugiyama import NodeLayout
-from .verify import GridError, GridReport, verify_grid
+from .verify import GridError, GridReport, gravity_field_of, verify_grid
 
 MAX_ROUNDS = 5
 STONE_WIDTH = 3
@@ -65,13 +72,60 @@ def _swept_cells(layout: SpecLayout, samples, hitbox: Tuple[float, float]) -> Se
     return cells
 
 
+def _keeps_headroom(
+    layout: SpecLayout, cols: range, row: int, standable: bool, own: Set[Cell]
+) -> bool:
+    """Would solid tiles at ``(cols, row)`` keep every walk's headroom on the grid?
+
+    The new tiles need ``player_h`` empty tiles above them (if standable), and
+    no standable tile below them may end up with less.  ``own`` are the tiles
+    the platform occupies now (they will be cleared).
+    """
+    grid = layout.ir.grid
+    height = layout.height
+    ph = layout.player_tiles[1]
+    for c in cols:
+        if not 0 <= c < layout.width:
+            return False
+        if standable:
+            for r in range(max(0, row - ph), row):
+                if grid[r][c] != TileValue.EMPTY and (c, r) not in own:
+                    return False
+        for r in range(row + 1, min(height, row + ph + 1)):
+            if grid[r][c] == TileValue.SOLID and (c, r) not in own:
+                return False
+    return True
+
+
+def _node_cells(layout: SpecLayout, node_id: str) -> Set[Cell]:
+    nl = layout.node_layouts[node_id]
+    return {(c, nl.row) for c in range(nl.col, nl.col + nl.width)}
+
+
+def _nearest_safe_row(
+    layout: SpecLayout, node_id: str, prefer_down: bool, avoid: Set[Cell]
+) -> Optional[int]:
+    """``nearest_free_row`` (excluding the current row) that also keeps headroom."""
+    nl = layout.node_layouts[node_id]
+    own = _node_cells(layout, node_id)
+    cols = range(nl.col, nl.col + nl.width)
+    standable = layout.standable(node_id)
+    for d in range(1, layout.height):
+        for cand in ((nl.row + d, nl.row - d) if prefer_down else (nl.row - d, nl.row + d)):
+            if layout.row_is_free(node_id, cand, avoid) and _keeps_headroom(
+                layout, cols, cand, standable, own
+            ):
+                return cand
+    return None
+
+
 def _nudge(
     layout: SpecLayout, node_id: str, avoid: Set[Cell], reason: str, applied: List[str]
 ) -> bool:
     nl = layout.node_layouts[node_id]
     # Move away from the cells to keep clear: down if they are mostly above.
     prefer_down = bool(avoid) and sum(r for _c, r in avoid) / len(avoid) <= nl.row
-    row = layout.nearest_free_row(node_id, prefer_down=prefer_down, avoid=avoid, exclude_current=True)
+    row = _nearest_safe_row(layout, node_id, prefer_down, avoid)
     if row is None:
         return False
     old = nl.row
@@ -119,13 +173,16 @@ def _nudge_hop_blockers(
     hitbox = (profile.player.width_px, profile.player.height_px)
     ra, rb = layout.rect(a), layout.rect(b)
     scale = layout.gravity_scale_of(ra)
+    gfield = gravity_field_of(layout, profile)
     golden = set(layout.golden_path)
     abilities = [None] + [x for x in ABILITY_ORDER if ability_enabled(profile, x)]
     best: Optional[Tuple[Tuple[int, int], Set[str], Set[Cell]]] = None
     tried = 0
     for p1, p2 in span_point_pairs(ra, rb, layout.height, ts, hitbox[0]):
         for ability in abilities:
-            for samples in trajectory_candidates(grid, p1, p2, profile, scale, ability):
+            for samples in trajectory_candidates(
+                grid, p1, p2, profile, scale, ability, gfield
+            ):
                 tried += 1
                 if tried > _MAX_BLOCKER_CANDIDATES:
                     break
@@ -185,6 +242,7 @@ def _insert_stepping_stone(
         k += 1
         stone_id = f"stone{k}"
     scale_a = layout.gravity_scale_of(ra)
+    gfield = gravity_field_of(layout, profile)
     base = _dist(_centre(layout, ra), target)
     partial: Optional[Tuple[float, int, int]] = None
 
@@ -197,14 +255,16 @@ def _insert_stepping_stone(
             layout.node_layouts[stone_id].col = col
             if not layout.row_is_free(stone_id, row):
                 continue
+            if not _keeps_headroom(layout, range(col, col + STONE_WIDTH), row, True, set()):
+                continue  # never create a low ceiling (or a stone without headroom)
             stone: Rect = (row, col, col + STONE_WIDTH - 1)
             saved = grid[row][col : col + STONE_WIDTH]
             grid[row][col : col + STONE_WIDTH] = [TileValue.SOLID] * STONE_WIDTH
             try:
-                if move_between(grid, ra, stone, profile, scale_a) is None:
+                if move_between(grid, ra, stone, profile, scale_a, gfield) is None:
                     continue
                 scale_s = layout.gravity_scale_of(stone)
-                if move_between(grid, stone, rb, profile, scale_s) is not None:
+                if move_between(grid, stone, rb, profile, scale_s, gfield) is not None:
                     chosen = (row, col)
                     break
                 d = _dist(_centre(layout, stone), target)
@@ -233,6 +293,38 @@ def _insert_stepping_stone(
         f"inserted stepping stone '{stone_id}' at column {col}, row {row} (section "
         f"'{section}') between '{a}' and '{b}'"
     )
+    return True
+
+
+def _clear_low_ceiling(layout: SpecLayout, err: GridError, applied: List[str]) -> bool:
+    """Nudge the platform(s) forming a LOW_CEILING out of the walker's headroom."""
+    grid = layout.ir.grid
+    ph = layout.player_tiles[1]
+    keep: Set[Cell] = set()
+    walkers: Set[str] = set()
+    for col, ceiling in err.cells:
+        surface = next(
+            (r for r in range(ceiling + 1, layout.height) if grid[r][col] != TileValue.EMPTY),
+            None,
+        )
+        if surface is None:
+            continue
+        keep |= {(col, r) for r in range(max(0, surface - ph), surface)}
+        walker = layout.node_at(col, surface)
+        if walker is not None:
+            walkers.add(walker)
+    blockers = {layout.node_at(c, r) for c, r in keep if grid[r][c] != TileValue.EMPTY}
+    blockers.discard(None)
+    if not blockers or blockers & walkers:
+        return False
+    snapshot = {n: layout.node_layouts[n].row for n in blockers}  # type: ignore[index]
+    local: List[str] = []
+    for nid in sorted(blockers):  # type: ignore[arg-type]
+        if not _nudge(layout, nid, keep, "raise a low ceiling", local):
+            for n, row in snapshot.items():
+                layout.node_layouts[n].row = row  # type: ignore[index]
+            return False
+    applied += local
     return True
 
 
@@ -281,8 +373,14 @@ def _repair_round(
                 set(err.node_ids), applied,
             )
 
-    path_errors = by_code.get("NO_GRID_PATH", []) + by_code.get("WALL_MISSING", [])
+    path_errors = (
+        by_code.get("LOW_CEILING", [])
+        + by_code.get("NO_GRID_PATH", [])
+        + by_code.get("WALL_MISSING", [])
+    )
     for err in path_errors[:1]:
+        if err.code == "LOW_CEILING" and _clear_low_ceiling(layout, err, applied):
+            continue
         if len(err.node_ids) == 2 and err.node_ids[0] != err.node_ids[1]:
             a, b = err.node_ids
             if not _nudge_hop_blockers(layout, profile, a, b, applied):
