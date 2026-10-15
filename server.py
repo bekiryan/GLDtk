@@ -67,6 +67,7 @@ from api.models import (
     WorldFidelityModel,
 )
 from edit import history as edit_history
+from memory import analyze as memory_analyze, handedit as memory_handedit, hooks as memory_hooks, prefs as memory_prefs, store as memory_store
 from edit.context import Rect
 from edit.llm import EditLLMFailed
 from edit.entities import edit_entities
@@ -285,12 +286,14 @@ def put_profile(
         save_profile(profile, profile_path)
     except OSError as exc:
         raise HTTPException(status_code=500, detail=f"Could not write {profile_path}: {exc}")
+    memory_hooks.profile_changed(profile_path, profile)
     return profile.model_dump()
 
 
 @app.post("/generate", response_model=GenerateResponse)
 @job_route(lambda: GenerateResponse(success=False, error="Cancelled", cancelled=True),
            "Generating the level")
+@memory_hooks.track("generate")
 def generate(req: GenerateRequest) -> GenerateResponse:
     # ── game profile (never written during generate) ──────────────────────
     profile_path = (
@@ -304,6 +307,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         return GenerateResponse(
             success=False, error=str(exc), profile_path=str(profile_path)
         )
+    profile = memory_prefs.nudge_profile(profile)  # design memory (bounded, logged in warnings)
 
     # ── difficulty params ─────────────────────────────────────────────────
     diff_cfg = _DIFFICULTY.get(req.difficulty or "medium", _DIFFICULTY["medium"])
@@ -444,6 +448,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
 def _dress(built: Any, description: str, req: GenerateRequest, density: float, seed: int) -> Any:
     """The aesthetic layer of a built level (spec entities only — no random coins / enemies)."""
     spec = built.spec
+    memory_prefs.apply_entity_defaults(spec)  # design memory: the user's typical field values
     ir = built.spec_layout.ir
     ordered_sections = sorted(spec.sections, key=lambda s: s.order)
     for band in ir.metadata.get("sections", []):
@@ -772,6 +777,7 @@ def _provider_or_error(req: Any):
 
 @app.post("/edit/region", response_model=EditResponse)
 @job_route(_cancelled_edit, "Reading the level for a region edit")
+@memory_hooks.track("edit")
 def edit_region_route(req: RegionEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
@@ -784,6 +790,7 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
 
 @app.post("/edit/section", response_model=EditResponse)
 @job_route(_cancelled_edit, "Reading the level for a section edit")
+@memory_hooks.track("edit")
 def edit_section_route(req: SectionEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
@@ -796,6 +803,7 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
 
 @app.post("/edit/entities", response_model=EditResponse)
 @job_route(_cancelled_edit, "Reading the level for an entity edit")
+@memory_hooks.track("edit")
 def edit_entities_route(req: EntityEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
@@ -825,7 +833,12 @@ def edit_locate_route(req: LocateRequest) -> LocateResponse:
 
 @app.post("/undo", response_model=UndoResponse, response_model_exclude_unset=True)
 def undo_route(req: PathRequest) -> UndoResponse:
+    memory_hooks.before(req.path)
+    snaps = edit_history.list_snapshots(req.path)
+    undone_mode = (snaps[-1].label.split(":")[0] or None) if snaps else None
     res = edit_history.undo(req.path)
+    if res.success:
+        memory_hooks.undone(req.path, undone_mode)
     out = UndoResponse(success=res.success, restored_from=res.restored_from,
                        remaining=res.remaining, error=res.error)
     if res.success:  # a failed undo keeps its v2 shape (no ``route`` key)
@@ -833,6 +846,63 @@ def undo_route(req: PathRequest) -> UndoResponse:
         out.difficulty = difficulty_of(req.path, level=req.level)
         out.levels = levels_summary(req.path, req.level)
     return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Design memory (v4 Part 27)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def memory_summary() -> Dict[str, Any]:
+    prefs = memory_store.load_prefs()
+    return {"enabled": prefs["enabled"], "rules": prefs["rules"], "stats": prefs["stats"],
+            "event_count": prefs["event_count"], "dir": str(memory_store.memory_dir())}
+
+
+@app.get("/memory")
+def get_memory() -> Dict[str, Any]:
+    return memory_summary()
+
+
+@app.put("/memory")
+def put_memory(body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """``enabled`` toggles memory; ``rules`` (id, text?, confidence?, enabled?) edits rules by
+    id and adds unknown ids as user rules; ``delete`` lists rule ids to remove."""
+    with memory_store._lock:
+        prefs = memory_store.load_prefs()
+        if "enabled" in body:
+            prefs["enabled"] = bool(body["enabled"])
+        rules = {r.get("id"): r for r in prefs["rules"]}
+        for r in body.get("rules") or []:
+            rid = str(r.get("id") or f"user{len(rules) + 1}")
+            cur = rules.setdefault(rid, {"id": rid, "text": "", "confidence": 0.9, "source": "user"})
+            if "text" in r:
+                cur["text"] = str(r["text"])[:memory_analyze.MAX_RULE_CHARS]
+                cur["source"] = "user"  # an edited rule is the user's from now on
+            if "confidence" in r:
+                cur["confidence"] = max(0.0, min(1.0, float(r["confidence"])))
+            if "enabled" in r:
+                cur["enabled"] = bool(r["enabled"])
+        for rid in body.get("delete") or []:
+            if rules.pop(rid, None) is not None and rid not in prefs["dismissed"]:
+                prefs["dismissed"].append(rid)  # a deleted stat rule does not come back
+        prefs["rules"] = list(rules.values())
+        memory_store.save_prefs(prefs)
+    return memory_summary()
+
+
+@app.delete("/memory")
+def delete_memory() -> Dict[str, Any]:
+    memory_store.reset()
+    return memory_summary()
+
+
+@app.post("/memory/scan")
+def scan_memory(body: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    path = body.get("path")
+    if not path:
+        raise HTTPException(status_code=422, detail="path is required")
+    return memory_handedit.scan(path)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

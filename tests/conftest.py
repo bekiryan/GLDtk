@@ -20,6 +20,12 @@ def fixture_text(name: str) -> str:
     return (FIXTURES / name).read_text(encoding="utf-8")
 
 
+@pytest.fixture(autouse=True)
+def _memory_dir(tmp_path_factory, monkeypatch):
+    """Design memory never touches the real user folder in tests."""
+    monkeypatch.setenv("GLDTK_MEMORY_DIR", str(tmp_path_factory.mktemp("gldtk_memory")))
+
+
 @pytest.fixture
 def fixtures_dir() -> Path:
     return FIXTURES

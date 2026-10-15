@@ -237,6 +237,9 @@ OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+from memory.prefs import with_block as with_preferences  # noqa: E402  (design memory, v4 Part 27)
+
+
 def build_generate_messages(
     description: str,
     constraints: Optional[Dict[str, Any]] = None,
@@ -285,7 +288,7 @@ def build_generate_messages(
             content += "\n\nCONSTRAINTS (follow exactly):\n" + "\n".join(lines)
     profile = profile or GameProfile()
     content += "\n\nGAME PROFILE (fixed for this game):\n" + profile.summary_for_prompt()
-    return [{"role": "user", "content": content}]
+    return [{"role": "user", "content": with_preferences(content)}]
 
 
 def build_repair_messages(
