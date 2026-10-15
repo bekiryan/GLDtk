@@ -131,6 +131,7 @@ class RouteModel(BaseModel):
     length_px: float = 0.0
     reachable_spans: List[SpanModel] = Field(default_factory=list)
     unreachable_required: List[str] = Field(default_factory=list)  # entity iids
+    softlock_spans: List[SpanModel] = Field(default_factory=list)  # where the player gets stuck
     level_iid: Optional[str] = None
 
 

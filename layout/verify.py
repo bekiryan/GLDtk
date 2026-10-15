@@ -20,6 +20,9 @@ platforms), and checks:
   KEY_LOCK_ORDER      an Exit has ``requires_key`` but no Key is reachable
                       without passing through the Exit
   START_BLOCKED       the player has no headroom at the Start
+  SOFTLOCK            a place the player can reach from which no Exit is reachable
+                      any more (a pit, a one-way drop into a sealed area, a drop past
+                      the key, a key behind its own door; see ``layout.softlock``)
 
 Moves are judged with the level's :class:`~symbolic.gravity.GravityField`
 (:func:`gravity_field_of`): a jump across a section border feels both
@@ -43,6 +46,7 @@ from symbolic.physics import best_ability, find_walls
 from symbolic.schema import AbstractLevelGraph, NodeType
 
 from .ir import IREntity, TileValue
+from .softlock import SoftlockReport, find_softlocks, items_from_entities
 from .spec_layout import Rect, SpecLayout
 
 REQUIRED_KINDS = {"Pickup", "Key", "Weapon", "Checkpoint", "Interactive", "Exit"}
@@ -70,6 +74,7 @@ class GridReport:
     graph: Optional[AbstractLevelGraph] = field(default=None, repr=False)
     start_span: Optional[str] = None  # span id (in ``graph``) the player starts on
     exit_spans: Set[str] = field(default_factory=set)  # span ids of the Exit nodes
+    softlock: Optional[SoftlockReport] = field(default=None, repr=False)
 
     def error_messages(self) -> List[str]:
         return [e.message for e in self.errors]
@@ -290,6 +295,11 @@ def verify_grid(
                 )
             )
 
+    # ── SOFTLOCK ──
+    softlock: Optional[SoftlockReport] = None
+    if reached_exit:
+        softlock = _softlock_errors(graph, layout, index, start_span, exit_spans, errors, warnings)
+
     stats = {
         "spans": len(index.rects),
         "edges": len(graph.edges()),
@@ -307,7 +317,34 @@ def verify_grid(
         graph=graph,
         start_span=start_span,
         exit_spans=exit_spans,
+        softlock=softlock,
     )
+
+
+def _softlock_errors(
+    graph: AbstractLevelGraph,
+    layout: SpecLayout,
+    index: SpanIndex,
+    start_span: Optional[str],
+    exit_spans: Set[str],
+    errors: List[GridError],
+    warnings: List[str],
+) -> SoftlockReport:
+    ents = [e for e in layout.ir.entities if "spec_id" in e.metadata or e.entity_type == "Start"]
+    items = items_from_entities(ents, lambda e: _anchor_span(e, layout, index))
+    rep = find_softlocks(graph, start_span, exit_spans, items)
+    if rep.too_many_items:
+        warnings.append("Too many keys and ability pickups to check every item state for "
+                        "soft-locks; only the movement graph was checked.")
+    for trap in rep.traps:
+        nodes: List[str] = []
+        for sid in ([trap.entry[0]] if trap.entry else []) + trap.spans:
+            nodes += [n for n in index.span_nodes.get(sid, []) if n not in nodes]
+        cells = [(c, r) for sid in trap.spans for r, c0, c1 in [index.rects[sid]]
+                 for c in range(c0, c1 + 1)][:64]
+        ent_ids = [items.item_entities[i] for i in trap.missing if i in items.item_entities]
+        errors.append(GridError("SOFTLOCK", trap.message, nodes, ent_ids, cells))
+    return rep
 
 
 def failing_hop(layout: SpecLayout, reachable_nodes: Set[str]) -> Optional[Tuple[str, str]]:
