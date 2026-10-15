@@ -29,7 +29,7 @@ def test_json_schema_is_inlined_and_strict():
     assert "anyOf" not in text
     assert schema["required"] == [
         "title", "size", "orientation", "sections", "nodes", "edges", "entities", "requirements",
-            "complexity",
+        "complexity", "mission",
     ]
     for obj in _walk(schema):
         if obj.get("type") == "object":

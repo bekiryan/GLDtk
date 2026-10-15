@@ -42,6 +42,7 @@ from layout.repair import repair_grid
 from layout.spec_entities import place_spec_entities
 from layout.spec_layout import SpecLayout, grid_to_spec, layout_spec
 from layout.terrain import MAX_ATTEMPTS as TERRAIN_ATTEMPTS
+from mission import build_with_mission, mission_of, verify_mission
 from layout.verify import GridReport, verify_grid
 from spec.level_spec import LevelSpec, SpecNode
 
@@ -57,6 +58,7 @@ class BuiltLevel:
     warnings: List[str] = field(default_factory=list)
     stats: Dict[str, Any] = field(default_factory=dict)
     fidelity: Optional[FidelityReport] = None  # check_level on the final layout
+    mission: Optional[Dict[str, Any]] = None  # v4 Part 23: {nodes, edges, rules, realised, features}
 
 
 class LevelBuildFailed(RuntimeError):
@@ -302,6 +304,11 @@ def build_level(
     def stage(current: LevelSpec) -> Tuple[SpecLayout, GridReport, List[str], List[str]]:
         """Layout, verify, repair, then the comfort and densify passes (limits scaled by complexity)."""
         sl, rep, applied = _layout_and_verify(current, profile, seed)
+        return post(sl, rep, applied, current)
+
+    def post(sl: SpecLayout, rep: GridReport, applied: List[str], current: LevelSpec
+             ) -> Tuple[SpecLayout, GridReport, List[str], List[str]]:
+        """The comfort and densify passes on a verified layout of *current*."""
         out_notes: List[str] = []
         pf = cx.scaled_profile(profile, cx.level_scale(current))
         if rep.ok:
@@ -320,26 +327,48 @@ def build_level(
 
     repairs: List[str] = []
     report: Optional[GridReport] = None
+    mission = mission_of(spec)  # v4 Part 23 (None for specs without one)
     for attempt in range(max_layout_retries + 1):
         jobs.report("layout", "Laying out the level" + (f" (round {attempt + 1})" if attempt else ""))
-        spec_layout, report, applied, snotes = stage(spec)
+        lvl_spec, outcome = spec, None
+        if mission is None:
+            spec_layout, report, applied, snotes = stage(spec)
+        else:
+            jobs.report("mission", "Placing the mission (keys, locks, loops)")
+            outcome = build_with_mission(spec, mission, profile.abilities.enabled_names(), seed,
+                                         lambda s: _layout_and_verify(s, profile, seed))
+            lvl_spec = outcome.spec
+            spec_layout, report, applied = outcome.result
+            notes += outcome.warnings
+            spec_layout, report, applied, snotes = post(spec_layout, report, applied, lvl_spec)
         regen = [a for a in applied if a.startswith("terrain:")]
         stats["grid_repairs"] += len(applied) - len(regen)
         if regen:
             stats["terrain_retries"] = stats.get("terrain_retries", 0) + len(regen)
         repairs += applied
         notes += snotes
-        if report.ok and cx.active(spec):
-            spec, spec_layout, report, cnotes = _close_loop(spec, spec_layout, report, stage, profile, stats)
+        if report.ok and cx.active(lvl_spec):  # the loop works on the mission-placed spec
+            lvl_spec, spec_layout, report, cnotes = _close_loop(
+                lvl_spec, spec_layout, report, stage, profile, stats)
             notes += cnotes
         if report.ok and rock_fill is not None:  # v4 Part 25a: noise rock (FillParams or density)
             from layout.fill import fill_layout
             jobs.report("fill", "Filling empty space with rock")
-            rock = fill_layout(spec_layout, report, profile, spec, rock_fill, seed=seed)
+            rock = fill_layout(spec_layout, report, profile, lvl_spec, rock_fill, seed=seed)
             report, stats["fill_added"] = rock.report or report, rock.added
             notes += rock.notes
         if report.ok:
             stats["verify"] = report.stats
+            mission_info = None
+            if outcome is not None and outcome.plan is not None:
+                was = bool(outcome.check and outcome.check.realised)
+                outcome.check = verify_mission(spec_layout, report, outcome.plan)
+                if was and not outcome.check.realised:
+                    notes.append("mission: the comfort / densify pass broke the mission: "
+                                 + "; ".join(outcome.check.problems))
+                mission_info = outcome.to_dict()
+                stats["mission"] = {"rules": mission_info["rules"],
+                                    "realised": mission_info["realised"], "tries": outcome.tries}
             warnings = (
                 notes
                 + list(spec_layout.adjustments)
@@ -347,7 +376,7 @@ def build_level(
                 + repairs
                 + list(report.warnings)
             )
-            final = _with_added_nodes(spec, spec_layout)
+            final = _with_added_nodes(lvl_spec, spec_layout)
             return BuiltLevel(
                 spec=final,
                 spec_layout=spec_layout,
@@ -357,7 +386,9 @@ def build_level(
                 fidelity=check_level(
                     final, spec_layout.ir, profile, verified=report.ok, auto_filled=filled,
                     scores=_scores_for(final, spec_layout, profile),
+                    **({"mission": mission_info} if mission_info is not None else {}),
                 ),
+                mission=mission_info,
             )
         if attempt == max_layout_retries:
             break

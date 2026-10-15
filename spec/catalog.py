@@ -212,6 +212,10 @@ KINDS: Dict[str, KindSpec] = {
                 FieldSpec("pickup_kind", F_ENUM, "coin", enum="PickupKind", display="ValueOnly"),
                 FieldSpec("value", F_INT, 1),
             ),
+            tail_fields=(
+                FieldSpec("grants_ability", F_STRING, None,
+                          doc="GLDtk mission: the ability this pickup gives (v4 Part 23)."),
+            ),
         ),
         KindSpec(
             "Weapon", 14, "#ff8800", show_name=False,

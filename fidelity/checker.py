@@ -84,6 +84,7 @@ class LevelView:
     hazards: List[Dict[str, Any]] = field(default_factory=list)  # Hazard nodes: {"id", "section"}
     terrain: Optional[Dict[str, Dict[str, Any]]] = None  # level only: per-section generator stats
     scores: Optional[Dict[str, float]] = None  # level only: measured difficulty per section id + "*" overall
+    mission: Optional[Dict[str, Any]] = None  # v4 Part 23: spec = planned graph, level = as built
 
 
 def _hazard_nodes(spec: LevelSpec) -> List[Dict[str, Any]]:
@@ -98,10 +99,22 @@ def spec_view(spec: LevelSpec) -> LevelView:
         entities=[e.model_dump() for e in spec.entities],
         where="spec",
         hazards=_hazard_nodes(spec),
+        mission=_planned_mission(spec),
     )
 
 
-def level_view(spec: LevelSpec, ir: IRLevel) -> LevelView:
+def _planned_mission(spec: LevelSpec) -> Optional[Dict[str, Any]]:
+    """The mission graph the grammar builds for *spec* (no layout), or None."""
+    from mission import mission_of, plan_graph
+
+    mission = mission_of(spec)
+    if mission is None:
+        return None
+    graph, _warnings = plan_graph(mission, ("double_jump", "dash", "wall_jump"))
+    return {**graph.to_dict(), "rules": list(graph.applied)}
+
+
+def level_view(spec: LevelSpec, ir: IRLevel, mission: Optional[Dict[str, Any]] = None) -> LevelView:
     """Entities as placed in *ir*; hazards are the final spec's Hazard nodes
     (the layout keeps every node, it only moves them)."""
     return LevelView(
@@ -112,6 +125,7 @@ def level_view(spec: LevelSpec, ir: IRLevel) -> LevelView:
         where="level",
         hazards=_hazard_nodes(spec),
         terrain=dict(ir.metadata.get("terrain") or {}),
+        mission=mission,
     )
 
 
@@ -395,6 +409,49 @@ def _check_complexity(check: RequirementCheck, view: LevelView) -> Result:
     return "approximated", f"{where} scores {got:.1f}/10 for difficulty, the prompt asked {want:g}/10"
 
 
+MISSION_KIND = {"lock": "lock", "loop": "shortcut", "gate": "gate", "treasure": "treasure",
+                "boss": "boss"}
+
+
+def _check_mission(check: RequirementCheck, view: LevelView) -> Result:
+    """The mission structure ``subkind`` is realised (v4 Part 23); on the spec,
+    planned by the grammar."""
+    want = check.subkind
+    if want not in MISSION_KIND:
+        return "unchecked", f"mission check without a known feature ({', '.join(MISSION_KIND)})"
+    if view.mission is None:
+        if view.where == "spec":
+            return "unchecked", "no mission planned yet"
+        return "missing", "the level was built without a mission graph"
+    if view.where == "spec":
+        kinds = {n["kind"] for n in view.mission.get("nodes", [])}
+        if MISSION_KIND[want] in kinds:
+            return "satisfied", f"the mission graph plans a {want}"
+        return "approximated", f"the mission graph has no {want} (rules: {view.mission.get('rules')})"
+    feats = [f for f in view.mission.get("features", []) if f.get("kind") == want]
+    if not feats:
+        return "missing", f"the built mission has no {want}"
+
+    def matches(f: Dict[str, Any]) -> bool:
+        if want == "lock":
+            return ((not check.section or f.get("key_section") == check.section)
+                    and (not check.target_section or f.get("lock_section") == check.target_section))
+        if want == "loop":
+            return not check.section or f.get("section") == check.section
+        return not check.section or f.get("section") == check.section
+
+    good = [f for f in feats if f.get("ok") and matches(f)]
+    if good:
+        return "satisfied", str(good[0].get("reason"))
+    near = [f for f in feats if f.get("ok")]
+    if near:
+        f = near[0]
+        where = (f"key in '{f.get('key_section')}', lock in '{f.get('lock_section')}'"
+                 if want == "lock" else f"in '{f.get('section')}'")
+        return "approximated", f"a {want} is realised, but {where}"
+    return "missing", str(feats[0].get("reason"))
+
+
 def check_requirement(req: Requirement, view: LevelView, profile: GameProfile) -> Result:
     check = effective_check(req)
     if check is None or check.type == "none":
@@ -418,6 +475,8 @@ def check_requirement(req: Requirement, view: LevelView, profile: GameProfile) -
         return _check_structure(check, view)
     if check.type == "complexity":
         return _check_complexity(check, view)
+    if check.type == "mission":
+        return _check_mission(check, view)
     return "unchecked", f"unknown check type '{check.type}'"
 
 
@@ -465,6 +524,7 @@ def check_level(
     verified: bool = False,
     auto_filled: Iterable[str] = (),
     scores: Optional[Dict[str, float]] = None,
+    mission: Optional[Dict[str, Any]] = None,
 ) -> FidelityReport:
     """Check every requirement against the final level.
 
@@ -475,6 +535,6 @@ def check_level(
     sections come from the spec, the size from the IR grid.  *verified* is
     recorded on the report (the grid was proven beatable).
     """
-    view = level_view(spec, ir)
+    view = level_view(spec, ir, mission)
     view.scores = scores
     return _report(spec, view, profile or GameProfile(), auto_filled, verified=verified)

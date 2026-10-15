@@ -502,6 +502,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         difficulty=difficulty,
         levels=[summary],
         patterns_used=patterns_used,
+        mission=built.mission,
     )
 
 
