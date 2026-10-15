@@ -22,7 +22,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | **M3** | **User review** | | ✅ all edit modes app-tested on real Gemini | |
 | 10 | Evaluation harness | light | ✅ | see git log |
 | 6 | AI theme/sprite generation | medium | ✅ code done, not tested on real images (pulled forward) | see git log |
-| **M4** | **Final review** | | ◐ cleanup done; PRs feat/v2 → main prepared (both repos), waiting for the user to open and merge them | |
+| **M4** | **Final review** | | ◐ cleanup done; PRs open: bekiryan/GLDtk#1, bekiryan/ldtk#1 (waiting for the user to merge) | |
 
 ## Notes
 - 2026-10-13: Design interview complete. Baseline committed. `.env` (git-ignored) holds `GEMINI_API_KEY`. Ollama is installed but has no models.
@@ -101,6 +101,6 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - The user chose "merge to main" as deployment. `gh` is not installed and the GitHub connector was down, so prefilled PR links were handed to the user.
 
 ## Next steps (resume here)
-1. Merge the two PRs (`bekiryan/GLDtk` feat/v2 → main, `bekiryan/ldtk` feat/v2 → master).
+1. Merge the two PRs: https://github.com/bekiryan/GLDtk/pull/1 and https://github.com/bekiryan/ldtk/pull/1.
 2. When `qwen2.5:14b` is pulled: one generate through the Gemini → Ollama fallback (`GLDTK_LOCAL_FALLBACK`), and optionally an eval run with `--provider ollama --model qwen2.5:14b`.
 - App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash). Stub both `dialog.showOpenDialog` and `dialog.showOpenDialogSync`, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To avoid using quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`. On macOS the server process is named `Python`, so stop it with `kill $(lsof -tiTCP:8765 -sTCP:LISTEN)`.
