@@ -319,3 +319,12 @@ def test_edit_and_undo_responses_carry_difficulty(client, monkeypatch, tmp_path)
     # undo with no history fails and keeps its v2 shape
     res = client.post("/undo", json={"path": path}).json()
     assert res["success"] is False and res.get("difficulty") is None
+
+
+def test_successful_undo_reports_difficulty_success(client, monkeypatch, tmp_path):
+    # /undo excludes unset fields, so success must be set explicitly (the sidebar reads it)
+    generate(client, monkeypatch, tmp_path, "valid_two_sections.json")
+    generate(client, monkeypatch, tmp_path, "valid_minimal.json")  # snapshots the first
+    res = client.post("/undo", json={"path": str(tmp_path / "level.ldtk")}).json()
+    assert res["success"] and res["difficulty"]["success"] is True
+    assert len(res["difficulty"]["sections"]) == 2

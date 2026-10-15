@@ -585,7 +585,8 @@ def difficulty_of(path: str | Path, fidelity: Any = None, prompt: str | None = N
             apply_to_fidelity(report, fidelity, prompt)
     except Exception as exc:  # never fail a generate / edit because of the metrics
         return DifficultyModel(success=False, error=f"Difficulty error: {exc}")
-    return DifficultyModel.model_validate(report.to_dict())
+    # success is set explicitly: /undo excludes unset fields, which would drop a default.
+    return DifficultyModel.model_validate({**report.to_dict(), "success": True})
 
 
 @app.get("/difficulty", response_model=DifficultyModel)
