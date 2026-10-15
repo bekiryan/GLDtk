@@ -219,8 +219,42 @@ def _fill_start_item(spec: LevelSpec, req: Requirement, entities: List[SpecEntit
     return True
 
 
+STRUCTURE_WORDS = {
+    "corridor": ("corridor", "hall", "tunnel", "passage", "cave"),
+    "parkour": ("parkour", "gap", "jumps"),
+    "labyrinth": ("labyrinth", "maze", "catacomb"),
+    "arena": ("arena", "boss", "fight", "chamber"),
+    "shaft": ("shaft", "climb", "tower", "well", "descent"),
+    "hub": ("hub", "rooms", "room"),
+    "open": ("sky", "outdoor", "open"),
+}
+
+
+def _fill_structure(spec: LevelSpec, req: Requirement, sections: List) -> bool:  # type: ignore[type-arg]
+    """Build a section as the requirement's structure (v3 Part 21): the named section,
+    else the first section whose name or description mentions it."""
+    check = req.check
+    want = check.structure if check else None
+    if not want:
+        return False
+    pool = [s for s in sections if not check.section or s.id == check.section]
+    if any((s.structure or "open") == want for s in pool):
+        return False
+    target = pool[0] if check.section and pool else None
+    if target is None:
+        words = STRUCTURE_WORDS.get(want, (want,))
+        target = next((s for s in pool if any(
+            w in f"{s.name} {s.description}".lower() for w in words)), None)
+    if target is None:
+        return False
+    i = sections.index(target)
+    sections[i] = target.model_copy(update={"structure": want})
+    return True
+
+
 def fill_missing(spec: LevelSpec) -> FillResult:
     """Deterministically fill the requirements the spec does not meet (see module doc)."""
+    sections = list(spec.sections)
     entities = list(spec.entities)
     nodes = list(spec.nodes)
     taken = {e.id for e in entities}
@@ -266,7 +300,14 @@ def fill_missing(spec: LevelSpec) -> FillResult:
                 size = size.model_copy(update={"width_tiles": w, "height_tiles": h})
                 result.filled.append(req.id)
                 result.notes.append(f"completeness: enlarged the level to {w}×{h} tiles ({req.id})")
+        elif check.type == "structure":
+            if _fill_structure(spec, req, sections):
+                result.filled.append(req.id)
+                result.notes.append(
+                    f"completeness: built a section as {check.structure} ({req.id})"
+                )
 
     if result.filled:
-        result.spec = spec.model_copy(update={"entities": entities, "nodes": nodes, "size": size})
+        result.spec = spec.model_copy(update={"entities": entities, "nodes": nodes, "size": size,
+                                              "sections": sections})
     return result

@@ -32,7 +32,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from game.profile import GameProfile, load_profile, profile_path_for
 from layout.ir import IREntity, IRLevel, TileValue
@@ -122,6 +122,16 @@ class Band:
 
     def contains(self, col: int, row: int) -> bool:
         return self.col_start <= col <= self.col_end and self.row_start <= row <= self.row_end
+
+    @property
+    def structure(self) -> Optional[str]:
+        """The section's structure (v3 Part 21); None for open air."""
+        v = self.raw.get("structure")
+        return str(v) if v else None
+
+    @property
+    def is_terrain(self) -> bool:
+        return self.structure not in (None, "open")
 
     @property
     def rect(self) -> Rect:
@@ -272,6 +282,16 @@ class EditContext:
     def gravity_scale_at(self, col: int, row: int) -> float:
         return self.band_at(col, row).gravity_scale
 
+    @property
+    def has_terrain(self) -> bool:
+        return any(b.is_terrain for b in self.bands)
+
+    def step_at(self) -> Optional[Callable[[int, int], bool]]:
+        """Where 1-tile steps are walkable (terrain sections), or None."""
+        if not self.has_terrain:
+            return None
+        return lambda col, row: self.band_at(col, row).is_terrain
+
     def bands_in(self, rect: Rect) -> List[Band]:
         return [b for b in self.bands
                 if b.col_start <= rect.right and rect.col <= b.col_end
@@ -286,7 +306,8 @@ class EditContext:
         a wall would otherwise let the player walk through the wall.
         """
         g = extract_graph(_mask_buried(grid, self.player_h), profile=self.profile,
-                          gravity_scale_at_cell=self.gravity_scale_at, collision=True)
+                          gravity_scale_at_cell=self.gravity_scale_at, collision=True,
+                          step_at=self.step_at())
         return Spans(g)
 
     def to_ir(self, grid: Optional[List[List[Any]]] = None,

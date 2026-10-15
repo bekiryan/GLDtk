@@ -231,6 +231,9 @@ class RegionEditRequest(EditRequestBase):
 class SectionEditRequest(EditRequestBase):
     section_id: str
     prompt: str
+    # v3 Part 21: carve the section again as this structure (corridor, parkour,
+    # labyrinth, arena, shaft, hub, open); None = from the prompt, else a region edit
+    structure: Optional[str] = None
 
 
 class EntityEditRequest(EditRequestBase):

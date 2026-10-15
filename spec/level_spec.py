@@ -19,9 +19,9 @@ across structured-output providers, a flat object is portable.
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, ClassVar, Dict, FrozenSet, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
 
 from symbolic.schema import (
     AbstractLevelGraph,
@@ -55,7 +55,8 @@ RequirementCategory = Literal[
     "size", "section", "layout", "entity", "ability", "style", "other"
 ]
 CheckType = Literal[
-    "entity_count", "hazard", "start_item", "section", "ability", "size", "gravity", "none"
+    "entity_count", "hazard", "start_item", "section", "ability", "size", "gravity",
+    "structure", "none"
 ]
 Orientation = Literal["horizontal", "vertical"]
 
@@ -70,6 +71,26 @@ class _SpecModel(BaseModel):
     # JSON schema is strict (additionalProperties: false) — see json_schema().
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
+    # Fields added after v2 that are left out of a dump while they are null, so a
+    # spec that does not use them serialises exactly as before (v3 Part 21).
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset()
+
+    @model_serializer(mode="wrap")
+    def _omit_new_nulls(self, handler: Any) -> Any:
+        data = handler(self)
+        if self._OMIT_IF_NONE and isinstance(data, dict):
+            for key in self._OMIT_IF_NONE:
+                if key in data and data[key] is None:
+                    del data[key]
+        return data
+
+
+def _structure_name(v: Any) -> Any:
+    if isinstance(v, str):
+        v = v.strip().lower()
+        return STRUCTURE_ALIASES.get(v, v)
+    return v
+
 
 class LevelSize(_SpecModel):
     width_tiles: int = Field(..., ge=30, le=300, description="Level width in 16 px tiles.")
@@ -78,6 +99,41 @@ class LevelSize(_SpecModel):
 
 SectionStyle = Literal["walk", "parkour", "mixed"]
 """How a section plays (v3 Part 20; ``layout/comfort.py``). None means "mixed"."""
+
+StructureType = Literal["corridor", "parkour", "labyrinth", "arena", "shaft", "hub", "open"]
+"""What a section is built as (v3 Part 21; ``layout/terrain``).  Every type but
+``open`` is carved from solid rock by a deterministic generator; ``open`` (and
+null, for specs written before Part 21) is platforms in the open air."""
+
+TERRAIN_STRUCTURES = ("corridor", "parkour", "labyrinth", "arena", "shaft", "hub")
+STRUCTURE_ALIASES = {"rooms": "hub", "room": "hub", "maze": "labyrinth", "cave": "corridor",
+                     "tunnel": "corridor", "climb": "shaft", "tower": "shaft"}
+
+EntityPlace = Literal["floor", "room", "dead_end", "arena_center", "ledge", "entry", "exit"]
+
+
+class StructureParams(_SpecModel):
+    """Optional knobs of a section's structure; null = the generator's default."""
+
+    ceiling_height: Optional[int] = Field(
+        None, ge=3, le=7, description="Corridor: empty tiles between floor and ceiling (default 5)."
+    )
+    corridor_width: Optional[int] = Field(
+        None, ge=3, le=8, description="Labyrinth: width of a maze passage in tiles (default 4)."
+    )
+    complexity: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="0 = plain, 1 = many features / a big maze (default 0.5)."
+    )
+    branches: Optional[int] = Field(
+        None, ge=0, le=4, description="Hub: side rooms off the main path (default 1)."
+    )
+    pits: Optional[int] = Field(
+        None, ge=0, le=8,
+        description="Corridor/parkour/arena: spike pits (default: the section's Hazard nodes).",
+    )
+    vertical: Optional[Literal["up", "down"]] = Field(
+        None, description="Shaft/parkour: climb up or drop down (default up)."
+    )
 
 
 class Section(_SpecModel):
@@ -99,6 +155,29 @@ class Section(_SpecModel):
         '"parkour" (long precise jumps, only when the description asks for parkour or precise '
         'platforming) or "mixed" (mostly short hops, an occasional longer jump); null = mixed.',
     )
+    structure: Optional[StructureType] = Field(
+        None,
+        description='What the section is built as: "corridor" (walk and fight: floor, ceiling, '
+        'stairs, small pits), "parkour" (gaps and ledges over spikes), "labyrinth" (a maze with '
+        'dead ends), "arena" (a closed room for a fight or a boss), "shaft" (vertical climb or '
+        'drop), "hub" (connected rooms with side rooms) or "open" (platforms in the open air: '
+        'sky, outdoors); null = open.',
+    )
+    params: Optional[StructureParams] = Field(
+        None, description="Optional structure parameters; null = defaults."
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure", "params"})
+
+    @field_validator("structure", mode="before")
+    @classmethod
+    def _structure_alias(cls, v: Any) -> Any:
+        return _structure_name(v)
+
+    @property
+    def is_terrain(self) -> bool:
+        """True when a terrain generator carves this section (not open air)."""
+        return self.structure in TERRAIN_STRUCTURES
 
 
 class SpecNode(_SpecModel):
@@ -129,6 +208,17 @@ class SpecEntity(_SpecModel):
     section: str = Field(..., description="Section.id this entity belongs to.")
     description: str = Field("", description="Original wording from the prompt.")
     sprite: str = Field("", description='Free-text sprite hint, may be "".')
+    place: Optional[EntityPlace] = Field(
+        None,
+        description='Only in a section with a structure other than "open": where the entity '
+        'goes ("floor" at "position", "room", "dead_end", "arena_center", "ledge", "entry", '
+        '"exit"); null = on its anchor node.',
+    )
+    position: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description='With place "floor": 0 = section start, 1 = section end.'
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"place", "position"})
 
     # ── Start ──
     facing: Optional[Facing] = None
@@ -180,6 +270,9 @@ class RequirementCheck(_SpecModel):
       ``min_height_tiles`` (either may be null).
     * ``gravity``      — ``section`` (null = any section) has gravity scale
       ``gravity_scale``.
+    * ``structure``    — a section built as ``structure`` exists (``section``
+      when set); for a labyrinth, its maze has at least ``min_count`` (null = 1)
+      dead ends.
     * ``none``         — no structured check (style, other); reported as
       unchecked.
     """
@@ -199,6 +292,16 @@ class RequirementCheck(_SpecModel):
     min_width_tiles: Optional[int] = None
     min_height_tiles: Optional[int] = None
     gravity_scale: Optional[float] = None
+    structure: Optional[StructureType] = Field(
+        None, description='For type "structure": the section structure the prompt asks for.'
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure"})
+
+    @field_validator("structure", mode="before")
+    @classmethod
+    def _structure_alias(cls, v: Any) -> Any:
+        return _structure_name(v)
 
 
 class Requirement(_SpecModel):
@@ -224,6 +327,11 @@ class LevelSpec(_SpecModel):
     edges: List[SpecEdge]
     entities: List[SpecEntity]
     requirements: List[Requirement]
+
+    @property
+    def has_terrain(self) -> bool:
+        """True when a section has a structure other than open (v3 Part 21)."""
+        return any(s.is_terrain for s in self.sections)
 
     @property
     def layout_orientation(self) -> str:

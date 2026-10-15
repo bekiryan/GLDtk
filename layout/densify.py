@@ -301,6 +301,8 @@ class _Densifier:
         band = lay.section_at(c0, row)
         if not (band.contains(c0, row) and band.contains(c1, row)):
             return None
+        if band.is_terrain:  # carved terrain is never filled (v3 Part 21)
+            return None
         line = self.grid[row]
         for c in range(max(0, c0 - SAME_ROW_GAP), min(lay.width, c1 + SAME_ROW_GAP + 1)):
             if line[c] != TileValue.EMPTY:

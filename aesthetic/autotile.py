@@ -26,6 +26,12 @@ platform (no cap at the seam); each cell just takes its tile from the sheet of
 the theme owning it (``theme_for_cell``: the section band holding the cell — a
 column band in horizontal levels, a row band in vertical ones).
 
+Terrain levels (v3 Part 21): when a section is carved from rock (its section
+dict has a ``structure`` other than open), the level border counts as solid
+rock, so the frame and the rock mass around carved rooms read as one body —
+interior cells get the theme's CENTER variants, only the faces toward the air
+get edges and corners.  Open-air levels are tiled exactly as before.
+
 The resulting TileEntry list is consumed by ``layout.ldtk_adapter.to_ldtk_dict``
 when an AestheticData payload is provided.
 """
@@ -68,11 +74,28 @@ _BITMASK_TO_ROLE: dict[int, TileRole] = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _neighbour_mask(ir: IRLevel, col: int, row: int, tile_val: TileValue) -> int:
-    """Return the 4-bit NSEW mask for cell (col, row) checking same *tile_val*."""
+TERRAIN_STRUCTURES = ("corridor", "parkour", "labyrinth", "arena", "shaft", "hub")
+
+
+def has_terrain(ir: IRLevel) -> bool:
+    """True when a section of *ir* is carved from rock (``ir.metadata["sections"]``)."""
+    return any(
+        isinstance(s, dict) and s.get("structure") in TERRAIN_STRUCTURES
+        for s in (ir.metadata.get("sections") or [])
+    )
+
+
+def _neighbour_mask(
+    ir: IRLevel, col: int, row: int, tile_val: TileValue, frame: bool = False
+) -> int:
+    """Return the 4-bit NSEW mask for cell (col, row) checking same *tile_val*.
+
+    With *frame*, cells outside the level count as solid rock."""
 
     def same(c: int, r: int) -> bool:
-        return ir.in_bounds(c, r) and ir.get_tile(c, r) == tile_val
+        if not ir.in_bounds(c, r):
+            return frame and tile_val == TileValue.SOLID
+        return ir.get_tile(c, r) == tile_val
 
     n = same(col, row - 1)
     s = same(col, row + 1)
@@ -118,6 +141,7 @@ def autotile_level(
     """
     entries: List[TileEntry] = []
     base_theme = theme
+    frame = has_terrain(ir)
 
     for row in range(ir.height_tiles):
         for col in range(ir.width_tiles):
@@ -135,7 +159,7 @@ def autotile_level(
                 continue
 
             # SOLID tile — derive role from 4-bit neighbourhood mask
-            mask = _neighbour_mask(ir, col, row, TileValue.SOLID)
+            mask = _neighbour_mask(ir, col, row, TileValue.SOLID, frame)
             role = _BITMASK_TO_ROLE[mask]
             entries.append(_role_to_entry(col, row, role, theme))
 

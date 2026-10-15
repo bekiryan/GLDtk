@@ -8,12 +8,16 @@ returns an unverified level.
     2. completeness (``pipeline/completeness.py``): deterministic fill of
        missing requirements, then at most one ``controller.complete_spec``
        re-prompt for what the fill cannot meet
-    3. ``layout_spec`` → ``place_spec_entities`` → ``verify_grid``
+    3. ``layout_spec`` (sections with a structure are carved from rock by
+       ``layout/terrain``, v3 Part 21) → ``place_spec_entities`` → ``verify_grid``;
+       a terrain level that fails is carved again with another generator seed
+       for the failing sections (at most ``TERRAIN_ATTEMPTS`` seeds each)
        → ``repair_grid`` (deterministic, bounded) → ``verify_grid``;
        once verified, the comfort pass (``layout/comfort.py``) adds ``hop_N``
        platforms until the golden path is short hops (outside parkour
-       sections; it never fails a level), then ``densify`` (``layout/densify.py``) adds ``fill_N``
-       platforms to the empty regions and re-verifies (it drops what breaks
+       sections, and only in open-air sections; it never fails a level), then ``densify``
+       (``layout/densify.py``) adds ``fill_N`` platforms to the empty regions of
+       open-air sections and re-verifies (it drops what breaks
        verification, so it never fails a level)
     4. still failing → ``controller.repair_spec`` with the grid errors
        (named by spec node ids), deterministic fill again, and back to 3, at
@@ -37,6 +41,7 @@ from layout.densify import densify as densify_layout
 from layout.repair import repair_grid
 from layout.spec_entities import place_spec_entities
 from layout.spec_layout import SpecLayout, grid_to_spec, layout_spec
+from layout.terrain import MAX_ATTEMPTS as TERRAIN_ATTEMPTS
 from layout.verify import GridReport, verify_grid
 from spec.level_spec import LevelSpec, SpecNode
 
@@ -82,17 +87,49 @@ def _with_added_nodes(spec: LevelSpec, layout: SpecLayout) -> LevelSpec:
     return spec.model_copy(update={"nodes": nodes})
 
 
+def _failing_sections(layout: SpecLayout, report: GridReport) -> Set[str]:
+    """Terrain sections a failed verification points at (all of them when unclear)."""
+    terrain = {b.id for b in layout.sections if b.is_terrain}
+    hit: Set[str] = set()
+    for err in report.errors:
+        for nid in err.node_ids:
+            sid = layout.node_sections.get(nid)
+            if sid in terrain:
+                hit.add(sid)
+        for col, row in err.cells:
+            sid = layout.section_at(col, row).id
+            if sid in terrain:
+                hit.add(sid)
+    return hit or terrain
+
+
 def _layout_and_verify(
     spec: LevelSpec, profile: GameProfile, seed: int
 ) -> Tuple[SpecLayout, GridReport, List[str]]:
-    spec_layout = layout_spec(spec, profile, seed=seed)
-    place_spec_entities(spec, spec_layout)
-    jobs.report("verify", "Verifying the grid")
-    report = verify_grid(spec_layout, profile, spec)
-    applied: List[str] = []
+    attempts: Dict[str, int] = {}
+    retries = 0
+    while True:
+        spec_layout = layout_spec(spec, profile, seed=seed, terrain_attempts=attempts)
+        place_spec_entities(spec, spec_layout)
+        jobs.report("verify", "Verifying the grid")
+        report = verify_grid(spec_layout, profile, spec)
+        if report.ok or not spec_layout.has_terrain:
+            break
+        # v3 Part 21: another seed for the failing sections' generators first
+        bump = [sid for sid in sorted(_failing_sections(spec_layout, report))
+                if attempts.get(sid, 0) + 1 < TERRAIN_ATTEMPTS]
+        if not bump:
+            break
+        for sid in bump:
+            attempts[sid] = attempts.get(sid, 0) + 1
+        retries += 1
+        jobs.report("terrain", f"Carving the terrain again (try {retries + 1})")
+    applied: List[str] = [f"terrain: regenerated {sid} with seed attempt {n}"
+                          for sid, n in sorted(attempts.items())]
     if not report.ok:
         jobs.report("repair", f"Repairing the grid ({len(report.errors)} problem(s))")
-        spec_layout, applied = repair_grid(spec_layout, report, profile, spec)
+        spec_layout, fixes = repair_grid(spec_layout, report, profile, spec)
+        applied += fixes
         report = verify_grid(spec_layout, profile, spec)
     return spec_layout, report, applied
 
@@ -172,7 +209,10 @@ def build_level(
     for attempt in range(max_layout_retries + 1):
         jobs.report("layout", "Laying out the level" + (f" (round {attempt + 1})" if attempt else ""))
         spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
-        stats["grid_repairs"] += len(applied)
+        regen = [a for a in applied if a.startswith("terrain:")]
+        stats["grid_repairs"] += len(applied) - len(regen)
+        if regen:
+            stats["terrain_retries"] = stats.get("terrain_retries", 0) + len(regen)
         repairs += applied
         if report.ok:
             jobs.report("comfort", "Shortening long jumps")

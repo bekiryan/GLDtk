@@ -82,6 +82,7 @@ class LevelView:
     entities: List[Dict[str, Any]] = field(default_factory=list)  # {"kind", "section", ...}
     where: str = "spec"  # "spec" | "level", used in reasons
     hazards: List[Dict[str, Any]] = field(default_factory=list)  # Hazard nodes: {"id", "section"}
+    terrain: Optional[Dict[str, Dict[str, Any]]] = None  # level only: per-section generator stats
 
 
 def _hazard_nodes(spec: LevelSpec) -> List[Dict[str, Any]]:
@@ -109,6 +110,7 @@ def level_view(spec: LevelSpec, ir: IRLevel) -> LevelView:
         entities=[{**e.metadata, "kind": e.entity_type} for e in ir.entities],
         where="level",
         hazards=_hazard_nodes(spec),
+        terrain=dict(ir.metadata.get("terrain") or {}),
     )
 
 
@@ -293,6 +295,32 @@ def _check_section(check: RequirementCheck, view: LevelView) -> Result:
     )
 
 
+def _check_structure(check: RequirementCheck, view: LevelView) -> Result:
+    """A section built as ``check.structure`` exists (v3 Part 21); a labyrinth also
+    needs ``min_count`` (null = 1) dead ends in the final level."""
+    want = check.structure
+    if not want:
+        return "unchecked", "structure check without a structure"
+    pool = [view.sections[check.section]] if check.section in view.sections else (
+        [] if check.section else list(view.sections.values()))
+    if check.section and not pool:
+        return "missing", f"section '{check.section}' does not exist"
+    hits = [s for s in pool if (s.structure or "open") == want]
+    if not hits:
+        found = ", ".join(f"{s.id}={s.structure or 'open'}" for s in pool)
+        return "missing", f"no section is built as {want} ({found})"
+    if want == "labyrinth" and view.terrain is not None:
+        need = 1 if check.min_count is None else check.min_count
+        best = max(hits, key=lambda s: int((view.terrain or {}).get(s.id, {}).get("dead_ends", 0)))
+        dead = int((view.terrain or {}).get(best.id, {}).get("dead_ends", 0))
+        if dead < need:
+            return "approximated", (
+                f"section '{best.id}' is a labyrinth with {dead} dead end(s), {need} asked"
+            )
+        return "satisfied", f"section '{best.id}' is a labyrinth with {dead} dead end(s)"
+    return "satisfied", f"section '{hits[0].id}' ({hits[0].name}) is built as {want}"
+
+
 def _check_ability(check: RequirementCheck, profile: GameProfile) -> Result:
     if not check.ability or not check.ability.strip():
         return "unchecked", "ability check without an ability"
@@ -365,6 +393,8 @@ def check_requirement(req: Requirement, view: LevelView, profile: GameProfile) -
         return _check_size(check, view)
     if check.type == "gravity":
         return _check_gravity(check, view)
+    if check.type == "structure":
+        return _check_structure(check, view)
     return "unchecked", f"unknown check type '{check.type}'"
 
 

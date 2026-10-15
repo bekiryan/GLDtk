@@ -185,6 +185,7 @@ def verify_grid(
         gravity_scale_at_cell=layout.gravity_scale_at,
         collision=True,
         gravity_field=gfield,
+        step_at=layout.step_at(),
     )
     index = SpanIndex(graph, layout)
     errors: List[GridError] = []

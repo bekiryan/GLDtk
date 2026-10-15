@@ -244,12 +244,15 @@ def level_route(
     profile: Optional[GameProfile] = None,
     gravity_scale_at: Optional[Callable[[int, int], float]] = None,
     graph: Optional[AbstractLevelGraph] = None,
+    step_at: Optional[Callable[[int, int], bool]] = None,
 ) -> Route:
     """The golden route of the level made of *grid* and *entities*.
 
     *graph* is the collision-aware graph extracted from *grid* (as the
     verifier extracted it); it is extracted here when None.
-    ``gravity_scale_at(col, row)`` gives the section gravity scale.
+    ``gravity_scale_at(col, row)`` gives the section gravity scale;
+    ``step_at(col, row)`` where 1-tile steps are walkable (terrain sections, v3
+    Part 21: a walk up or down a step is drawn as a walk).
     """
     from edit.context import Spans  # the span index edit verification uses
 
@@ -258,7 +261,7 @@ def level_route(
     height = len(grid)
     if graph is None:
         graph = extract_graph(grid, profile=profile, gravity_scale_at_cell=gravity_scale_at,
-                              collision=True)
+                              collision=True, step_at=step_at)
     spans = Spans(graph)
 
     start = next((e for e in entities if e.entity_type == "Start"), None)
@@ -324,6 +327,15 @@ def level_route(
         kind, ability = _edge_kind(edge)
         dst_row = spans.rects[v][0]
         if kind == "walk":
+            if dst_row != span_row:  # a step up or down (terrain stairs)
+                (_r0, a0, a1), (_r1, b0, b1) = spans.rects[u], spans.rects[v]
+                edge_x = (a1 + 1) * ts if b0 > a1 else a0 * ts
+                walk(cur, (edge_x, cur[1]), span_row)
+                nxt = (edge_x, dst_row * ts)
+                steps.append(RouteStep("walk", cell_of(edge_x - (1 if b0 > a1 else 0), span_row),
+                                       cell_of(edge_x + (0 if b0 > a1 else -1), dst_row),
+                                       [(edge_x, cur[1]), nxt]))
+                cur, span_row = nxt, dst_row
             continue  # adjacent span on the same row: the walk just goes on
         traj = _accepted_trajectory(grid, edge, profile)
         if traj is None:
@@ -355,7 +367,8 @@ def file_route(path: Union[str, Path], level: Optional[str] = None) -> Route:
     except EditError as exc:
         return Route(ok=False, error=str(exc))
     spans = ctx.extract(ctx.grid)
-    route = level_route(ctx.grid, ctx.entities, ctx.profile, ctx.gravity_scale_at, spans.graph)
+    route = level_route(ctx.grid, ctx.entities, ctx.profile, ctx.gravity_scale_at, spans.graph,
+                        step_at=ctx.step_at())
     route.level_iid = ctx.level.level_iid
     return route
 

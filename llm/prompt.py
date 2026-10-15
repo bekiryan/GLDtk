@@ -63,6 +63,26 @@ of requirements extracted from the description. Output nothing else — no markd
     "mixed"   — mostly walking and short hops, an occasional longer jump;
     "parkour" — long, precise jumps. Use it ONLY when the description asks for parkour,
                 precise platforming or a jumping challenge in that section.
+  "structure" — what the section is BUILT as. Every type but "open" is carved from solid
+  rock by the level generator (floors, walls, ceilings), like Blasphemous, Spelunky or
+  Neon Abyss; most of a level is walking, fighting and finding the way, some parkour:
+    "corridor"  — walk and fight: a floor with stairs, a ceiling, small pits (DEFAULT for
+                  caves, dungeons, crypts, castles, tunnels, mines, sewers, halls)
+    "parkour"   — gaps and ledges over spikes; a jumping challenge
+    "labyrinth" — a maze with dead ends to find the way through (treasure in the dead ends)
+    "arena"     — a closed room for a fight or a boss
+    "shaft"     — a vertical climb or drop (the usual type in a tower / vertical level)
+    "hub"       — connected rooms with side rooms (a key, a secret)
+    "open"      — platforms in the open air: sky, clouds, outdoors, forests, rooftops
+  "params" — null, or {"ceiling_height" (3..7), "corridor_width" (3..8), "complexity" (0..1),
+  "branches" (0..4), "pits" (0..8), "vertical" ("up"|"down")}, each null = default.
+  Pick the structures and their order from the description, e.g. "a crypt: corridors with
+  skeletons, a parkour shaft, a small labyrinth, a boss arena" → four sections: corridor,
+  parkour (vertical "up"), labyrinth, arena.
+  In a section whose structure is not "open" the generator re-positions the nodes on the
+  carved floor: give it a short chain of nodes (Start / Exit where they belong, one Platform
+  per area where entities stand, a Hazard node per pit) linked by plain Walk edges; their
+  exact coordinates do not matter.
   Horizontal level: sections run LEFT → RIGHT in "order"; place each section's nodes in its
   own x range (section 0 leftmost).
   Vertical level (a tower, a climb, a descent — taller than wide): sections run BOTTOM → TOP
@@ -182,6 +202,11 @@ of requirements extracted from the description. Output nothing else — no markd
       a "ghost" → Enemy flyer, a "heart" → Pickup health); keep the original wording in
       "description".
     • "linked_to" / "opens" must reference existing entity ids.
+    • In a section whose structure is not "open", also set "place" — where the entity goes:
+      "floor" (with "position" 0..1 along the section), "room", "dead_end" (labyrinth),
+      "arena_center", "ledge", "entry" or "exit"; null = on its anchor node. Pickups and
+      chests in a labyrinth go to "dead_end", a boss to "arena_center". In "open" sections
+      "place" and "position" are null.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  REQUIREMENTS
@@ -192,7 +217,7 @@ of requirements extracted from the description. Output nothing else — no markd
   "check" makes the requirement machine-checkable. All its keys are always present; set the
   ones its "type" uses and null for the rest:
     "type"             — "entity_count" | "hazard" | "start_item" | "section" | "ability" |
-                         "size" | "gravity" | "none"
+                         "size" | "gravity" | "structure" | "none"
                          ("hazard": spikes, pits, lava, acid, ... — counts Hazard NODES; never
                          use entity_count for a hazard)
     "entity_kind"      — entity_count: the entity kind ("Enemy", "Pickup", ...)
@@ -206,6 +231,8 @@ of requirements extracted from the description. Output nothing else — no markd
                          in the description ("fly") when it is none of those
     "min_width_tiles", "min_height_tiles" — size: the minimum level size asked for
     "gravity_scale"    — gravity: the section's gravity scale (e.g. 0.5 for "low gravity")
+    "structure"        — structure: the structure asked for ("there is a labyrinth" →
+                         "labyrinth"; min_count = dead ends wanted, null = 1)
   Use type "none" (or a null check) for style, music, mood and anything else not listed.
   • Split compound claims ("3 coins and a boss" → two requirements).
   • Include claims you cannot fully satisfy (e.g. "the player can fly", "music plays") —
@@ -224,7 +251,7 @@ Description: "A grassy meadow with coins, then a dungeon with a spike pit, a ske
 brevity — in your output, set them to null. The velocities are illustrative — use the GAME
 PROFILE values. A real level of this size has more platforms; this one is kept short.)
 
-{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"orientation":null,"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0,"style":"walk"},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1,"style":"mixed"}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee"},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section","check":{"type":"section","section":"meadow"}},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section","check":{"type":"section","section":"dungeon"}},{"id":"R3","text":"The meadow contains coins.","category":"entity","check":{"type":"entity_count","entity_kind":"Pickup","subkind":"coin","min_count":2,"section":"meadow"}},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity","check":{"type":"entity_count","entity_kind":"Enemy","subkind":"walker","min_count":1,"section":"dungeon"}},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity","check":{"type":"entity_count","entity_kind":"Interactive","subkind":"chest","min_count":1,"section":"dungeon"}},{"id":"R6","text":"The player starts with a sword.","category":"entity","check":{"type":"start_item","subkind":"sword"}},{"id":"R7","text":"The player can double jump.","category":"ability","check":{"type":"ability","ability":"double_jump"}},{"id":"R8","text":"The dungeon has a spike pit.","category":"layout","check":{"type":"hazard","min_count":1,"section":"dungeon"}}]}
+{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"orientation":null,"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0,"style":"walk","structure":"open","params":null},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1,"style":"mixed","structure":"corridor","params":null}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee","place":"floor","position":0.6},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section","check":{"type":"section","section":"meadow"}},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section","check":{"type":"section","section":"dungeon"}},{"id":"R3","text":"The meadow contains coins.","category":"entity","check":{"type":"entity_count","entity_kind":"Pickup","subkind":"coin","min_count":2,"section":"meadow"}},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity","check":{"type":"entity_count","entity_kind":"Enemy","subkind":"walker","min_count":1,"section":"dungeon"}},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity","check":{"type":"entity_count","entity_kind":"Interactive","subkind":"chest","min_count":1,"section":"dungeon"}},{"id":"R6","text":"The player starts with a sword.","category":"entity","check":{"type":"start_item","subkind":"sword"}},{"id":"R7","text":"The player can double jump.","category":"ability","check":{"type":"ability","ability":"double_jump"}},{"id":"R8","text":"The dungeon has a spike pit.","category":"layout","check":{"type":"hazard","min_count":1,"section":"dungeon"}}]}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.

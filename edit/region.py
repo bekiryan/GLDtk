@@ -139,6 +139,8 @@ def build_region_messages(
             f"gravity_scale {b.gravity_scale:g}; region columns "
             f"{max(b.col_start, rect.col) - rect.col}..{min(b.col_end, rect.right) - rect.col}, rows "
             f"{max(b.row_start, rect.row) - rect.row}..{min(b.row_end, rect.bottom) - rect.row}"
+            + (f"; built as {b.structure}, carved from rock: the rock and the carved space "
+               "stay, your nodes are added inside the carved space" if b.is_terrain else "")
         )
     lines.append("SEAMS (locked; connect your content to them):")
     if not seams:
@@ -656,7 +658,9 @@ def edit_region(
     def attempt(region: RegionSpec) -> _Attempt:
         nodes = {n.id: RegionNode(n.id, n.col + rect.col, n.row + rect.row, n.w, n.type)
                  for n in region.nodes}
-        grid = apply_region(ctx.grid, rect, nodes.values(), locks)
+        grid = apply_region(ctx.grid, rect, nodes.values(), locks,
+                            keep=(lambda c, r: ctx.band_at(c, r).is_terrain) if ctx.has_terrain
+                            else None)
         taken = {(e.col, e.row) for e in kept}
         placed, warns = place_region_entities(ctx, rect, grid, region, nodes, seams, taken)
         entities = [IREntity(e.entity_type, e.col, e.row, dict(e.metadata)) for e in kept] + placed
@@ -754,13 +758,23 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
                  *, max_retries: int = 3, densify: bool = True, seed: int = 0,
-                 level: Optional[str] = None) -> EditOutcome:
-    """A region edit over the section's band (column or row band) of *level*."""
+                 level: Optional[str] = None, structure: Optional[str] = None) -> EditOutcome:
+    """A region edit over the section's band (column or row band) of *level*.
+
+    With *structure* (or a prompt like "make this a labyrinth", v3 Part 21) the
+    section is carved again by that structure's generator instead, between the
+    seams it shares with its neighbours (no LLM call).
+    """
     try:
         ctx = load_context(path, level)
         rect = section_rect(ctx, section_id)
     except EditError as exc:
         return failure("section", str(exc))
+    from .terrain import restructure_section, structure_from_prompt
+
+    structure = structure or structure_from_prompt(prompt)
+    if structure:
+        return restructure_section(ctx, section_id, structure, prompt, seed=seed)
     return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries,
                        ctx=ctx, densify=densify, seed=seed)
 

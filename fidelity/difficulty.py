@@ -170,6 +170,8 @@ def _section_dicts(sections: Sequence[Any], width: int, height: int) -> List[Dic
                 "col_end": int(get("col_end", width - 1)),
                 "row_start": int(get("row_start", 0)),
                 "row_end": int(get("row_end", height - 1)),
+                "structure": (get("structure") or None) if isinstance(s, dict)
+                else getattr(s, "structure", None),
             })
         except (TypeError, ValueError):
             continue
@@ -239,7 +241,11 @@ def measure_difficulty(
     ts = float(profile.tile_size)
     if route is None:
         scale_at = lambda c, r: secs[_first(secs, c, r) or 0]["gravity_scale"]  # noqa: E731
-        route = level_route(grid, entities, profile, scale_at)
+        step_at = None
+        if any(sec.get("structure") in WALK_STRUCTURES + ("parkour", "shaft") for sec in secs):
+            step_at = lambda c, r: secs[_first(secs, c, r) or 0].get("structure") not in (  # noqa: E731
+                None, "open")
+        route = level_route(grid, entities, profile, scale_at, step_at=step_at)
 
     phys = profile.physics
     n = len(secs)
@@ -320,7 +326,7 @@ def measure_difficulty(
             "mean_platform_width": round(sum(widths) / len(widths), 2) if widths else 0.0,
             "narrow_share": round(sum(1 for w in widths if w <= NARROW_WIDTH) / len(widths), 2) if widths else 0.0,
         })
-        score = _score(metrics, profile, secs[i]["gravity_scale"])
+        score = _score(metrics, profile, secs[i]["gravity_scale"], secs[i].get("structure"))
         label = sec["difficulty"] if sec["difficulty"] in LABEL_WORDS else "medium"
         item = SectionDifficulty(sec["id"], sec["name"], label, score, metrics)
         if label == "easy" and score > MAX_EASY:
@@ -362,7 +368,14 @@ def _air_time(g: float, jump_v: float, rise_px: float) -> float:
     return (jump_v + math.sqrt(disc)) / g
 
 
-def _score(m: Dict[str, Any], profile: GameProfile, gravity_scale: float) -> float:
+WALK_STRUCTURES = ("corridor", "labyrinth", "arena", "hub")
+"""Walk-heavy structures (v3 Part 21): enemies weigh more, jumps less."""
+WALK_ENEMY_BOOST = 1.6
+WALK_JUMP_DAMP = 0.6
+
+
+def _score(m: Dict[str, Any], profile: GameProfile, gravity_scale: float,
+           structure: Optional[str] = None) -> float:
     ts = float(profile.tile_size)
     phys = profile.physics
     g = gravity_for(profile, gravity_scale)
@@ -383,7 +396,10 @@ def _score(m: Dict[str, Any], profile: GameProfile, gravity_scale: float) -> flo
     enemies = _clamp(100.0 * m["enemy_threat"] / length / THREAT_SATURATION + BOSS_PRESSURE * m["bosses"])
     platforms = m["narrow_share"]
     relief = _clamp(0.5 * m["checkpoints"] + 0.25 * m["health_pickups"]) * RECOVERY_RELIEF
-    raw = W_JUMPS * jumps + W_HAZARDS * hazards + W_ENEMIES * enemies + W_PLATFORMS * platforms - relief
+    w_jumps, w_enemies = W_JUMPS, W_ENEMIES
+    if structure in WALK_STRUCTURES:  # walking and fighting: the enemies make it hard
+        w_jumps, w_enemies = W_JUMPS * WALK_JUMP_DAMP, W_ENEMIES * WALK_ENEMY_BOOST
+    raw = w_jumps * jumps + W_HAZARDS * hazards + w_enemies * enemies + W_PLATFORMS * platforms - relief
     return round(10.0 * (_clamp(raw, 0.0, 10.0) / 10.0) ** GAMMA, 1)
 
 
@@ -447,7 +463,8 @@ def difficulty_of_file(path: Any, level: Optional[str] = None) -> DifficultyRepo
 
     ctx = load_context(path, level)
     spans = ctx.extract(ctx.grid)
-    route = level_route(ctx.grid, ctx.entities, ctx.profile, ctx.gravity_scale_at, spans.graph)
+    route = level_route(ctx.grid, ctx.entities, ctx.profile, ctx.gravity_scale_at, spans.graph,
+                        step_at=ctx.step_at())
     return measure_difficulty(ctx.grid, ctx.entities, ctx.bands, ctx.profile, route, ctx.level.prompt)
 
 
