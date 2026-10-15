@@ -22,7 +22,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | **M3** | **User review** | | ✅ all edit modes app-tested on real Gemini | |
 | 10 | Evaluation harness | light | ✅ | see git log |
 | 6 | AI theme/sprite generation | medium | ✅ code done, not tested on real images (pulled forward) | see git log |
-| **M4** | **Final review** | | ⬜ | |
+| **M4** | **Final review** | | ◐ cleanup done; PRs feat/v2 → main prepared (both repos), waiting for the user to open and merge them | |
 
 ## Notes
 - 2026-10-13: Design interview complete. Baseline committed. `.env` (git-ignored) holds `GEMINI_API_KEY`. Ollama is installed but has no models.
@@ -93,7 +93,14 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - **Section and region edits failed in all 4 attempts.** The Flash daily quota was used up (429), and the fallback `gemini-3.1-flash-lite` returned 503 "high demand". `gemini-2.5-flash` is no longer available to new users (404), so there is no third fallback. Region edits have so far run only against fake LLM answers.
 - 2026-10-15: **Local fallback** (`cc6eaa4`): when Gemini cannot answer (429/404/5xx, timeout, no connection), the server's default factory falls back to `GLDTK_LOCAL_FALLBACK` (default `ollama:qwen2.5:14b`; `off` disables). The switch is the first response warning. Ollama calls get a 900 s timeout. 348 tests pass. Merged agent worktrees and branches were deleted.
 - 2026-10-15: **M3 finished with real Gemini** (`demo_m4/`, a copy of `demo_m3`). Section edit on the cave ("add a lava pit and one more bat, and a ledge with a health potion"): verified, fidelity 100% (10/10), the 3 new requirements were added. Describe "the area just before the exit" → a 15×8 rect around the boss and exit; Apply "add a floating platform with a gem on it" → verified, 11/11, gem on a new platform. Undo removed the gem; the count went from 2 to 1. No page errors. (The edited band looks grey in the screenshot only because of the cyan section highlight; the tiles are unchanged `cave.png` tiles.)
+- 2026-10-15: **Evaluation baseline** on real Gemini (8 prompts, `eval/results/gemini-2026-10-15/`, recordings in `eval/recordings/`): 8/8 playable, fidelity 1.00 (27 satisfied, 2 unchecked style items), 9 LLM calls, mean 110 s per prompt (Gemini was slow with 503 retries). The harness now records the model that answered.
+- 2026-10-15: **M4 cleanup.**
+  - Sidebar: a result is only reloaded into the project it belongs to (switching projects mid-generate is safe), and the AI toggle no longer covers the sidebar. Both were app-tested.
+  - The `ldtk-src` `feat/v2` branch now tracks `origin`.
+  - README rewritten for v2; `example.py` uses the v2 path; `plan.md`, `ui/` and `ldtk-integration/` removed.
+  - The user chose "merge to main" as deployment. `gh` is not installed and the GitHub connector was down, so prefilled PR links were handed to the user.
 
 ## Next steps (resume here)
-2. Run the **evaluation harness** on real Gemini: `python -m eval.run --provider gemini --limit 8 --max-calls 15 --record eval/recordings/gemini-<date>`. Then M4, the final review.
+1. Merge the two PRs (`bekiryan/GLDtk` feat/v2 → main, `bekiryan/ldtk` feat/v2 → master).
+2. When `qwen2.5:14b` is pulled: one generate through the Gemini → Ollama fallback (`GLDTK_LOCAL_FALLBACK`), and optionally an eval run with `--provider ollama --model qwen2.5:14b`.
 - App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash). Stub both `dialog.showOpenDialog` and `dialog.showOpenDialogSync`, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To avoid using quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`. On macOS the server process is named `Python`, so stop it with `kill $(lsof -tiTCP:8765 -sTCP:LISTEN)`.
