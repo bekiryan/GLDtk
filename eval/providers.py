@@ -46,6 +46,7 @@ class CountingProvider:
         self._inner = inner
         self._budget = budget
         self.calls = 0  # calls made through this wrapper (one prompt)
+        self.models_used: List[str] = []  # models that answered (Gemini may fall back)
         self.name = getattr(inner, "name", "unknown")
 
     def complete_json(self, system: str, messages: List[Dict[str, Any]], schema: Dict[str, Any]) -> str:
@@ -58,7 +59,11 @@ class CountingProvider:
             b.slept += b.sleep
         b.total += 1  # a failed call (429) still spends quota
         self.calls += 1
-        return self._inner.complete_json(system, messages, schema)
+        raw = self._inner.complete_json(system, messages, schema)
+        used = getattr(self._inner, "model_used", None)
+        if used and used not in self.models_used:
+            self.models_used.append(used)
+        return raw
 
 
 class RecordingProvider:
@@ -70,6 +75,10 @@ class RecordingProvider:
         self._dir.mkdir(parents=True, exist_ok=True)
         self._index = 0
         self.name = getattr(inner, "name", "unknown")
+
+    @property
+    def model_used(self) -> Optional[str]:
+        return getattr(self._inner, "model_used", None)
 
     def complete_json(self, system: str, messages: List[Dict[str, Any]], schema: Dict[str, Any]) -> str:
         raw = self._inner.complete_json(system, messages, schema)

@@ -240,7 +240,8 @@ def run_suite(
             log(f"stop  --max-calls {max_calls} reached during {entry['id']} (not recorded)")
             break
         rec["provider"] = provider_name
-        rec["model"] = model
+        # the requested model, else the one(s) that answered (Gemini falls back on 429/503)
+        rec["model"] = model or ",".join(counted.models_used) or None
         with results.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec) + "\n")
         state = "ok" if rec["verified"] else (rec["failure"] or {}).get("type", "failed")

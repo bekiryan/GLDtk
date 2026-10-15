@@ -267,3 +267,19 @@ def test_compare_reports_deltas_and_regressions(tmp_path, load_fixture):
     line = next(l for l in text.splitlines() if l.startswith("| beta "))
     assert "MaxRetriesExceeded" in line
     assert ev_run.main(["--compare", str(a), str(a)]) == 0
+
+
+def test_records_the_model_that_answered_when_none_was_requested(tmp_path, load_fixture):
+    resp = _responses(load_fixture)
+
+    def factory(pid):
+        fake = FakeProvider(resp[pid])
+        fake.model_used = "gemini-3.1-flash-lite"  # e.g. Gemini fell back after a 503
+        return fake
+
+    recs = ev_run.run_suite(SUITE[:1], factory, tmp_path / "o", provider_name="gemini", model=None,
+                            record_dir=tmp_path / "rec", log=lambda s: None)
+    assert recs[0]["model"] == "gemini-3.1-flash-lite"
+    recs = ev_run.run_suite(SUITE[1:2], factory, tmp_path / "o2", provider_name="gemini",
+                            model="gemini-3.8-flash", log=lambda s: None)
+    assert recs[0]["model"] == "gemini-3.8-flash"  # an explicit model is kept as requested
