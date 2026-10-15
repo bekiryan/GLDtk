@@ -83,6 +83,7 @@ class LevelView:
     where: str = "spec"  # "spec" | "level", used in reasons
     hazards: List[Dict[str, Any]] = field(default_factory=list)  # Hazard nodes: {"id", "section"}
     terrain: Optional[Dict[str, Dict[str, Any]]] = None  # level only: per-section generator stats
+    scores: Optional[Dict[str, float]] = None  # level only: measured difficulty per section id + "*" overall
 
 
 def _hazard_nodes(spec: LevelSpec) -> List[Dict[str, Any]]:
@@ -374,6 +375,26 @@ def _check_gravity(check: RequirementCheck, view: LevelView) -> Result:
     return "missing", f"no section has gravity scale {g:g} ({found})"
 
 
+COMPLEXITY_TOLERANCE = 1.5
+
+
+def _check_complexity(check: RequirementCheck, view: LevelView) -> Result:
+    """The measured difficulty is within ``COMPLEXITY_TOLERANCE`` of the stated N/10 (v4 Part 24)."""
+    want = check.target_difficulty
+    if want is None:
+        return "unchecked", "complexity check without a target_difficulty"
+    if view.scores is None:
+        return "unchecked", "difficulty is measured on the built level"
+    key = check.section or "*"
+    if key not in view.scores:
+        return "unchecked", f"no measured difficulty for '{key}'"
+    got = view.scores[key]
+    where = f"section '{check.section}'" if check.section else "the level"
+    if abs(got - want) <= COMPLEXITY_TOLERANCE:
+        return "satisfied", f"{where} scores {got:.1f}/10 for difficulty (asked {want:g}/10)"
+    return "approximated", f"{where} scores {got:.1f}/10 for difficulty, the prompt asked {want:g}/10"
+
+
 def check_requirement(req: Requirement, view: LevelView, profile: GameProfile) -> Result:
     check = effective_check(req)
     if check is None or check.type == "none":
@@ -395,6 +416,8 @@ def check_requirement(req: Requirement, view: LevelView, profile: GameProfile) -
         return _check_gravity(check, view)
     if check.type == "structure":
         return _check_structure(check, view)
+    if check.type == "complexity":
+        return _check_complexity(check, view)
     return "unchecked", f"unknown check type '{check.type}'"
 
 
@@ -441,13 +464,17 @@ def check_level(
     profile: Optional[GameProfile] = None,
     verified: bool = False,
     auto_filled: Iterable[str] = (),
+    scores: Optional[Dict[str, float]] = None,
 ) -> FidelityReport:
     """Check every requirement against the final level.
+
+    *scores* are the measured difficulty per section id (``"*"`` = whole level)
+    for the ``complexity`` check (``fidelity.level_scores`` computes them).
 
     Entities are counted from ``ir.entities`` (what was actually placed);
     sections come from the spec, the size from the IR grid.  *verified* is
     recorded on the report (the grid was proven beatable).
     """
-    return _report(
-        spec, level_view(spec, ir), profile or GameProfile(), auto_filled, verified=verified
-    )
+    view = level_view(spec, ir)
+    view.scores = scores
+    return _report(spec, view, profile or GameProfile(), auto_filled, verified=verified)

@@ -45,6 +45,7 @@ from layout.terrain import MAX_ATTEMPTS as TERRAIN_ATTEMPTS
 from layout.verify import GridReport, verify_grid
 from spec.level_spec import LevelSpec, SpecNode
 
+from . import complexity as cx
 from .completeness import ensure_complete
 
 
@@ -134,6 +135,85 @@ def _layout_and_verify(
     return spec_layout, report, applied
 
 
+def _measure(spec_layout: SpecLayout, profile: GameProfile) -> Dict[str, Any]:
+    from fidelity.difficulty import measure_difficulty
+
+    rep = measure_difficulty(spec_layout.ir.grid, spec_layout.ir.entities, spec_layout.sections, profile)
+    return {s.id: s.score for s in rep.sections}
+
+
+def _scores_for(spec: LevelSpec, spec_layout: SpecLayout, profile: GameProfile) -> Optional[Dict[str, float]]:
+    """Measured scores for the ``complexity`` fidelity check (None when no requirement uses it)."""
+    if not any(r.check is not None and r.check.type == "complexity" for r in spec.requirements):
+        return None
+    from fidelity.difficulty import level_scores
+
+    try:
+        return level_scores(spec_layout.ir.grid, spec_layout.ir.entities, spec_layout.sections, profile)
+    except Exception:  # noqa: BLE001 - the check stays unchecked
+        return None
+
+
+def _total_miss(spec: LevelSpec, scores: Dict[str, float]) -> float:
+    total = 0.0
+    for sec in spec.sections:
+        c = cx.effective(spec, sec)
+        if c is not None and sec.id in scores:
+            total += abs(cx.miss(scores[sec.id], cx.targets(c)))
+    return total
+
+
+def _close_loop(spec, spec_layout, report, stage, profile, stats):
+    """Measure; adjust sections that miss their score range by more than ``cx.TOLERANCE``
+    (at most ``cx.MAX_ROUNDS`` rounds, each re-laid-out and re-verified; a round that
+    fails or does not get closer is dropped); warn about what still misses."""
+    notes: List[str] = []
+    scores = _measure(spec_layout, profile)
+    rounds = 0
+    for _ in range(cx.MAX_ROUNDS):
+        todo = []
+        for sec in spec.sections:
+            c = cx.effective(spec, sec)
+            if c is None or sec.id not in scores:
+                continue
+            m = cx.miss(scores[sec.id], cx.targets(c))
+            if abs(m) > cx.TOLERANCE:
+                todo.append((sec.id, 1 if m < 0 else -1))
+        if not todo:
+            break
+        jobs.report("complexity", "Adjusting the difficulty towards the target")
+        trial, changes = spec, []
+        for sid, direction in todo:
+            trial, ch = cx.adjust_section(trial, sid, direction)
+            changes += ch
+        if not changes:
+            break
+        t_layout, t_report, _applied, t_notes = stage(trial)
+        if not t_report.ok:
+            notes.append("complexity: an adjustment broke verification and was dropped")
+            break
+        t_scores = _measure(t_layout, profile)
+        if _total_miss(trial, t_scores) >= _total_miss(spec, scores):
+            notes.append("complexity: an adjustment did not get closer to the target and was dropped")
+            break
+        spec, spec_layout, report, scores = trial, t_layout, t_report, t_scores
+        notes += changes + t_notes
+        rounds += 1
+    still = {}
+    for sec in spec.sections:
+        c = cx.effective(spec, sec)
+        if c is None or sec.id not in scores:
+            continue
+        t = cx.targets(c)
+        still[sec.id] = {"complexity": c, "score": scores[sec.id], "target_min": t.score_min,
+                         "target_max": t.score_max}
+        if abs(cx.miss(scores[sec.id], t)) > cx.TOLERANCE:
+            notes.append(f"complexity: section {sec.id} scores {scores[sec.id]:.1f}/10, outside its "
+                         f"target {t.score_min:.1f}-{t.score_max:.1f}")
+    stats["complexity"] = {"rounds": rounds, "sections": still}
+    return spec, spec_layout, report, notes
+
+
 def build_level(
     description: str,
     controller: Any,
@@ -144,6 +224,7 @@ def build_level(
     size_override: Optional[Tuple[Optional[int], Optional[int]]] = None,
     densify: bool = True,
     fill: Any = None,
+    complexity: Optional[float] = None,
 ) -> BuiltLevel:
     """Generate, lay out, verify and repair a level (see the module docstring).
 
@@ -155,6 +236,11 @@ def build_level(
 
     ``stats`` adds ``comfort_added`` (comfort-pass platforms kept), ``densify_added`` (fill platforms kept), ``fill_added`` (noise rock tiles kept; *fill* is a density or a ``layout.fill.FillParams``, None = off), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
     (entities the deterministic fill added, over all fills).
+
+    *complexity* (0..1, v4 Part 24) is the level's complexity target; it wins over the
+    spec's own and is told to the LLM.  Null everywhere = nothing changes.  With a
+    target, the build measures each section's difficulty and adjusts it at most
+    ``cx.MAX_ROUNDS`` times (``stats["complexity"]``), then warns if it still misses.
 
     Raises ``MaxRetriesExceeded`` (LLM) or :class:`LevelBuildFailed` (grid).
     """
@@ -185,10 +271,14 @@ def build_level(
         size = spec.size.model_copy(update={"width_tiles": w, "height_tiles": h})
         return spec.model_copy(update={"size": size})
 
+    if complexity is not None:
+        constraints = {**(constraints or {}), "complexity": cx.clamp01(complexity)}
     try:
         spec = controller.generate_spec(description, constraints)
     finally:
         absorb_llm_stats()
+    if complexity is not None:
+        spec = spec.model_copy(update={"complexity": cx.clamp01(complexity)})
 
     # ── completeness: deterministic fill, then at most one LLM re-prompt ──
     complete_spec = getattr(controller, "complete_spec", None)
@@ -202,33 +292,46 @@ def build_level(
 
     done = ensure_complete(spec, profile, reprompt if complete_spec else None)
     spec = resize(done.spec)
+    if cx.active(spec):
+        spec = cx.apply_targets(spec)
     stats["completeness_reprompts"] = done.reprompts
     stats["entities_filled"] = done.entities_added
     filled: Set[str] = set(done.filled)
     notes: List[str] = list(done.notes)
 
+    def stage(current: LevelSpec) -> Tuple[SpecLayout, GridReport, List[str], List[str]]:
+        """Layout, verify, repair, then the comfort and densify passes (limits scaled by complexity)."""
+        sl, rep, applied = _layout_and_verify(current, profile, seed)
+        out_notes: List[str] = []
+        pf = cx.scaled_profile(profile, cx.level_scale(current))
+        if rep.ok:
+            jobs.report("comfort", "Shortening long jumps")
+            comfy = make_comfortable(sl, rep, pf, current)
+            rep = comfy.report or rep
+            stats["comfort_added"] = len(comfy.added)
+            out_notes += comfy.notes
+        if rep.ok and densify:
+            jobs.report("densify", "Adding fill platforms")
+            dense = densify_layout(sl, rep, pf, current, seed=seed)
+            rep = dense.report or rep
+            stats["densify_added"] = len(dense.added)
+            out_notes += dense.notes
+        return sl, rep, applied, out_notes
+
     repairs: List[str] = []
     report: Optional[GridReport] = None
     for attempt in range(max_layout_retries + 1):
         jobs.report("layout", "Laying out the level" + (f" (round {attempt + 1})" if attempt else ""))
-        spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
+        spec_layout, report, applied, snotes = stage(spec)
         regen = [a for a in applied if a.startswith("terrain:")]
         stats["grid_repairs"] += len(applied) - len(regen)
         if regen:
             stats["terrain_retries"] = stats.get("terrain_retries", 0) + len(regen)
         repairs += applied
-        if report.ok:
-            jobs.report("comfort", "Shortening long jumps")
-            comfy = make_comfortable(spec_layout, report, profile, spec)
-            report = comfy.report or report
-            stats["comfort_added"] = len(comfy.added)
-            notes += comfy.notes
-        if report.ok and densify:
-            jobs.report("densify", "Adding fill platforms")
-            dense = densify_layout(spec_layout, report, profile, spec, seed=seed)
-            report = dense.report or report
-            stats["densify_added"] = len(dense.added)
-            notes += dense.notes
+        notes += snotes
+        if report.ok and cx.active(spec):
+            spec, spec_layout, report, cnotes = _close_loop(spec, spec_layout, report, stage, profile, stats)
+            notes += cnotes
         if report.ok and rock_fill is not None:  # v4 Part 25a: noise rock (FillParams or density)
             from layout.fill import fill_layout
             jobs.report("fill", "Filling empty space with rock")
@@ -252,7 +355,8 @@ def build_level(
                 warnings=warnings,
                 stats=stats,
                 fidelity=check_level(
-                    final, spec_layout.ir, profile, verified=report.ok, auto_filled=filled
+                    final, spec_layout.ir, profile, verified=report.ok, auto_filled=filled,
+                    scores=_scores_for(final, spec_layout, profile),
                 ),
             )
         if attempt == max_layout_retries:
@@ -272,6 +376,8 @@ def build_level(
         filled |= set(fill.filled)
         notes += fill.notes
         spec = resize(fill.spec)
+        if complexity is not None:
+            spec = cx.apply_targets(spec.model_copy(update={"complexity": cx.clamp01(complexity)}))
 
     assert report is not None
     codes = [e.code for e in report.errors]

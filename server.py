@@ -432,6 +432,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
             seed=req.seed,
             size_override=(req.width_tiles, req.height_tiles),
             densify=req.densify, fill=req.fill,
+            complexity=req.complexity,
         )
     except MaxRetriesExceeded as exc:
         return GenerateResponse(
@@ -613,6 +614,7 @@ def _build_one(description: str, theme_text: str, cons: Dict[str, Any], provider
     built = build_level(
         description, controller, profile, constraints=cons or None, seed=seed,
         size_override=(req.width_tiles, req.height_tiles), densify=req.densify, fill=req.fill,
+        complexity=req.complexity,
     )
     jobs.report("aesthetic", "Tiling and decorating the level")
     result = _dress(built, f"{theme_text} {description}".strip(), req, density, seed)
@@ -884,7 +886,8 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
                        densify=req.densify, seed=req.seed, level=req.level,
-                       structure=req.structure, patterns=req.patterns, fill=req.fill)
+                       structure=req.structure, patterns=req.patterns, fill=req.fill,
+                       complexity=req.complexity)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(_pattern_note(out), req.path, req.level)
 

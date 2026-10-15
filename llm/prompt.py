@@ -39,7 +39,9 @@ of requirements extracted from the description. Output nothing else — no markd
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  TOP-LEVEL KEYS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  "title", "size", "orientation", "sections", "nodes", "edges", "entities", "requirements"
+  "title", "size", "orientation", "sections", "nodes", "edges", "entities", "requirements",
+  "complexity" (0..1 or null: set only when the description or constraints state a difficulty
+  number or "very hard"/"relaxing"; else null)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  SIZE
@@ -55,7 +57,9 @@ of requirements extracted from the description. Output nothing else — no markd
  SECTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   At least one. Each: "id" (no spaces), "name", "theme" (free text, e.g. "ice cave"),
-  "difficulty" ("easy"|"medium"|"hard"), "gravity_scale" (0.25..2.0, 1.0 = normal; only
+  "difficulty" ("easy"|"medium"|"hard"), "complexity" (0..1 or null: a numeric difficulty for
+  this section, only when the description gives one for it, e.g. "very hard" 0.9, "relaxing"
+  0.1; null = the level's), "gravity_scale" (0.25..2.0, 1.0 = normal; only
   change it if the description asks, e.g. "low gravity moon section" → 0.5),
   "description" (what happens there), "order" (0-based),
   "style" ("walk" | "mixed" | "parkour" | null; null = "mixed") — how the section plays:
@@ -217,7 +221,7 @@ of requirements extracted from the description. Output nothing else — no markd
   "check" makes the requirement machine-checkable. All its keys are always present; set the
   ones its "type" uses and null for the rest:
     "type"             — "entity_count" | "hazard" | "start_item" | "section" | "ability" |
-                         "size" | "gravity" | "structure" | "none"
+                         "size" | "gravity" | "structure" | "complexity" | "none"
                          ("hazard": spikes, pits, lava, acid, ... — counts Hazard NODES; never
                          use entity_count for a hazard)
     "entity_kind"      — entity_count: the entity kind ("Enemy", "Pickup", ...)
@@ -233,6 +237,8 @@ of requirements extracted from the description. Output nothing else — no markd
     "gravity_scale"    — gravity: the section's gravity scale (e.g. 0.5 for "low gravity")
     "structure"        — structure: the structure asked for ("there is a labyrinth" →
                          "labyrinth"; min_count = dead ends wanted, null = 1)
+    "target_difficulty" — complexity: the difficulty N out of 10 the description states
+                         ("difficulty 7/10" → 7; "section" null = the whole level)
   Use type "none" (or a null check) for style, music, mood and anything else not listed.
   • Split compound claims ("3 coins and a boss" → two requirements).
   • Include claims you cannot fully satisfy (e.g. "the player can fly", "music plays") —
@@ -309,6 +315,11 @@ def build_generate_messages(
                 "hard": "many jumps, fewer coins, frequent enemies",
             }
             lines.append(f"- Difficulty: {d} ({notes.get(d, d)})")
+        if constraints.get("complexity") is not None:
+            from pipeline.complexity import targets  # local: pipeline imports llm
+
+            lines.append(f"- {targets(constraints['complexity']).for_prompt()} Set the level "
+                         f"\"complexity\" to {constraints['complexity']:g}.")
         if constraints.get("width_tiles") or constraints.get("height_tiles"):
             w = constraints.get("width_tiles") or "your choice"
             h = constraints.get("height_tiles") or "your choice"

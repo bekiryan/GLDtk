@@ -14,6 +14,10 @@ class GenerateRequest(BaseModel):
         None, description="e.g. ['Goblin','Slime']"
     )
     difficulty: Optional[str] = Field(None, description="easy | medium | hard")
+    complexity: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Complexity target 0..1 (shown to users as 1-10); None = off (v4 Part 24)",
+    )
     platform_count: Optional[int] = Field(None, ge=2, le=30)
     width_tiles: Optional[int] = Field(
         None, ge=30, le=300, description="Level width in tiles"
@@ -246,6 +250,7 @@ class RegionEditRequest(EditRequestBase):
 class SectionEditRequest(EditRequestBase):
     section_id: str
     prompt: str
+    complexity: Optional[float] = Field(None, ge=0.0, le=1.0)  # v4 Part 24: this section's target
     # v3 Part 21: carve the section again as this structure (corridor, parkour,
     # labyrinth, arena, shaft, hub, open); None = from the prompt, else a region edit
     structure: Optional[str] = None
