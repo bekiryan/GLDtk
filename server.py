@@ -402,6 +402,7 @@ def edit_response(out: EditOutcome, path: str) -> EditResponse:
         entities=out.entity_counts,
         layout_retries=out.stats.get("layout_retries", 0),
         grid_repairs=out.stats.get("grid_repairs", 0),
+        densify_added=out.stats.get("densify_added", 0),
     )
     sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)] if spec else []
     return EditResponse(
@@ -431,7 +432,8 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
         return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
-    out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries)
+    out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries,
+                      densify=req.densify, seed=req.seed)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path)
 
@@ -441,7 +443,8 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
     provider, err = _provider_or_error(req)
     if err:
         return edit_response(EditOutcome(False, "section", error=err), req.path)
-    out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries)
+    out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
+                       densify=req.densify, seed=req.seed)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(out, req.path)
 

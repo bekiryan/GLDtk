@@ -25,9 +25,10 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from pydantic import Field
 
+from layout.densify import densify_grid
 from layout.ir import IREntity, TileValue
 from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
-from layout.spec_layout import grid_to_spec
+from layout.spec_layout import SectionBand, grid_to_spec
 from llm.providers import LLMProvider
 from spec.level_spec import (
     AbilityName,
@@ -497,6 +498,50 @@ class _Attempt:
     check: LevelCheck
     warnings: List[str] = field(default_factory=list)
     repairs: List[str] = field(default_factory=list)
+    fills: List[RegionNode] = field(default_factory=list)  # densify's fill platforms
+    dropped_fills: int = 0
+
+
+def _densify_region(
+    ctx: EditContext, rect: Rect, grid, entities: List[IREntity], locks: Locks,
+    baseline: Baseline, check: LevelCheck, name, seed: int,
+) -> Tuple[List[List[Any]], LevelCheck, List[RegionNode], int]:
+    """Add fill platforms inside *rect* (``layout.densify.densify_grid``), then re-verify.
+
+    Protected, left empty: the locked seams and their headroom, every move arc of the
+    current level (including arcs that cross the rect border) and the headroom of every
+    entity.  Additions that break verification are dropped, so this never fails an edit.
+    """
+    ph = ctx.player_h
+    protected: Set[Cell] = set(locks.solid) | set(locks.clear)
+    for e in entities:
+        for d in range(0, ph + 1):
+            protected.add((e.col, e.row - d))
+    sections = [SectionBand(id=b.id, name=b.name, col_start=b.col_start, col_end=b.col_end,
+                            gravity_scale=b.gravity_scale, theme=b.theme or "",
+                            difficulty=b.difficulty, row_start=b.row_start, row_end=b.row_end,
+                            orientation=b.orientation) for b in ctx.bands]
+    spans = check.spans
+    res = densify_grid(
+        grid, entities, (rect.col, rect.row, rect.right, rect.bottom), ctx.profile,
+        sections=sections, graph=spans.graph, start_span=check.start_span,
+        exit_spans=check.exit_spans,
+        reach_rects=[spans.rects[s] for s in check.reach if s in spans.rects],
+        protected=protected,
+        verify=lambda g: verify_level(ctx, g, entities, baseline, name).ok,
+        seed=seed, tile_size=ctx.tile_size,
+    )
+    if not res.added:
+        return grid, check, [], len(res.dropped)
+    taken = {n.id for n in ctx.spec.nodes} if ctx.spec else set()
+    fills: List[RegionNode] = []
+    for row, c0, c1 in res.added:
+        n = 1
+        while f"fill_{n}" in taken:
+            n += 1
+        taken.add(f"fill_{n}")
+        fills.append(RegionNode(f"fill_{n}", c0, row, c1 - c0 + 1, "Platform"))
+    return res.grid, verify_level(ctx, res.grid, entities, baseline, name), fills, len(res.dropped)
 
 
 def edit_region(
@@ -508,8 +553,14 @@ def edit_region(
     mode: str = "region",
     max_retries: int = 3,
     ctx: Optional[EditContext] = None,
+    densify: bool = True,
+    seed: int = 0,
 ) -> EditOutcome:
-    """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring)."""
+    """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring).
+
+    With *densify*, a verified result is filled with extra platforms inside the rect
+    (as generate does for a whole level), seeded by *seed*.
+    """
     try:
         ctx = ctx or load_context(path)
     except EditError as exc:
@@ -552,7 +603,12 @@ def edit_region(
         if not check.ok:
             check, repairs = repair_region(ctx, rect, grid, entities, region_iids, locks,
                                            baseline, check, name)
-        return _Attempt(grid, entities, placed, nodes, check, warns, repairs)
+        fills: List[RegionNode] = []
+        dropped = 0
+        if densify and check.ok:
+            grid, check, fills, dropped = _densify_region(
+                ctx, rect, grid, entities, locks, baseline, check, name, seed)
+        return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped)
 
     stats: Dict[str, Any] = {"llm_attempts": 0, "grid_repairs": 0, "layout_retries": 0,
                              "seams": len(seams)}
@@ -583,6 +639,12 @@ def edit_region(
         return failure(mode, f"LLM error: {exc}", rect, stats=stats)
 
     stats["grid_repairs"] = len(result.repairs)
+    stats["densify_added"] = len(result.fills)
+    densify_notes: List[str] = []
+    if result.fills:
+        densify_notes.append(f"densify: added {len(result.fills)} fill platform(s)"
+                             + (f", dropped {result.dropped_fills} that broke verification"
+                                if result.dropped_fills else ""))
     if not result.check.ok:
         return failure(
             mode,
@@ -591,12 +653,14 @@ def edit_region(
             rect, warnings=result.warnings + result.repairs, stats=stats,
         )
 
-    spec = _updated_spec(ctx, rect, run.value, result.nodes, removed_ids, result.placed)
+    all_nodes = dict(result.nodes)
+    all_nodes.update({n.id: n for n in result.fills})
+    spec = _updated_spec(ctx, rect, run.value, all_nodes, removed_ids, result.placed)
     return finish(
         ctx, mode=mode, label_prompt=prompt, grid=result.grid, entities=result.entities,
         spec=spec, check=result.check, rect=rect, removed=removed,
         added={str(e.metadata["iid"]) for e in result.placed},
-        warnings=run.notes + result.warnings + result.repairs, stats=stats,
+        warnings=run.notes + result.warnings + result.repairs + densify_notes, stats=stats,
     )
 
 
@@ -609,14 +673,15 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 
 
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
-                 *, max_retries: int = 3) -> EditOutcome:
+                 *, max_retries: int = 3, densify: bool = True, seed: int = 0) -> EditOutcome:
     """A region edit over the section's band (column or row band)."""
     try:
         ctx = load_context(path)
         rect = section_rect(ctx, section_id)
     except EditError as exc:
         return failure("section", str(exc))
-    return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries, ctx=ctx)
+    return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries,
+                       ctx=ctx, densify=densify, seed=seed)
 
 
 __all__ = [

@@ -49,7 +49,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from game.profile import GameProfile
 from spec.level_spec import LevelSpec
@@ -62,10 +62,10 @@ from symbolic.physics import (
     trajectory_hits,
 )
 
-from .ir import TileValue
+from .ir import IREntity, IRLevel, TileValue
 from .repair import _swept_cells
 from .spec_entities import place_spec_entities
-from .spec_layout import Rect, SpecLayout
+from .spec_layout import Rect, SectionBand, SpecLayout
 from .sugiyama import NodeLayout
 from .verify import GridReport, verify_grid
 
@@ -200,21 +200,34 @@ def _stamp(dist: List[List[int]], row: int, c0: int, c1: int) -> None:
 
 class _Densifier:
     def __init__(
-        self, layout: SpecLayout, report: GridReport, profile: GameProfile, seed: int
+        self, layout: SpecLayout, report: GridReport, profile: GameProfile, seed: int,
+        bounds: Optional[Tuple[int, int, int, int]] = None,
+        reachable: Optional[Set[str]] = None,
+        extra_protected: Optional[Set[Cell]] = None,
     ) -> None:
+        """*bounds* ``(col0, row0, col1, row1)`` (inclusive) confines every addition to
+        a rectangle (edits); *reachable* overrides ``report.reachable_nodes``."""
         self.layout = layout
         self.profile = profile
         self.rng = random.Random(seed)
         self.grid = layout.ir.grid
-        self.protected = protected_cells(layout, report, profile)
+        self.bounds = bounds
+        self.protected = protected_cells(layout, report, profile) | set(extra_protected or ())
         self.avoid = _entity_cells(layout)
         self.reachable: List[str] = sorted(
-            n for n in report.reachable_nodes if layout.standable(n)
+            n for n in (report.reachable_nodes if reachable is None else reachable)
+            if layout.standable(n)
         )
         self.added: List[str] = []
         self.dist = _emptiness(self.grid)
-        empty = sum(row.count(TileValue.EMPTY) for row in self.grid)
-        standable = sum(1 for n in layout.node_layouts if layout.standable(n))
+        if bounds is None:
+            empty = sum(row.count(TileValue.EMPTY) for row in self.grid)
+            standable = sum(1 for n in layout.node_layouts if layout.standable(n))
+        else:
+            empty = sum(1 for r in range(bounds[1], bounds[3] + 1) for c in range(bounds[0], bounds[2] + 1)
+                        if self.grid[r][c] == TileValue.EMPTY)
+            standable = sum(1 for n in layout.node_layouts if layout.standable(n)
+                            and self._in(layout.rect(n)[1], layout.rect(n)[0]))
         self.budget = min(MAX_ADDED, max(0, round(empty / TILES_PER_PLATFORM) - standable))
         # Cells within a jump of a node the player can reach (fill candidates).
         g = gravity_for(profile, 1.0)
@@ -228,6 +241,10 @@ class _Densifier:
         while f"{FILL_PREFIX}{n}" in layout.node_layouts:
             n += 1
         self.next_id = n
+
+    def _in(self, col: int, row: int) -> bool:
+        b = self.bounds
+        return b is None or (b[0] <= col <= b[2] and b[1] <= row <= b[3])
 
     def _mark_near(self, rect: Rect) -> None:
         row, c0, c1 = rect
@@ -244,6 +261,8 @@ class _Densifier:
         lay = self.layout
         row, c0, c1 = rect
         if c0 < 0 or c1 >= lay.width or not lay.player_tiles[1] <= row <= lay.height - 1:
+            return None
+        if not (self._in(c0, row) and self._in(c1, row)):
             return None
         band = lay.section_at(c0, row)
         if not (band.contains(c0, row) and band.contains(c1, row)):
@@ -332,6 +351,8 @@ class _Densifier:
             return
 
         def open_col(c: int) -> bool:
+            if not self._in(c, row):
+                return False
             band = lay.section_at(c, row)
             if any(word in band.theme.lower() for word in NO_GROUND_THEMES):
                 return False
@@ -395,6 +416,7 @@ class _Densifier:
                 for r in range(min_row, lay.height)
                 for c in range(lay.width)
                 if self.near[r][c] and self.dist[r][c] >= MIN_EMPTINESS and (r, c) not in tried
+                and self._in(c, r)
             ]
             if not cells:
                 return
@@ -420,6 +442,19 @@ class _Densifier:
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def longest_valid_prefix(n: int, ok: Callable[[int], bool]) -> int:
+    """Largest k < n such that the first k additions verify (binary search; k = 0 is
+    the input, which verifies).  Called once the full set of *n* has failed."""
+    lo, hi = 0, n  # prefix lo verifies, hi does not
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if ok(mid):
+            lo = mid
+        else:
+            hi = mid
+    return lo
 
 
 def _apply(
@@ -472,14 +507,8 @@ def densify(
     final = _apply(layout, spec, profile, base, fills, len(fills), saved)
     keep = len(fills)
     if not final.ok:
-        lo, hi = 0, len(fills)  # prefix lo verifies (the input layout), hi does not
-        while hi - lo > 1:
-            mid = (lo + hi) // 2
-            if _apply(layout, spec, profile, base, fills, mid, saved).ok:
-                lo = mid
-            else:
-                hi = mid
-        keep = lo
+        keep = longest_valid_prefix(
+            len(fills), lambda k: _apply(layout, spec, profile, base, fills, k, saved).ok)
         final = _apply(layout, spec, profile, base, fills, keep, saved)
     result.added = fills[:keep]
     result.dropped = fills[keep:]
@@ -489,3 +518,107 @@ def densify(
         + (f", dropped {len(result.dropped)} that broke verification" if result.dropped else "")
     )
     return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Grid-level entry point (region and section edits)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class GridDensifyResult:
+    grid: List[List[int]]  # the input grid plus the kept platforms
+    added: List[Rect] = field(default_factory=list)  # kept platforms (row, col0, col1), in order
+    dropped: List[Rect] = field(default_factory=list)  # removed to keep the level verified
+
+
+@dataclass
+class _GridReach:
+    """What ``_Densifier`` reads from a ``GridReport`` (here from an edit's Spans)."""
+
+    graph: object
+    start_span: Optional[str]
+    exit_spans: Set[str]
+    reachable_nodes: Set[str] = field(default_factory=set)
+
+
+def _grid_layout(grid: List[List[int]], entities: Sequence[IREntity], tile_size: int,
+                 sections: List[SectionBand], player_tiles: Tuple[int, int]) -> SpecLayout:
+    """A SpecLayout over a raw grid: every horizontal run of tiles is a node."""
+    height, width = len(grid), len(grid[0])
+    nodes: Dict[str, NodeLayout] = {}
+    kinds: Dict[str, str] = {}
+    for r, line in enumerate(grid):
+        c = 0
+        while c < width:
+            v = int(line[c])
+            if v == TileValue.EMPTY:
+                c += 1
+                continue
+            c0 = c
+            while c < width and int(line[c]) == v:
+                c += 1
+            nid = f"g{r}_{c0}"
+            nodes[nid] = NodeLayout(node_id=nid, col=c0, row=r, width=c - c0, height=1)
+            kinds[nid] = "Hazard" if v == TileValue.HAZARD else "Platform"
+    ir = IRLevel(identifier="grid", width_tiles=width, height_tiles=height, tile_size=tile_size,
+                 grid=[[int(v) for v in line] for line in grid], entities=list(entities))
+    return SpecLayout(node_layouts=nodes, ir=ir, sections=sections, node_kinds=kinds,
+                      player_tiles=player_tiles)
+
+
+def densify_grid(
+    grid: List[List[int]],
+    entities: Sequence[IREntity],
+    bounds: Tuple[int, int, int, int],
+    profile: GameProfile,
+    *,
+    sections: List[SectionBand],
+    graph,
+    start_span: Optional[str],
+    exit_spans: Set[str],
+    reach_rects: Sequence[Rect],
+    protected: Set[Cell],
+    verify: Callable[[List[List[int]]], bool],
+    seed: int = 0,
+    tile_size: int = 16,
+) -> GridDensifyResult:
+    """Add fill platforms inside *bounds* ``(col0, row0, col1, row1)`` of a raw grid.
+
+    The same ground / ledge / fill algorithm as :func:`densify` (one ``_Densifier``),
+    run on a ``SpecLayout`` built from the grid, with additions confined to *bounds*.
+
+    *graph*, *start_span*, *exit_spans* describe the collision-aware span graph of *grid*
+    (its arcs are protected); *reach_rects* are the spans the player can reach (nodes
+    standing on them are fill sources); *protected* cells stay empty on top of the arcs.
+    *verify(grid)* says whether a candidate grid still passes the caller's checks;
+    additions that break it are dropped (longest valid prefix), so this never fails.
+    """
+    layout = _grid_layout(grid, entities, tile_size, sections, profile.player_tiles())
+    reach_by_row: Dict[int, List[Tuple[int, int]]] = {}
+    for row, c0, c1 in reach_rects:
+        reach_by_row.setdefault(row, []).append((c0, c1))
+    reachable = {
+        nid for nid, nl in layout.node_layouts.items()
+        if layout.standable(nid)
+        and any(a <= nl.col + nl.width - 1 and nl.col <= b for a, b in reach_by_row.get(nl.row, ()))
+    }
+    reach = _GridReach(graph, start_span, exit_spans, reachable)
+    d = _Densifier(layout, reach, profile, seed, bounds=bounds, reachable=reachable,
+                   extra_protected=protected)  # type: ignore[arg-type]
+    if d.budget > 0:
+        d.ground()
+        d.ledges()
+        d.fill()
+    rects = [layout.rect(n) for n in d.added]
+
+    def stamped(k: int) -> List[List[int]]:
+        out = [list(line) for line in grid]
+        for row, c0, c1 in rects[:k]:
+            out[row][c0 : c1 + 1] = [TileValue.SOLID] * (c1 - c0 + 1)
+        return out
+
+    keep = len(rects)
+    if rects and not verify(stamped(keep)):
+        keep = longest_valid_prefix(len(rects), lambda k: verify(stamped(k)))
+    return GridDensifyResult(stamped(keep), rects[:keep], rects[keep:])
