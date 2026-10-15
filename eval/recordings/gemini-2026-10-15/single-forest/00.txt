@@ -1,0 +1,243 @@
+{
+  "title": "Short Forest Level",
+  "size": {
+    "width_tiles": 40,
+    "height_tiles": 20
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "forest",
+      "name": "Forest Meadow",
+      "theme": "forest",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "A short forest level with grassy platforms, coins, and an exit.",
+      "order": 0
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 32,
+      "y": 32,
+      "w": 64,
+      "h": 16,
+      "section": "forest"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 160,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "forest"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 288,
+      "y": 96,
+      "w": 64,
+      "h": 16,
+      "section": "forest"
+    },
+    {
+      "id": "exit_node",
+      "type": "Exit",
+      "x": 416,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "forest"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Jump",
+      "vx": 100,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "exit_node",
+      "type": "Jump",
+      "vx": 120,
+      "vy": 600,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "forest",
+      "description": "The player spawn.",
+      "sprite": "hero",
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "coin1",
+      "kind": "Pickup",
+      "anchor": "p1",
+      "section": "forest",
+      "description": "A coin.",
+      "sprite": "coin",
+      "facing": "right",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "coin2",
+      "kind": "Pickup",
+      "anchor": "p2",
+      "section": "forest",
+      "description": "A coin.",
+      "sprite": "coin",
+      "facing": "right",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "exit_flag",
+      "kind": "Exit",
+      "anchor": "exit_node",
+      "section": "forest",
+      "description": "An exit flag.",
+      "sprite": "flag",
+      "facing": "right",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "Short level size.",
+      "category": "size",
+      "check": {
+        "type": "size",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": null,
+        "ability": null,
+        "min_width_tiles": 30,
+        "min_height_tiles": 15,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "A few coins.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "coin",
+        "min_count": 2,
+        "section": "forest",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "An exit flag.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "forest",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    }
+  ]
+}

@@ -21,14 +21,50 @@ The extractor runs three passes:
   1. Collect horizontal platform spans (and single-tile special nodes).
   2. Emit a LevelNode per span.
   3. Classify edges between every pair of nodes using the physics oracle.
+
+Game Profile (v2)
+-----------------
+With ``profile`` given, classification uses the profile's tile size,
+gravity, jump_v and run_speed (as both the walk speed and the |vx| cap), and
+``gravity_scale_at(col)`` (default 1.0) scales gravity by the column of the
+source span's centre (``gravity_scale_at_cell(col, row)`` also sees its row,
+for levels whose sections are row bands).  When a plain jump fails but an enabled ability makes
+the move (``best_ability``), the Jump edge carries ``metadata["ability"]``.
+Every edge then carries ``metadata["gravity_scale"]``.  Without a profile the
+behaviour is the v1 one.
+
+Collision-aware mode (v2, Part 3)
+---------------------------------
+``collision=True`` keeps only moves whose trajectory is clear on the grid
+(:func:`symbolic.physics.trajectory_clear`, the player hitbox swept along the
+candidate arcs).  Each pair of spans is tried with a few launch / landing
+points (:func:`span_point_pairs`: the edge facing the other span, the centre,
+and for downward moves the walk-off point just past the ledge), first as a
+plain move, then with each enabled ability.  Pairs further apart than the
+profile can possibly reach are pruned before any arc is sampled.  Hazard spans
+are kept as nodes but get no edges (nobody stands on, or lands on, a hazard).
+Edges carry ``metadata["launch"]`` / ``["land"]`` (the feet points used).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple
 
-from .physics import check_jump_arc, fall_time
+from .physics import (
+    ABILITY_ORDER,
+    ability_enabled,
+    best_ability,
+    check_jump_arc,
+    double_jump_max_time,
+    fall_time,
+    flat_jump_reach,
+    gravity_for,
+    max_jump_height,
+    required_launch_velocity,
+    trajectory_clear,
+)
 from .schema import (
     AbstractLevelGraph,
     EdgeType,
@@ -51,6 +87,11 @@ _SOLID_TILES = {TILE_SOLID, TILE_START, TILE_EXIT}
 _SURFACE_TILES = {TILE_SOLID, TILE_HAZARD, TILE_START, TILE_EXIT}
 
 Grid = Sequence[Sequence[int]]
+GravityScaleAt = Callable[[int], float]
+GravityScaleAtCell = Callable[[int, int], float]  # (col, row) -> gravity scale
+
+if TYPE_CHECKING:  # pragma: no cover
+    from game.profile import GameProfile
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +104,7 @@ class _Span:
     tile_type: int
     row: int
     col_start: int
-    col_end: int        # inclusive
+    col_end: int  # inclusive
 
     @property
     def width_tiles(self) -> int:
@@ -74,6 +115,7 @@ class _Span:
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 def extract_graph(
     grid: Grid,
     tile_size: float = 16.0,
@@ -81,6 +123,10 @@ def extract_graph(
     jump_v: float = 600.0,
     max_horizontal_speed: Optional[float] = None,
     walk_speed: float = 200.0,
+    profile: Optional["GameProfile"] = None,
+    gravity_scale_at: Optional[GravityScaleAt] = None,
+    collision: bool = False,
+    gravity_scale_at_cell: Optional[GravityScaleAtCell] = None,
 ) -> AbstractLevelGraph:
     """Build an AbstractLevelGraph from a 2-D tile grid.
 
@@ -92,6 +138,14 @@ def extract_graph(
     jump_v : maximum upward launch speed in px/s.
     max_horizontal_speed : optional cap on |vx| for jump feasibility checks.
     walk_speed : horizontal speed assumed for Walk edges (stored in v_launch).
+    profile : optional Game Profile.  When given it overrides tile_size,
+        gravity, jump_v, max_horizontal_speed (= run_speed) and walk_speed,
+        and enables ability-annotated Jump edges.
+    gravity_scale_at : optional ``col -> gravity_scale`` (default 1.0).
+    collision : keep only edges whose trajectory is clear on the grid (uses
+        *profile*, or the default GameProfile when None).
+    gravity_scale_at_cell : optional ``(col, row) -> gravity_scale``; wins
+        over *gravity_scale_at*.
 
     Returns
     -------
@@ -102,6 +156,26 @@ def extract_graph(
         return AbstractLevelGraph()
     width = len(grid[0])
 
+    if profile is not None:
+        tile_size = float(profile.tile_size)
+        gravity = profile.physics.gravity
+        jump_v = profile.physics.jump_v
+        max_horizontal_speed = profile.physics.run_speed
+        walk_speed = profile.physics.run_speed
+
+    if collision and profile is None:
+        from game.profile import GameProfile
+
+        profile = GameProfile()
+        tile_size = float(profile.tile_size)
+
+    scale_at: Optional[GravityScaleAtCell] = gravity_scale_at_cell
+    if scale_at is None and gravity_scale_at is not None:
+        col_scale = gravity_scale_at
+
+        def scale_at(col: int, _row: int) -> float:
+            return col_scale(col)
+
     spans = _collect_spans(grid, height, width)
     nodes = _spans_to_nodes(spans, height, tile_size)
 
@@ -109,13 +183,28 @@ def extract_graph(
     for node in nodes.values():
         graph.add_node(node)
 
-    _add_edges(graph, nodes, gravity, jump_v, max_horizontal_speed, walk_speed)
+    if collision:
+        assert profile is not None
+        _add_collision_edges(graph, nodes, grid, profile, scale_at)
+        return graph
+
+    _add_edges(
+        graph,
+        nodes,
+        gravity,
+        jump_v,
+        max_horizontal_speed,
+        walk_speed,
+        profile,
+        scale_at,
+    )
     return graph
 
 
 # ---------------------------------------------------------------------------
 # Pass 1 — collect horizontal spans
 # ---------------------------------------------------------------------------
+
 
 def _collect_spans(grid: Grid, height: int, width: int) -> List[_Span]:
     spans: List[_Span] = []
@@ -177,8 +266,11 @@ def _spans_to_nodes(
             node_type=_TILE_TO_NODE_TYPE[span.tile_type],
             position=position,
             size=size,
-            metadata={"row": span.row, "col_start": span.col_start,
-                       "col_end": span.col_end},
+            metadata={
+                "row": span.row,
+                "col_start": span.col_start,
+                "col_end": span.col_end,
+            },
         )
         nodes[node_id] = node
     return nodes
@@ -187,6 +279,7 @@ def _spans_to_nodes(
 # ---------------------------------------------------------------------------
 # Pass 3 — classify and add edges
 # ---------------------------------------------------------------------------
+
 
 def _surface_point(node: LevelNode) -> Tuple[float, float]:
     """Top-center standing point of a node."""
@@ -210,12 +303,21 @@ def _classify_edge(
     jump_v: float,
     max_horizontal_speed: Optional[float],
     walk_speed: float,
+    profile: Optional["GameProfile"] = None,
+    gravity_scale: float = 1.0,
 ) -> Optional[LevelEdge]:
-    """Return the cheapest valid edge from src to dst, or None."""
+    """Return the cheapest valid edge from src to dst, or None.
+
+    *gravity* is the base gravity; the effective one is gravity · gravity_scale.
+    """
     p1 = _surface_point(src)
     p2 = _surface_point(dst)
     dx = p2[0] - p1[0]
     dy = p2[1] - p1[1]
+    meta: Dict[str, object] = {}
+    if profile is not None:
+        meta["gravity_scale"] = gravity_scale
+    gravity = gravity * gravity_scale
 
     # --- Walk (same surface height, horizontally contiguous) ---
     if _nodes_are_horizontally_adjacent(src, dst):
@@ -227,6 +329,7 @@ def _classify_edge(
             dx=dx,
             dy=dy,
             v_launch=(vx, 0.0),
+            metadata=dict(meta),
         )
 
     # --- Fall (destination is strictly below source) ---
@@ -242,11 +345,11 @@ def _classify_edge(
                     dx=dx,
                     dy=dy,
                     v_launch=(vx, 0.0),
+                    metadata=dict(meta),
                 )
 
     # --- Jump (destination is above, or lateral with upward arc) ---
     if check_jump_arc(p1, p2, gravity, jump_v, max_horizontal_speed):
-        from .physics import required_launch_velocity
         vel = required_launch_velocity(p1, p2, gravity, jump_v)
         v_launch: Tuple[float, float] = vel if vel is not None else (0.0, jump_v)
         return LevelEdge(
@@ -256,7 +359,23 @@ def _classify_edge(
             dx=dx,
             dy=dy,
             v_launch=v_launch,
+            metadata=dict(meta),
         )
+
+    # --- Jump with an ability (profile only) ---
+    if profile is not None:
+        ability = best_ability(p1, p2, profile, gravity_scale)
+        if isinstance(ability, str):
+            vx = math.copysign(walk_speed, dx) if dx else 0.0
+            return LevelEdge(
+                source_id=src.id,
+                target_id=dst.id,
+                edge_type=EdgeType.JUMP,
+                dx=dx,
+                dy=dy,
+                v_launch=(vx, jump_v),
+                metadata={**meta, "ability": ability},
+            )
 
     return None
 
@@ -268,6 +387,8 @@ def _add_edges(
     jump_v: float,
     max_horizontal_speed: Optional[float],
     walk_speed: float,
+    profile: Optional["GameProfile"] = None,
+    gravity_scale_at: Optional[GravityScaleAtCell] = None,
 ) -> None:
     node_list = list(nodes.values())
     for i, src in enumerate(node_list):
@@ -277,8 +398,183 @@ def _add_edges(
             # Skip edges originating from hazard nodes (can't stand on them).
             if src.node_type == NodeType.HAZARD:
                 continue
+            scale = 1.0
+            if gravity_scale_at is not None:
+                col = (int(src.metadata["col_start"]) + int(src.metadata["col_end"])) // 2
+                scale = float(gravity_scale_at(col, int(src.metadata["row"])))
             edge = _classify_edge(
-                src, dst, gravity, jump_v, max_horizontal_speed, walk_speed
+                src,
+                dst,
+                gravity,
+                jump_v,
+                max_horizontal_speed,
+                walk_speed,
+                profile,
+                scale,
             )
             if edge is not None:
                 graph.add_edge(edge)
+
+
+# ---------------------------------------------------------------------------
+# Collision-aware edges (v2, Part 3)
+# ---------------------------------------------------------------------------
+
+Point = Tuple[float, float]
+
+
+def span_point_pairs(
+    src: Tuple[int, int, int],
+    dst: Tuple[int, int, int],
+    grid_height: int,
+    tile_size: float,
+    player_width: float,
+) -> List[Tuple[Point, Point]]:
+    """Launch/landing feet points for a move between two spans.
+
+    Spans are ``(row, col_start, col_end)``.  Launch points: the edge facing
+    the target (hitbox fully on the platform), the centre, and — for downward
+    moves — the walk-off point (hitbox just past the ledge).  Landing points:
+    the launch x clamped onto the target, the target edge facing the source,
+    and the target centre.  Ordered cheapest-first, de-duplicated.
+    """
+    half = player_width / 2.0
+    y1 = (grid_height - 1 - src[0]) * tile_size
+    y2 = (grid_height - 1 - dst[0]) * tile_size
+    s_left, s_right = src[1] * tile_size, (src[2] + 1) * tile_size
+    d_left, d_right = dst[1] * tile_size, (dst[2] + 1) * tile_size
+    s_mid, d_mid = (s_left + s_right) / 2.0, (d_left + d_right) / 2.0
+    d_lo, d_hi = d_left + half, d_right - half
+    if d_lo > d_hi:
+        d_lo = d_hi = d_mid
+    rightward = d_mid >= s_mid
+    if rightward:
+        launches = [max(s_mid, s_right - half), s_mid]
+        if y2 < y1:
+            launches.insert(0, s_right + half)
+        land_near = d_lo
+    else:
+        launches = [min(s_mid, s_left + half), s_mid]
+        if y2 < y1:
+            launches.insert(0, s_left - half)
+        land_near = d_hi
+    pairs: List[Tuple[Point, Point]] = []
+    seen = set()
+    for lx in launches:
+        for tx in (min(max(lx, d_lo), d_hi), land_near, d_mid):
+            key = (round(lx, 3), round(tx, 3))
+            if key in seen:
+                continue
+            seen.add(key)
+            pairs.append(((lx, y1), (tx, y2)))
+    return pairs
+
+
+def _max_flight_time(profile: "GameProfile", g: float, dy: float) -> Optional[float]:
+    """Longest flight time of any move landing Δy higher (None if unreachable).
+
+    Exact for the plain jump and the double jump (``double_jump_max_time``);
+    a walk-off drop is never longer than the plain jump's descending root.
+    """
+    phys = profile.physics
+    best: Optional[float] = None
+    disc = phys.jump_v**2 - 2.0 * g * dy
+    if disc >= 0.0:
+        best = (phys.jump_v + math.sqrt(disc)) / g
+    ab = profile.abilities
+    if ab.double_jump.enabled:
+        t = double_jump_max_time(dy, g, phys.jump_v, ab.double_jump.jump_v)
+        if t is not None and (best is None or t > best):
+            best = t
+    return best
+
+
+def _could_reach(profile: "GameProfile", g: float, gap: float, dy: float) -> bool:
+    """Cheap necessary condition for any move across *gap* px rising *dy* px."""
+    ab = profile.abilities
+    vmax = profile.physics.run_speed
+    slack = profile.player.width_px + profile.tile_size
+    if ab.wall_jump.enabled and dy <= (
+        max_jump_height(g, profile.physics.jump_v) + ab.wall_jump.max_climb_px + 1e-6
+    ):
+        reach = flat_jump_reach(g, profile.physics.jump_v, vmax) + ab.wall_jump.push_px
+        if gap <= reach + slack:
+            return True
+    t = _max_flight_time(profile, g, dy)
+    if t is None:
+        return False
+    extra = ab.dash.distance_px if ab.dash.enabled and ab.dash.air else 0.0
+    return gap <= vmax * t + extra + slack
+
+
+def move_between(
+    grid: Grid,
+    src: Tuple[int, int, int],
+    dst: Tuple[int, int, int],
+    profile: "GameProfile",
+    gravity_scale: float = 1.0,
+) -> Optional[Tuple[Optional[str], Point, Point]]:
+    """Cheapest collision-free move between two spans, or None.
+
+    Returns ``(ability, launch, land)`` — ability None for a plain move.
+    """
+    height = len(grid)
+    ts = float(profile.tile_size)
+    g = gravity_for(profile, gravity_scale)
+    dy = (src[0] - dst[0]) * ts
+    gap = max(0.0, (dst[1] - src[2] - 1) * ts, (src[1] - dst[2] - 1) * ts)
+    if not _could_reach(profile, g, gap, dy):
+        return None
+    pairs = span_point_pairs(src, dst, height, ts, profile.player.width_px)
+    abilities: List[Optional[str]] = [None] + [
+        a for a in ABILITY_ORDER if ability_enabled(profile, a)
+    ]
+    for ability in abilities:
+        for p1, p2 in pairs:
+            if trajectory_clear(grid, p1, p2, profile, gravity_scale, ability, ts):
+                return ability, p1, p2
+    return None
+
+
+def _add_collision_edges(
+    graph: AbstractLevelGraph,
+    nodes: Dict[str, LevelNode],
+    grid: Grid,
+    profile: "GameProfile",
+    gravity_scale_at: Optional[GravityScaleAtCell],
+) -> None:
+    standable = [n for n in nodes.values() if n.node_type != NodeType.HAZARD]
+    rects = {
+        n.id: (int(n.metadata["row"]), int(n.metadata["col_start"]), int(n.metadata["col_end"]))
+        for n in standable
+    }
+    walk_speed = profile.physics.run_speed
+    for src in standable:
+        s = rects[src.id]
+        scale = 1.0
+        if gravity_scale_at is not None:
+            scale = float(gravity_scale_at((s[1] + s[2]) // 2, s[0]))
+        for dst in standable:
+            if dst.id == src.id:
+                continue
+            d = rects[dst.id]
+            meta: Dict[str, object] = {"gravity_scale": scale}
+            if s[0] == d[0] and (d[1] == s[2] + 1 or s[1] == d[2] + 1):
+                vx = walk_speed if d[1] > s[1] else -walk_speed
+                p1, p2 = _surface_point(src), _surface_point(dst)
+                graph.add_edge(
+                    LevelEdge(src.id, dst.id, EdgeType.WALK, p2[0] - p1[0], 0.0, (vx, 0.0), meta)
+                )
+                continue
+            move = move_between(grid, s, d, profile, scale)
+            if move is None:
+                continue
+            ability, p1, p2 = move
+            dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+            meta["launch"], meta["land"] = p1, p2
+            if ability is not None:
+                meta["ability"] = ability
+            edge_type = EdgeType.FALL if dy < 0 and ability is None else EdgeType.JUMP
+            vy = 0.0 if edge_type == EdgeType.FALL else profile.physics.jump_v
+            vx = math.copysign(walk_speed, dx) if dx else 0.0
+            graph.add_edge(LevelEdge(src.id, dst.id, edge_type, dx, dy, (vx, vy), meta))

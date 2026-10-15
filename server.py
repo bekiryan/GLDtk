@@ -5,6 +5,13 @@ Run:
 
 The GLDtk panel inside LDtk sends requests to this server.
 POST /generate  — run the pipeline and write a .ldtk file.
+GET  /providers — LLM provider names and their default models.
+GET  /profile   — read the project's Game Profile (defaults if missing).
+PUT  /profile   — validate and write the project's Game Profile.
+POST /edit/region, /edit/section, /edit/entities — regional edits (Part 8).
+POST /edit/locate — text location → rect (writes nothing).
+POST /undo      — restore the newest history snapshot.
+GET  /history   — the snapshots of a .ldtk file.
 """
 
 from __future__ import annotations
@@ -13,26 +20,122 @@ import collections
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+import logging
+from fastapi.middleware.cors import CORSMiddleware
 
-from aesthetic import build_aesthetic_layer
-from aesthetic.themes import THEMES
-from api.models import GenerateRequest, GenerateResponse, LevelStats
-from layout import LayoutConfig, sugiyama_layout, to_ldtk_dict
-from llm import LLMController, MaxRetriesExceeded, PhysicsParams
-from llm.validator import LLMProviderConfig
+from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
+from aesthetic.themes import THEMES, Theme, detect_theme
+from api import art_routes
+from api.models import (
+    EditInfo,
+    EditResponse,
+    EntityEditRequest,
+    GenerateRequest,
+    GenerateResponse,
+    HistoryEntry,
+    HistoryResponse,
+    LevelStats,
+    LocateRequest,
+    LocateResponse,
+    PathRequest,
+    RectModel,
+    RegionEditRequest,
+    SectionEditRequest,
+    UndoResponse,
+)
+from edit import history as edit_history
+from edit.context import Rect
+from edit.entities import edit_entities
+from edit.locate import locate as locate_text
+from edit.outcome import EditOutcome
+from edit.region import edit_region, edit_section
+from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
+from game.profile import (
+    PROFILE_FILENAME,
+    GameProfile,
+    load_profile,
+    profile_path_for,
+    save_profile,
+)
+from llm import LLMController, MaxRetriesExceeded
+from llm.providers import _DEFAULT_PROVIDER_MODELS, LLMProvider, make_provider_with_fallback
+from pipeline import LevelBuildFailed, build_level
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# .env loading  (tiny built-in loader — no python-dotenv dependency)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def load_env_file(path: Path) -> None:
+    """Load ``KEY=VALUE`` lines into ``os.environ``.
+
+    Blank lines and ``#`` comments are ignored, surrounding quotes are
+    stripped, and variables that are already set are never overridden.
+    """
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if key.startswith("export "):
+            key = key[len("export ") :].strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_env_file(Path(__file__).resolve().parent / ".env")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Provider factory  (module-level so tests can swap in a FakeProvider)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def default_provider_factory(req: Any) -> LLMProvider:
+    """*req* is any request with ``provider`` and ``model`` (generate or edit).
+
+    Gemini with its default model falls back to a local model (``GLDTK_LOCAL_FALLBACK``).
+    """
+    return make_provider_with_fallback(req.provider, model=req.model)
+
+
+def provider_notes(provider: Any) -> List[str]:
+    """Fallback switches made while answering (e.g. Gemini 429 → local model)."""
+    return list(getattr(provider, "notes", None) or [])
+
+
+provider_factory: Callable[[Any], LLMProvider] = default_provider_factory
+
 
 app = FastAPI(title="GLDtk Companion", version="0.1.0")
+app.include_router(art_routes.router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    logging.error(f"VALIDATION ERROR: {exc.errors()}")
+    body = await request.body()
+    logging.error(f"BODY: {body}")
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
 
@@ -41,15 +144,30 @@ app.add_middleware(
 # ─────────────────────────────────────────────────────────────────────────────
 
 _DIFFICULTY: Dict[str, Dict[str, Any]] = {
-    "easy":   {"density": 0.5,  "v_step": 3},
-    "medium": {"density": 1.0,  "v_step": 4},
-    "hard":   {"density": 1.5,  "v_step": 5},
+    "easy": {"density": 0.5},
+    "medium": {"density": 1.0},
+    "hard": {"density": 1.5},
 }
+
+
+def section_theme(theme_text: str, description: str, override: str | None = None) -> Theme:
+    """Map a section's free-text theme to a tileset theme.
+
+    The request override wins; otherwise the section theme's keywords, then the
+    level description's keywords, then the default theme.
+    """
+    if override:
+        return detect_theme("", override=override)
+    theme = detect_theme(theme_text)
+    if theme.identifier == "default":
+        theme = detect_theme(description)
+    return theme
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 def health() -> Dict[str, str]:
@@ -61,12 +179,69 @@ def list_themes() -> Dict[str, List[str]]:
     return {"themes": [k for k in THEMES if k != "default"]}
 
 
+@app.get("/providers")
+def list_providers() -> Dict[str, Any]:
+    """Provider names (in the sidebar's order) with their default models."""
+    return {
+        "default": GenerateRequest.model_fields["provider"].default,
+        "providers": [
+            {"name": name, "default_model": model}
+            for name, model in _DEFAULT_PROVIDER_MODELS.items()
+        ],
+    }
+
+
+def resolve_profile_path(path: str) -> Path:
+    """``path`` may name the profile file itself or the project's ``.ldtk`` file."""
+    p = Path(path)
+    if p.suffix.lower() == ".ldtk":
+        return profile_path_for(p)
+    if p.is_dir():
+        return p / PROFILE_FILENAME
+    return p
+
+
+@app.get("/profile")
+def get_profile(path: str = Query(..., description=".ldtk or gldtk.game.json path")) -> Dict[str, Any]:
+    profile_path = resolve_profile_path(path)
+    try:
+        profile = load_profile(profile_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return profile.model_dump()
+
+
+@app.put("/profile")
+def put_profile(
+    path: str = Query(..., description=".ldtk or gldtk.game.json path"),
+    profile: GameProfile = Body(...),
+) -> Dict[str, Any]:
+    profile_path = resolve_profile_path(path)
+    try:
+        save_profile(profile, profile_path)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not write {profile_path}: {exc}")
+    return profile.model_dump()
+
+
 @app.post("/generate", response_model=GenerateResponse)
 def generate(req: GenerateRequest) -> GenerateResponse:
+    # ── game profile (never written during generate) ──────────────────────
+    profile_path = (
+        Path(req.game_profile_path)
+        if req.game_profile_path
+        else profile_path_for(req.output_path)
+    )
+    try:
+        profile = load_profile(profile_path)
+    except ValueError as exc:
+        return GenerateResponse(
+            success=False, error=str(exc), profile_path=str(profile_path)
+        )
+
     # ── difficulty params ─────────────────────────────────────────────────
     diff_cfg = _DIFFICULTY.get(req.difficulty or "medium", _DIFFICULTY["medium"])
     density: float = diff_cfg["density"]
-    v_step: int    = diff_cfg["v_step"]
 
     # ── build constraints block for the LLM ───────────────────────────────
     constraints: Dict[str, Any] = {}
@@ -78,54 +253,93 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         constraints["platform_count"] = req.platform_count
     if req.difficulty:
         constraints["difficulty"] = req.difficulty
+    if req.width_tiles:
+        constraints["width_tiles"] = req.width_tiles
+    if req.height_tiles:
+        constraints["height_tiles"] = req.height_tiles
 
-    # ── LLM graph generation ──────────────────────────────────────────────
+    # ── LLM spec → layout → grid verification → repair ──────────────────
+    provider = None
     try:
+        provider = provider_factory(req)
         controller = LLMController(
-            physics=PhysicsParams(),
-            provider=req.provider,
-            model=req.model,
+            profile=profile,
+            provider=provider,
             max_retries=req.max_retries,
         )
-        graph = controller.generate(req.description, constraints=constraints or None)
+        built = build_level(
+            req.description,
+            controller,
+            profile,
+            constraints=constraints or None,
+            seed=req.seed,
+            size_override=(req.width_tiles, req.height_tiles),
+            densify=req.densify,
+        )
     except MaxRetriesExceeded as exc:
-        return GenerateResponse(success=False, error=str(exc))
+        return GenerateResponse(
+            success=False, error=str(exc), profile_path=str(profile_path),
+            warnings=provider_notes(provider),
+        )
+    except LevelBuildFailed as exc:
+        return GenerateResponse(
+            success=False,
+            error=str(exc),
+            profile_path=str(profile_path),
+            verified=False,
+            warnings=provider_notes(provider),
+        )
     except Exception as exc:
-        return GenerateResponse(success=False, error=f"LLM error: {exc}")
+        return GenerateResponse(
+            success=False, error=f"LLM error: {exc}", profile_path=str(profile_path),
+            warnings=provider_notes(provider),
+        )
 
-    # ── layout ────────────────────────────────────────────────────────────
-    try:
-        layout_kwargs: dict = {"v_step": v_step}
-        if req.width_tiles:
-            layout_kwargs["width_tiles"] = req.width_tiles
-        if req.height_tiles:
-            layout_kwargs["height_tiles"] = req.height_tiles
-            layout_kwargs["baseline_row"] = req.height_tiles - 5
-        layout_cfg = LayoutConfig(**layout_kwargs)
-        node_layouts, ir = sugiyama_layout(graph, layout_cfg)
-    except Exception as exc:
-        return GenerateResponse(success=False, error=f"Layout error: {exc}")
+    spec = built.spec
+    ir = built.spec_layout.ir
+    requirements = [r.text for r in spec.requirements]
+    ordered_sections = sorted(spec.sections, key=lambda s: s.order)
+    sections = [s.name for s in ordered_sections]
 
-    # ── aesthetic ─────────────────────────────────────────────────────────
+    # ── aesthetic (spec entities only — no random coins / enemies) ───────
     try:
+        for band in ir.metadata.get("sections", []):
+            band["mapped_theme"] = section_theme(
+                str(band["theme"]), req.description, req.theme
+            ).identifier
+        theme = section_theme(ordered_sections[0].theme, req.description, req.theme)
         result = build_aesthetic_layer(
             description=req.description,
-            graph=graph,
-            node_layouts=node_layouts,
+            graph=spec.to_graph(),
+            node_layouts=built.spec_layout.node_layouts,
             ir_level=ir,
-            theme_override=req.theme,
+            theme_override=theme.identifier,
             density=density,
             seed=req.seed,
             custom_enemy_types=req.enemy_types or None,
+            place_random_entities=False,
         )
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Aesthetic error: {exc}")
 
     # ── serialise ─────────────────────────────────────────────────────────
     try:
-        doc = to_ldtk_dict(ir, aesthetic=result.aesthetic)
         out = Path(req.output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
+        # The .ldtk references the theme sheets and the sprite atlas relative to itself.
+        copy_aesthetic_assets(result, out.parent)
+        edit_history.snapshot(out, edit_history.make_label("generate", req.description))
+        level_meta = LevelMeta(
+            prompt=req.description,
+            requirements=list(spec.requirements),
+            game_profile_relpath=os.path.relpath(Path(profile_path).resolve(), out.parent.resolve()),
+            spec_json=spec,
+        )
+        tw, th = profile.player_tiles()
+        ldtk_cfg = LDtkConfig(player_px=(tw * profile.tile_size, th * profile.tile_size))
+        doc, export_warnings = to_ldtk_dict_with_warnings(
+            ir, aesthetic=result.aesthetic, cfg=ldtk_cfg, level_meta=level_meta
+        )
         out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
     except Exception as exc:
         return GenerateResponse(success=False, error=f"Serialisation error: {exc}")
@@ -136,18 +350,138 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     )
     stats = LevelStats(
         theme=result.theme.display_name,
-        nodes=len(graph.nodes()),
-        edges=len(graph.edges()),
+        nodes=len(spec.nodes),
+        edges=len(spec.edges),
         entities=dict(entity_counts),
+        layout_retries=built.stats["layout_retries"],
+        grid_repairs=built.stats["grid_repairs"],
+        completeness_reprompts=built.stats.get("completeness_reprompts", 0),
+        entities_filled=built.stats.get("entities_filled", 0),
+        densify_added=built.stats.get("densify_added", 0),
     )
-    preview = ir.ascii_render({"Start": "S", "Exit": "E"})
+    preview = ir.ascii_render({"Start": "S", "Exit": "X"})
 
     return GenerateResponse(
         success=True,
         preview_ascii=preview,
         stats=stats,
         output_path=str(out.resolve()),
+        requirements=requirements,
+        sections=sections,
+        profile_path=str(profile_path.resolve()),
+        verified=built.report.ok,
+        warnings=provider_notes(provider) + built.warnings + export_warnings,
+        fidelity=built.fidelity.to_dict() if built.fidelity else None,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Regional editing + history (Part 8)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _rect(r: RectModel) -> Rect:
+    return Rect(r.col, r.row, r.w, r.h)
+
+
+def _rect_model(r: Rect | None) -> RectModel | None:
+    return RectModel(**r.as_dict()) if r is not None else None
+
+
+def edit_response(out: EditOutcome, path: str) -> EditResponse:
+    """An edit outcome in the GenerateResponse shape, plus ``edit``."""
+    info = EditInfo(mode=out.mode, region=_rect_model(out.rect), snapshot=out.snapshot)
+    if not out.success:
+        return EditResponse(success=False, error=out.error, warnings=out.warnings, edit=info,
+                            output_path=str(Path(path)))
+    spec, ir = out.spec, out.ir
+    stats = LevelStats(
+        theme=out.theme,
+        nodes=out.nodes,
+        edges=out.edges,
+        entities=out.entity_counts,
+        layout_retries=out.stats.get("layout_retries", 0),
+        grid_repairs=out.stats.get("grid_repairs", 0),
+    )
+    sections = [s.name for s in sorted(spec.sections, key=lambda s: s.order)] if spec else []
+    return EditResponse(
+        success=True,
+        preview_ascii=ir.ascii_render({"Start": "S", "Exit": "X"}) if ir else None,
+        stats=stats,
+        output_path=str(Path(path).resolve()),
+        requirements=[r.text for r in spec.requirements] if spec else [],
+        sections=sections,
+        profile_path=out.profile_path,
+        verified=out.verified,
+        warnings=out.warnings,
+        fidelity=out.fidelity.to_dict() if out.fidelity else None,
+        edit=info,
+    )
+
+
+def _provider_or_error(req: Any):
+    try:
+        return provider_factory(req), None
+    except Exception as exc:
+        return None, f"LLM provider error: {exc}"
+
+
+@app.post("/edit/region", response_model=EditResponse)
+def edit_region_route(req: RegionEditRequest) -> EditResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return edit_response(EditOutcome(False, "region", error=err, rect=_rect(req.rect)), req.path)
+    out = edit_region(req.path, _rect(req.rect), req.prompt, provider, max_retries=req.max_retries)
+    out.warnings[:0] = provider_notes(provider)
+    return edit_response(out, req.path)
+
+
+@app.post("/edit/section", response_model=EditResponse)
+def edit_section_route(req: SectionEditRequest) -> EditResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return edit_response(EditOutcome(False, "section", error=err), req.path)
+    out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries)
+    out.warnings[:0] = provider_notes(provider)
+    return edit_response(out, req.path)
+
+
+@app.post("/edit/entities", response_model=EditResponse)
+def edit_entities_route(req: EntityEditRequest) -> EditResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return edit_response(EditOutcome(False, "entities", error=err), req.path)
+    out = edit_entities(
+        req.path, req.prompt, provider,
+        rect=_rect(req.rect) if req.rect else None,
+        entity_iids=req.entity_iids or None,
+        max_retries=req.max_retries,
+    )
+    out.warnings[:0] = provider_notes(provider)
+    return edit_response(out, req.path)
+
+
+@app.post("/edit/locate", response_model=LocateResponse)
+def edit_locate_route(req: LocateRequest) -> LocateResponse:
+    provider, err = _provider_or_error(req)
+    if err:
+        return LocateResponse(success=False, error=err)
+    out = locate_text(req.path, req.text, provider, max_retries=req.max_retries)
+    return LocateResponse(success=out.success, rect=_rect_model(out.rect),
+                          explanation=out.explanation, error=out.error)
+
+
+@app.post("/undo", response_model=UndoResponse)
+def undo_route(req: PathRequest) -> UndoResponse:
+    res = edit_history.undo(req.path)
+    return UndoResponse(success=res.success, restored_from=res.restored_from,
+                        remaining=res.remaining, error=res.error)
+
+
+@app.get("/history", response_model=HistoryResponse)
+def history_route(path: str = Query(..., description=".ldtk path")) -> HistoryResponse:
+    snaps = edit_history.list_snapshots(path)
+    return HistoryResponse(snapshots=[HistoryEntry(**s.as_dict()) for s in reversed(snaps)])
 
 
 # ─────────────────────────────────────────────────────────────────────────────

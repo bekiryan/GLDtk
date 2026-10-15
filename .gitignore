@@ -17,6 +17,7 @@ eggs/
 lib/
 lib64/
 parts/
+!docs/v2/parts/
 sdist/
 var/
 wheels/
@@ -48,3 +49,14 @@ coverage.xml
 *.py,cover
 
 
+
+# Secrets
+.env
+
+# OS / scratch
+.DS_Store
+test.ldtk
+package-lock.json
+
+# example.py output
+example_out/

@@ -15,8 +15,24 @@ dependencies = [
 server = [
     "fastapi[standard]>=0.111",
     "uvicorn[standard]>=0.29",
+    "pillow>=10",  # entity sprite atlas
+]
+art = [
+    "pillow>=10",
+]
+dev = [
+    "pytest>=8",
+    "gldtk[art]",
+    "jsonschema>=4",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*"]
+include = ["symbolic*", "layout*", "llm*", "aesthetic*", "api*", "spec*", "game*", "pipeline*", "art*", "fidelity*", "edit*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: real-provider calls (network, API keys); run with `pytest -m e2e`",
+]
+addopts = "-m 'not e2e'"

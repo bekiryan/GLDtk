@@ -1,0 +1,904 @@
+{
+  "version": 1,
+  "tile_size": 16,
+  "themes": [
+    {
+      "id": "dungeon",
+      "display_name": "Dungeon",
+      "keywords": [
+        "dungeon",
+        "underground",
+        "dark",
+        "stone",
+        "crypt",
+        "tomb",
+        "skeleton",
+        "bone",
+        "cursed",
+        "ancient",
+        "catacomb",
+        "labyrinth",
+        "prison",
+        "dungeons",
+        "brick",
+        "torch",
+        "undead",
+        "ruins",
+        "ruin"
+      ],
+      "background_color": "#0d0d1a",
+      "sheet": "themes/dungeon.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Skeleton",
+      "enemy_rate": 0.6
+    },
+    {
+      "id": "forest",
+      "display_name": "Forest",
+      "keywords": [
+        "forest",
+        "jungle",
+        "nature",
+        "grass",
+        "tree",
+        "wood",
+        "woods",
+        "green",
+        "moss",
+        "vine",
+        "leaf",
+        "garden",
+        "grove",
+        "outdoor",
+        "wildlife",
+        "meadow",
+        "swamp",
+        "mushroom",
+        "woodland",
+        "village"
+      ],
+      "background_color": "#0a1f0a",
+      "sheet": "themes/forest.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Slime",
+      "enemy_rate": 0.4
+    },
+    {
+      "id": "sky",
+      "display_name": "Sky",
+      "keywords": [
+        "sky",
+        "cloud",
+        "clouds",
+        "aerial",
+        "floating",
+        "heaven",
+        "wind",
+        "air",
+        "blue",
+        "high",
+        "above",
+        "celestial",
+        "aurora",
+        "storm",
+        "island",
+        "islands",
+        "airship",
+        "tower",
+        "rooftop",
+        "rooftops",
+        "lightning"
+      ],
+      "background_color": "#1a2e4a",
+      "sheet": "themes/sky.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Harpy",
+      "enemy_rate": 0.5
+    },
+    {
+      "id": "ice",
+      "display_name": "Ice and Snow",
+      "keywords": [
+        "ice",
+        "snow",
+        "frozen",
+        "frost",
+        "winter",
+        "glacier",
+        "cold",
+        "icy",
+        "snowy",
+        "arctic",
+        "tundra",
+        "freezing",
+        "blizzard",
+        "polar",
+        "frostbite",
+        "igloo"
+      ],
+      "background_color": "#10263d",
+      "sheet": "themes/ice.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Yeti",
+      "enemy_rate": 0.5
+    },
+    {
+      "id": "desert",
+      "display_name": "Desert",
+      "keywords": [
+        "desert",
+        "sand",
+        "sandy",
+        "dune",
+        "dunes",
+        "oasis",
+        "arid",
+        "scorching",
+        "pyramid",
+        "cactus",
+        "sahara",
+        "canyon",
+        "dry",
+        "hot",
+        "mirage",
+        "sandstone",
+        "egyptian",
+        "scorpion"
+      ],
+      "background_color": "#2e1f12",
+      "sheet": "themes/desert.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Scorpion",
+      "enemy_rate": 0.5
+    },
+    {
+      "id": "lava",
+      "display_name": "Lava and Volcano",
+      "keywords": [
+        "lava",
+        "volcano",
+        "volcanic",
+        "magma",
+        "fire",
+        "fiery",
+        "inferno",
+        "hell",
+        "molten",
+        "ember",
+        "embers",
+        "ash",
+        "burning",
+        "flame",
+        "flames",
+        "obsidian",
+        "lavafall",
+        "demon",
+        "hellfire",
+        "scorched"
+      ],
+      "background_color": "#2a0a05",
+      "sheet": "themes/lava.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Imp",
+      "enemy_rate": 0.6
+    },
+    {
+      "id": "castle",
+      "display_name": "Castle",
+      "keywords": [
+        "castle",
+        "fortress",
+        "keep",
+        "citadel",
+        "rampart",
+        "ramparts",
+        "battlement",
+        "battlements",
+        "knight",
+        "royal",
+        "throne",
+        "palace",
+        "stronghold",
+        "siege",
+        "fort",
+        "kingdom",
+        "medieval",
+        "bastion",
+        "gatehouse"
+      ],
+      "background_color": "#15192b",
+      "sheet": "themes/castle.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Knight",
+      "enemy_rate": 0.5
+    },
+    {
+      "id": "cave",
+      "display_name": "Cave",
+      "keywords": [
+        "cave",
+        "cavern",
+        "caverns",
+        "mine",
+        "mines",
+        "mineshaft",
+        "tunnel",
+        "tunnels",
+        "stalactite",
+        "stalagmite",
+        "grotto",
+        "rock",
+        "rocky",
+        "cavernous",
+        "burrow",
+        "quarry",
+        "spelunking",
+        "crystal"
+      ],
+      "background_color": "#100c0a",
+      "sheet": "themes/cave.png",
+      "variants": {
+        "center": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "uid": null,
+      "enemy_type": "Bat",
+      "enemy_rate": 0.5
+    }
+  ],
+  "sprites": [
+    {
+      "id": "player",
+      "kind": "Player",
+      "tags": [
+        "player",
+        "hero",
+        "adventurer",
+        "protagonist"
+      ],
+      "file": "sprites/player.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "npc_wizard",
+      "kind": "NPC",
+      "tags": [
+        "npc",
+        "wizard",
+        "mage",
+        "villager",
+        "elder",
+        "merchant",
+        "sage"
+      ],
+      "file": "sprites/npc_wizard.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "enemy_skeleton",
+      "kind": "Enemy",
+      "tags": [
+        "skeleton",
+        "undead",
+        "walker",
+        "bone",
+        "warrior"
+      ],
+      "file": "sprites/enemy_skeleton.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "enemy_spider",
+      "kind": "Enemy",
+      "tags": [
+        "spider",
+        "jumper",
+        "crawler",
+        "arachnid",
+        "jump",
+        "hopper"
+      ],
+      "file": "sprites/enemy_spider.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "enemy_bat",
+      "kind": "Enemy",
+      "tags": [
+        "bat",
+        "flyer",
+        "flying",
+        "fly",
+        "winged",
+        "air"
+      ],
+      "file": "sprites/enemy_bat.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "enemy_turret",
+      "kind": "Enemy",
+      "tags": [
+        "turret",
+        "shooter",
+        "gargoyle",
+        "ranged",
+        "stationary",
+        "cannon"
+      ],
+      "file": "sprites/enemy_turret.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "enemy_boss",
+      "kind": "Enemy",
+      "tags": [
+        "boss",
+        "demon",
+        "monster",
+        "red",
+        "miniboss",
+        "guardian"
+      ],
+      "file": "sprites/enemy_boss.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "pickup_coin",
+      "kind": "Pickup",
+      "tags": [
+        "coin",
+        "gold",
+        "money",
+        "treasure",
+        "currency"
+      ],
+      "file": "sprites/pickup_coin.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "pickup_gem",
+      "kind": "Pickup",
+      "tags": [
+        "gem",
+        "jewel",
+        "crystal",
+        "diamond",
+        "sapphire"
+      ],
+      "file": "sprites/pickup_gem.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-1-bit-pack",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "pickup_health",
+      "kind": "Pickup",
+      "tags": [
+        "health",
+        "heal",
+        "potion",
+        "red",
+        "life",
+        "medkit",
+        "hp"
+      ],
+      "file": "sprites/pickup_health.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "pickup_powerup",
+      "kind": "Pickup",
+      "tags": [
+        "powerup",
+        "power",
+        "mana",
+        "boost",
+        "blue",
+        "potion",
+        "buff"
+      ],
+      "file": "sprites/pickup_powerup.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "pickup_ammo",
+      "kind": "Pickup",
+      "tags": [
+        "ammo",
+        "arrow",
+        "arrows",
+        "bolt",
+        "ammunition",
+        "quiver"
+      ],
+      "file": "sprites/pickup_ammo.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "weapon_sword",
+      "kind": "Weapon",
+      "tags": [
+        "sword",
+        "blade",
+        "melee",
+        "steel",
+        "slash"
+      ],
+      "file": "sprites/weapon_sword.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "weapon_bow",
+      "kind": "Weapon",
+      "tags": [
+        "bow",
+        "ranged",
+        "archer",
+        "arrow"
+      ],
+      "file": "sprites/weapon_bow.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "weapon_gun",
+      "kind": "Weapon",
+      "tags": [
+        "gun",
+        "pistol",
+        "firearm",
+        "blaster",
+        "rifle",
+        "shoot"
+      ],
+      "file": "sprites/weapon_gun.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-1-bit-pack",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "weapon_staff",
+      "kind": "Weapon",
+      "tags": [
+        "staff",
+        "wand",
+        "magic",
+        "spell",
+        "mage",
+        "rod"
+      ],
+      "file": "sprites/weapon_staff.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "interactive_chest",
+      "kind": "Interactive",
+      "tags": [
+        "chest",
+        "treasure",
+        "loot",
+        "box",
+        "container"
+      ],
+      "file": "sprites/interactive_chest.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "interactive_door",
+      "kind": "Interactive",
+      "tags": [
+        "door",
+        "gate",
+        "entrance",
+        "locked",
+        "doorway"
+      ],
+      "file": "sprites/interactive_door.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "interactive_lever",
+      "kind": "Interactive",
+      "tags": [
+        "lever",
+        "pull",
+        "mechanism",
+        "trigger",
+        "pedestal"
+      ],
+      "file": "sprites/interactive_lever.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "interactive_switch",
+      "kind": "Interactive",
+      "tags": [
+        "switch",
+        "button",
+        "console",
+        "panel",
+        "plate",
+        "pressure"
+      ],
+      "file": "sprites/interactive_switch.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "interactive_sign",
+      "kind": "Interactive",
+      "tags": [
+        "sign",
+        "signpost",
+        "hint",
+        "tutorial",
+        "notice",
+        "board"
+      ],
+      "file": "sprites/interactive_sign.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "default": false
+    },
+    {
+      "id": "checkpoint_flag",
+      "kind": "Checkpoint",
+      "tags": [
+        "checkpoint",
+        "flag",
+        "save",
+        "respawn",
+        "banner"
+      ],
+      "file": "sprites/checkpoint_flag.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-1-bit-pack",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "key_silver",
+      "kind": "Key",
+      "tags": [
+        "key",
+        "silver",
+        "unlock",
+        "lock",
+        "keycard"
+      ],
+      "file": "sprites/key_silver.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-town",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "start_gate",
+      "kind": "Start",
+      "tags": [
+        "start",
+        "spawn",
+        "entrance",
+        "begin",
+        "doorway"
+      ],
+      "file": "sprites/start_gate.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    },
+    {
+      "id": "exit_door",
+      "kind": "Exit",
+      "tags": [
+        "exit",
+        "goal",
+        "finish",
+        "end",
+        "door",
+        "portal",
+        "double"
+      ],
+      "file": "sprites/exit_door.png",
+      "size": [
+        16,
+        16
+      ],
+      "source": "kenney-tiny-dungeon",
+      "generated": false,
+      "default": true
+    }
+  ],
+  "sources": [
+    {
+      "id": "kenney-tiny-dungeon",
+      "name": "Tiny Dungeon (1.0)",
+      "author": "Kenney (www.kenney.nl)",
+      "url": "https://kenney.nl/assets/tiny-dungeon",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "kenney-tiny-town",
+      "name": "Tiny Town",
+      "author": "Kenney (www.kenney.nl)",
+      "url": "https://kenney.nl/assets/tiny-town",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "kenney-1-bit-pack",
+      "name": "1-Bit Pack",
+      "author": "Kenney (www.kenney.nl)",
+      "url": "https://kenney.nl/assets/1-bit-pack",
+      "license": "CC0-1.0"
+    }
+  ]
+}

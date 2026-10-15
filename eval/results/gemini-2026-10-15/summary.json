@@ -1,0 +1,28 @@
+{
+  "gemini/default": {
+    "prompts": 8,
+    "fidelity_mean": 1.0,
+    "fidelity_scored": 8,
+    "status_counts": {
+      "satisfied": 27,
+      "approximated": 0,
+      "impossible": 0,
+      "missing": 0,
+      "unchecked": 2
+    },
+    "verified": 8,
+    "playable_share": 1.0,
+    "failures": {},
+    "wall_mean_s": 110.03813749999999,
+    "wall_p95_s": 274.1162,
+    "llm_calls_total": 9,
+    "expect_failed": 0,
+    "llm_attempts_mean": 1.125,
+    "llm_calls_mean": 1.125,
+    "patches_mean": 0.125,
+    "completeness_reprompts_mean": 0.0,
+    "entities_filled_mean": 0.0,
+    "layout_retries_mean": 0.0,
+    "grid_repairs_mean": 0.0
+  }
+}

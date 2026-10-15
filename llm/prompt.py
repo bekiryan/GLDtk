@@ -6,29 +6,24 @@ maximised when the text never changes between calls.
 
 JSON contract (what the LLM must emit)
 ---------------------------------------
-{
-  "nodes": [
-    { "id": str, "type": "Start"|"Exit"|"Platform"|"Hazard",
-      "x": float,   // left edge in pixels  (Y-UP coord system)
-      "y": float,   // top-surface in pixels (higher → physically higher)
-      "w": float,   // width  (recommend 48)
-      "h": float    // height (always 16) }
-  ],
-  "edges": [
-    { "from": str, "to": str,
-      "type": "Walk"|"Jump"|"Fall",
-      "vx": float,  // horizontal launch speed (px/s, signed)
-      "vy": float   // upward launch speed  (px/s; 0 for Walk and Fall) }
-  ]
-}
+A ``LevelSpec`` (see ``spec/level_spec.py``): title, size, sections, the
+platform graph (nodes + edges, pixels, Y-up), entities anchored on nodes, and
+the requirements extracted from the prompt.  The schema itself is enforced by
+the provider (structured output); this prompt explains the *semantics*.
 
 The validator re-derives Δx / Δy from node positions, so the LLM does NOT
 need to compute those fields.
+
+Physics constants and abilities are NOT in the system prompt: they come from
+the project's Game Profile and are appended to the user message as a
+``GAME PROFILE`` block (``build_generate_messages``).
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+
+from game.profile import GameProfile
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Static system prompt  (kept constant so Anthropic's prompt cache never busts)
@@ -37,15 +32,48 @@ from typing import Any, Dict, List, Optional
 SYSTEM_PROMPT: str = """\
 You are an expert 2-D platformer level designer for GLDtk (Generative Level Design Toolkit).
 
-Your sole task: given a level description, output ONE valid Abstract Level Graph as strict JSON.
-Output nothing else — no markdown fences, no explanation, no commentary.
+Your task: given a level description, output ONE LevelSpec as strict JSON — the whole level:
+size, named sections, the platform graph, every entity the description asks for, and the list
+of requirements extracted from the description. Output nothing else — no markdown, no commentary.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- PHYSICS CONSTANTS  (fixed, never change)
+ TOP-LEVEL KEYS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  gravity     = 980 px/s²  (downward)
-  max jump_vy = 600 px/s   (maximum upward launch speed)
-  tile size   = 16 px      (all "h" values must equal 16)
+  "title", "size", "orientation", "sections", "nodes", "edges", "entities", "requirements"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SIZE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "size": {"width_tiles": 30..300, "height_tiles": 15..100}   (1 tile = 16 px)
+  Derive it from the description ("huge", "tall tower", "short level", explicit numbers).
+  If nothing is stated, use 60 × 20. Long levels with many sections need more width.
+  "orientation": "horizontal" | "vertical" | null — how the sections are laid out.
+  null (the usual choice) means vertical when height_tiles > width_tiles, else horizontal.
+  Set it only when the description clearly says otherwise.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  At least one. Each: "id" (no spaces), "name", "theme" (free text, e.g. "ice cave"),
+  "difficulty" ("easy"|"medium"|"hard"), "gravity_scale" (0.25..2.0, 1.0 = normal; only
+  change it if the description asks, e.g. "low gravity moon section" → 0.5),
+  "description" (what happens there), "order" (0-based).
+  Horizontal level: sections run LEFT → RIGHT in "order"; place each section's nodes in its
+  own x range (section 0 leftmost).
+  Vertical level (a tower, a climb, a descent — taller than wide): sections run BOTTOM → TOP
+  in "order"; place each section's nodes in its own y range (section 0 lowest, the last
+  section at the top), using the full width for every section.
+  A level described as one place has a single section.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHYSICS AND ABILITIES  (come from the GAME PROFILE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Physics and player abilities belong to the game, not the level. The user message ends
+  with a GAME PROFILE block: gravity, jump speed, run speed, the derived jump limits, and
+  the abilities the player has. Respect those limits exactly; never invent new physics.
+  tile size = 16 px (all node "h" values must equal 16).
+  A section's "gravity_scale" multiplies gravity there: jump heights and reaches scale with
+  1 / gravity_scale (0.5 → about twice as high and as far).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  COORDINATE SYSTEM
@@ -54,65 +82,140 @@ Output nothing else — no markdown fences, no explanation, no commentary.
   Y ↑ up    (positive — higher "y" = higher in the world)
   "x", "y" are the pixel coordinates of the platform's TOP-LEFT corner.
   A platform at y=32 sits 32 px above y=0.
-  Valid range: x ∈ [0, 960],  y ∈ [0, 320].
+  Valid range: x ∈ [0, width_tiles·16],  y ∈ [0, height_tiles·16].
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- OUTPUT FORMAT
+ NODES  (the platform graph)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Output only a single JSON object with two top-level keys: "nodes" and "edges".
-
-NODE fields:
-  "id"   — unique string identifier, no spaces
-  "type" — exactly one of: "Start", "Exit", "Platform", "Hazard"
-  "x"    — float, left edge of platform in pixels
-  "y"    — float, top-surface height in pixels (Y-UP)
-  "w"    — float, width in pixels  (recommended: 48)
-  "h"    — float, height in pixels (must be 16)
-
-EDGE fields:
-  "from" — source node "id"
-  "to"   — target node "id"
-  "type" — exactly one of: "Walk", "Jump", "Fall"
-  "vx"   — horizontal launch speed in px/s (signed; negative = left)
-  "vy"   — vertical   launch speed in px/s (≥ 0; MUST be 0 for Walk and Fall)
+  "id"      — unique string, no spaces
+  "type"    — "Start" | "Exit" | "Platform" | "Hazard"
+              (a Hazard node is a strip of spikes, lava, acid, a spike pit, ... — hazards
+              are tiles, NEVER entities: "a spike pit" is a Hazard node, not an Enemy)
+  "x", "y"  — pixels (see coordinate system)
+  "w"       — width in pixels: a multiple of 16, 48..160 (3..10 tiles) — vary it
+  "h"       — 16
+  "section" — id of the section the node belongs to
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- HARD RULES  (violations cause automatic rejection)
+ LAYOUT GUIDANCE  (makes the level fun and leaves room for entities)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Vary platform widths between 3 and 10 tiles (48..160 px): wide ground stretches and
+    narrow ledges, not every platform 3 tiles wide.
+  • Use the vertical space of the level: place platforms from near the bottom up to about
+    two thirds of height_tiles·16 (climbs, drops, upper and lower routes), not all on one
+    row band.
+  • Scale the platform count with the level: roughly one Platform node per 5–8 tiles of
+    width, more for tall levels, and at least 3 per section.
+  • Spread entities over several platforms: at most 2–3 entities per platform, and never
+    more entities on one platform than its width in tiles. Patrolling enemies suit wide
+    platforms.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ EDGES  (how the player moves between nodes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  "from", "to" — node ids
+  "type"       — "Walk" | "Jump" | "Fall"
+  "vx"         — horizontal launch speed in px/s (signed; negative = left)
+  "vy"         — vertical launch speed in px/s (≥ 0; MUST be 0 for Walk and Fall)
+  "ability"    — null for a plain move, or the ability a Jump needs: "double_jump" | "dash" |
+                 "wall_jump" — ONLY an ability listed in the GAME PROFILE. Use one only when
+                 a plain jump cannot make the move.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ HARD GRAPH RULES  (violations cause automatic rejection)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. Exactly one node with "type": "Start".
 2. At least one node with "type": "Exit".
 3. There MUST be an unbroken edge path from Start to every Exit.
 4. Jump edges:
      • target.y ≥ source.y  (you jump UP or level; never set Jump for a downward move)
-     • max height: Δy = target.y − source.y ≤ 183 px  (physics ceiling)
-     • vy must equal 600 (always launch at full jump speed)
-     • vx = Δx / t*, where t* = (600 + √(600²−2·980·Δy)) / 980
-       → for Δy=0: vx ≈ Δx/1.224;  for Δy=32: vx ≈ Δx/1.169;
-         for Δy=64: vx ≈ Δx/1.108;  for Δy=128: vx ≈ Δx/0.969
+     • Δy and |Δx| (between platform centres) within the GAME PROFILE limits — the plain
+       jump limits when "ability" is null, the ability's limits otherwise
+     • vy = the profile's jump_v; vx = Δx / flight time, |vx| ≤ run_speed
+       (velocities are re-computed by the validator, so close values are fine)
 5. Fall edges:
      • target.y < source.y  (strictly downward)
-     • vy = 0
-     • vx = Δx / t_fall, where t_fall = √(2·|Δy|/980)
-       → for |Δy|=32: t≈0.256 s;  for |Δy|=64: t≈0.361 s
+     • vy = 0,  vx = Δx / t_fall, where t_fall = √(2·|Δy|/gravity)
 6. Walk edges:
-     • |target.y − source.y| ≤ 8 px  (nearly level ground)
-     • vy = 0,  |vx| ∈ [150, 300]
+     • |target.y − source.y| ≤ the profile's walk step (nearly level ground)
+     • vy = 0,  vx = ±run_speed
 7. Hazard nodes must NOT have outgoing edges (players cannot stand on hazards).
 8. Self-loops are forbidden.
+9. Every node lies inside the level bounds.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- EXAMPLE 1 — simple linear level
+ ENTITIES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Description: "A short level. Player starts on the ground, jumps to a raised platform, walks to the exit."
-
-{"nodes":[{"id":"start","type":"Start","x":0,"y":0,"w":48,"h":16},{"id":"p1","type":"Platform","x":80,"y":32,"w":48,"h":16},{"id":"exit","type":"Exit","x":128,"y":32,"w":48,"h":16}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":69,"vy":600},{"from":"p1","to":"exit","type":"Walk","vx":200,"vy":0}]}
+  Common fields (always set):
+    "id" (unique), "kind", "anchor" (id of the node the entity stands on — never a Hazard),
+    "section", "description" (the original wording from the description),
+    "sprite" (short visual hint, may be "").
+  Kind-specific fields — set the ones for the entity's kind, null for all others:
+    Start       — facing ("left"|"right"), starting_items (list of strings), starting_weapon
+    Exit        — requires_key (bool)
+    Enemy       — archetype ("walker"|"flyer"|"jumper"|"turret"|"boss"), health, damage,
+                  patrol_range (tiles), facing, attack ("melee"|"ranged"|"none")
+    Pickup      — pickup_kind ("coin"|"gem"|"health"|"ammo"|"powerup"), value
+    Weapon      — weapon_kind (sword, bow, crossbow, gun, staff, ...), damage, range (tiles)
+    Interactive — interactive_kind ("chest"|"door"|"lever"|"switch"|"sign"),
+                  linked_to (entity id or null), contents
+    NPC         — name, dialogue
+    Checkpoint  — (no extra fields)
+    Key         — opens (entity id, e.g. a locked Exit or door)
+  Rules:
+    • Exactly ONE entity of kind "Start" (the player spawn), anchored on the Start node.
+    • At least one entity of kind "Exit", anchored on an Exit node.
+    • Include EVERY entity the description mentions, with the count it asks for:
+      "5 coins" is five Pickup entities, "some bats" is at least two. Every entity_count
+      requirement (see REQUIREMENTS) must be matched by at least min_count entities of that
+      kind and subkind in that section; the output is checked and gaps are reported.
+    • A concept with no matching kind maps to the nearest kind (a "trampoline" → Interactive,
+      a "ghost" → Enemy flyer, a "heart" → Pickup health); keep the original wording in
+      "description".
+    • "linked_to" / "opens" must reference existing entity ids.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- EXAMPLE 2 — medium level with hazard and fall
+ REQUIREMENTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Description: "A cave with a spike pit. Player jumps up to a high ledge, falls across the spikes below, then jumps up to the exit."
+  Extract one requirement per atomic, checkable claim in the description:
+    {"id": "R1", "text": "...", "category": "size"|"section"|"layout"|"entity"|"ability"|"style"|"other",
+     "check": {...} or null}
+  "check" makes the requirement machine-checkable. All its keys are always present; set the
+  ones its "type" uses and null for the rest:
+    "type"             — "entity_count" | "hazard" | "start_item" | "section" | "ability" |
+                         "size" | "gravity" | "none"
+                         ("hazard": spikes, pits, lava, acid, ... — counts Hazard NODES; never
+                         use entity_count for a hazard)
+    "entity_kind"      — entity_count: the entity kind ("Enemy", "Pickup", ...)
+    "subkind"          — entity_count: the archetype / pickup_kind / interactive_kind /
+                         weapon_kind, or null for any; for a concept with no matching value
+                         (a "ghost") write the concept itself. start_item: the item ("sword").
+    "min_count"        — entity_count / hazard: how many (null = 1; "some" / "several" → 2 or 3)
+    "section"          — the section id it applies to (entity_count, hazard, section, gravity);
+                         null = anywhere in the level
+    "ability"          — ability: "double_jump" | "dash" | "wall_jump", or the ability named
+                         in the description ("fly") when it is none of those
+    "min_width_tiles", "min_height_tiles" — size: the minimum level size asked for
+    "gravity_scale"    — gravity: the section's gravity scale (e.g. 0.5 for "low gravity")
+  Use type "none" (or a null check) for style, music, mood and anything else not listed.
+  • Split compound claims ("3 coins and a boss" → two requirements).
+  • Include claims you cannot fully satisfy (e.g. "the player can fly", "music plays") —
+    they are reported to the user, never silently dropped.
+  • Abilities: if the description asks for a player ability (double jump, dash, wall jump,
+    flying, ...) list it as a requirement with category "ability". If the GAME PROFILE does
+    not have that ability, still list the requirement but build the level WITHOUT it — every
+    edge must be possible with the profile's abilities only.
+  • Never empty: even a vague description yields at least one requirement.
 
-{"nodes":[{"id":"start","type":"Start","x":0,"y":48,"w":48,"h":16},{"id":"p1","type":"Platform","x":80,"y":80,"w":48,"h":16},{"id":"spikes","type":"Hazard","x":80,"y":48,"w":48,"h":16},{"id":"p2","type":"Platform","x":144,"y":48,"w":48,"h":16},{"id":"exit","type":"Exit","x":224,"y":80,"w":48,"h":16}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":69,"vy":600},{"from":"p1","to":"p2","type":"Fall","vx":250,"vy":0},{"from":"p2","to":"exit","type":"Jump","vx":69,"vy":600}]}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ EXAMPLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Description: "A grassy meadow with coins, then a dungeon with a spike pit, a skeleton guard and a treasure chest. The player starts with a sword and can double jump."
+(null kind-specific fields, null edge "ability" and null "check" fields omitted here for
+brevity — in your output, set them to null. The velocities are illustrative — use the GAME
+PROFILE values. A real level of this size has more platforms; this one is kept short.)
+
+{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"orientation":null,"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee"},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section","check":{"type":"section","section":"meadow"}},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section","check":{"type":"section","section":"dungeon"}},{"id":"R3","text":"The meadow contains coins.","category":"entity","check":{"type":"entity_count","entity_kind":"Pickup","subkind":"coin","min_count":2,"section":"meadow"}},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity","check":{"type":"entity_count","entity_kind":"Enemy","subkind":"walker","min_count":1,"section":"dungeon"}},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity","check":{"type":"entity_count","entity_kind":"Interactive","subkind":"chest","min_count":1,"section":"dungeon"}},{"id":"R6","text":"The player starts with a sword.","category":"entity","check":{"type":"start_item","subkind":"sword"}},{"id":"R7","text":"The player can double jump.","category":"ability","check":{"type":"ability","ability":"double_jump"}},{"id":"R8","text":"The dungeon has a spike pit.","category":"layout","check":{"type":"hazard","min_count":1,"section":"dungeon"}}]}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
@@ -124,9 +227,11 @@ OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
 # Message builders
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def build_generate_messages(
     description: str,
     constraints: Optional[Dict[str, Any]] = None,
+    profile: Optional[GameProfile] = None,
 ) -> List[Dict[str, Any]]:
     """First-turn message list for a fresh generation request.
 
@@ -136,7 +241,11 @@ def build_generate_messages(
     constraints  : optional structured designer overrides injected as a
                    CONSTRAINTS block appended to the user message.
                    Recognised keys: theme, enemy_types, platform_count,
-                   difficulty.
+                   difficulty, width_tiles, height_tiles.
+    profile      : the project's Game Profile (defaults when None), appended
+                   as a GAME PROFILE block — the physics and abilities the
+                   level must respect.  Kept out of SYSTEM_PROMPT so the
+                   cached prefix stays profile-independent.
     """
     content = description.strip()
     if constraints:
@@ -148,17 +257,25 @@ def build_generate_messages(
             lines.append(f"- Enemy types: {types} (use only these, no substitution)")
         if constraints.get("platform_count"):
             n = constraints["platform_count"]
-            lines.append(f"- Target platform count: {n} (aim for this many Platform nodes)")
+            lines.append(
+                f"- Target platform count: {n} (aim for this many Platform nodes)"
+            )
         if constraints.get("difficulty"):
             d = constraints["difficulty"]
             notes = {
-                "easy":   "few jumps, many coins, rare enemies",
+                "easy": "few jumps, many coins, rare enemies",
                 "medium": "balanced jumps, coins, and enemies",
-                "hard":   "many jumps, fewer coins, frequent enemies",
+                "hard": "many jumps, fewer coins, frequent enemies",
             }
             lines.append(f"- Difficulty: {d} ({notes.get(d, d)})")
+        if constraints.get("width_tiles") or constraints.get("height_tiles"):
+            w = constraints.get("width_tiles") or "your choice"
+            h = constraints.get("height_tiles") or "your choice"
+            lines.append(f"- Level size: width_tiles={w}, height_tiles={h}")
         if lines:
             content += "\n\nCONSTRAINTS (follow exactly):\n" + "\n".join(lines)
+    profile = profile or GameProfile()
+    content += "\n\nGAME PROFILE (fixed for this game):\n" + profile.summary_for_prompt()
     return [{"role": "user", "content": content}]
 
 
@@ -173,16 +290,76 @@ def build_repair_messages(
     Keeps the full conversation history so the model sees exactly what it
     produced and what was wrong — far more informative than a fresh prompt.
     """
-    numbered = "\n".join(f"  {i+1}. {e}" for i, e in enumerate(errors))
+    numbered = "\n".join(f"  {i + 1}. {e}" for i, e in enumerate(errors))
     correction_request = (
-        f"VALIDATION FAILED for: \"{description}\"\n\n"
+        f'VALIDATION FAILED for: "{description}"\n\n'
         f"Your output contained the following errors:\n{numbered}\n\n"
-        "Output a corrected graph that fixes every listed error while still "
-        "matching the original design description. "
+        "Output a corrected LevelSpec that fixes every listed error while still "
+        "matching the original design description (keep all sections, entities "
+        "and requirements that were not in error). "
         "Output ONLY the JSON object."
     )
     return [
         *prior_messages,
         {"role": "assistant", "content": bad_json},
-        {"role": "user",      "content": correction_request},
+        {"role": "user", "content": correction_request},
+    ]
+
+
+def build_completeness_messages(
+    description: str,
+    spec_json: str,
+    missing: List[str],
+    prior_messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Ask for a LevelSpec that also meets the requirements it still *misses*.
+
+    Sent at most once per generation, after the deterministic completeness
+    fill (``fidelity.fill``) could not meet them, e.g. a requirement names a
+    section the spec does not have.  *missing* lines name the requirement id,
+    its text and the checker's reason.
+    """
+    numbered = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(missing))
+    correction_request = (
+        f'COMPLETENESS CHECK FAILED for: "{description}"\n\n'
+        "Your LevelSpec is valid, but the level does not meet these requirements you "
+        f"extracted:\n{numbered}\n\n"
+        "Output a corrected LevelSpec that meets every listed requirement (add the missing "
+        "sections, nodes and entities, and keep each requirement's \"check\" consistent with "
+        "the level) while keeping everything else: all sections, entities and requirements, "
+        "and a valid Start→Exit path. Output ONLY the JSON object."
+    )
+    return [
+        *prior_messages,
+        {"role": "assistant", "content": spec_json},
+        {"role": "user", "content": correction_request},
+    ]
+
+
+def build_grid_repair_messages(
+    description: str,
+    spec_json: str,
+    errors: List[str],
+    prior_messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Ask for a corrected LevelSpec after the *final tile grid* failed verification.
+
+    The spec itself was valid; laying it out on the tile grid and re-checking
+    physics with collisions found the listed problems (named by spec node ids).
+    """
+    numbered = "\n".join(f"  {i + 1}. {e}" for i, e in enumerate(errors))
+    correction_request = (
+        f'GRID VERIFICATION FAILED for: "{description}"\n\n'
+        "Your LevelSpec was laid out on the tile grid and the physics was re-checked "
+        "with the player's hitbox and tile collisions. It failed:\n"
+        f"{numbered}\n\n"
+        "Output a corrected LevelSpec that fixes every listed problem (move the named "
+        "nodes, add Platform nodes, keep ceilings out of jump arcs) while still matching "
+        "the original design description (keep all sections, entities and requirements). "
+        "Output ONLY the JSON object."
+    )
+    return [
+        *prior_messages,
+        {"role": "assistant", "content": spec_json},
+        {"role": "user", "content": correction_request},
     ]

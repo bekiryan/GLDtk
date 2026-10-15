@@ -1,0 +1,423 @@
+{
+  "title": "Deep Mine Shaft",
+  "size": {
+    "width_tiles": 30,
+    "height_tiles": 50
+  },
+  "orientation": "vertical",
+  "sections": [
+    {
+      "id": "lower_mine",
+      "name": "Damp Lower Mine",
+      "theme": "damp mine",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "The dark, dripping lower mine shaft filled with precious gems.",
+      "order": 0
+    },
+    {
+      "id": "crystal_cavern",
+      "name": "Crystal Cavern",
+      "theme": "crystal cavern",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A sparkling cavern at the top of the shaft leading to the surface exit.",
+      "order": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_plat",
+      "type": "Start",
+      "x": 48,
+      "y": 32,
+      "w": 96,
+      "h": 16,
+      "section": "lower_mine"
+    },
+    {
+      "id": "plat_lm1",
+      "type": "Platform",
+      "x": 192,
+      "y": 112,
+      "w": 80,
+      "h": 16,
+      "section": "lower_mine"
+    },
+    {
+      "id": "plat_lm2",
+      "type": "Platform",
+      "x": 64,
+      "y": 192,
+      "w": 80,
+      "h": 16,
+      "section": "lower_mine"
+    },
+    {
+      "id": "plat_lm3",
+      "type": "Platform",
+      "x": 208,
+      "y": 272,
+      "w": 80,
+      "h": 16,
+      "section": "lower_mine"
+    },
+    {
+      "id": "plat_lm4",
+      "type": "Platform",
+      "x": 96,
+      "y": 352,
+      "w": 80,
+      "h": 16,
+      "section": "lower_mine"
+    },
+    {
+      "id": "plat_cc1",
+      "type": "Platform",
+      "x": 224,
+      "y": 432,
+      "w": 80,
+      "h": 16,
+      "section": "crystal_cavern"
+    },
+    {
+      "id": "plat_cc2",
+      "type": "Platform",
+      "x": 80,
+      "y": 512,
+      "w": 80,
+      "h": 16,
+      "section": "crystal_cavern"
+    },
+    {
+      "id": "plat_cc3",
+      "type": "Platform",
+      "x": 208,
+      "y": 592,
+      "w": 80,
+      "h": 16,
+      "section": "crystal_cavern"
+    },
+    {
+      "id": "exit_plat",
+      "type": "Exit",
+      "x": 96,
+      "y": 672,
+      "w": 96,
+      "h": 16,
+      "section": "crystal_cavern"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_plat",
+      "to": "plat_lm1",
+      "type": "Jump",
+      "vx": 127,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_lm1",
+      "to": "plat_lm2",
+      "type": "Jump",
+      "vx": -119,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_lm2",
+      "to": "plat_lm3",
+      "type": "Jump",
+      "vx": 134,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_lm3",
+      "to": "plat_lm4",
+      "type": "Jump",
+      "vx": -104,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_lm4",
+      "to": "plat_cc1",
+      "type": "Jump",
+      "vx": 119,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_cc1",
+      "to": "plat_cc2",
+      "type": "Jump",
+      "vx": -134,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_cc2",
+      "to": "plat_cc3",
+      "type": "Jump",
+      "vx": 119,
+      "vy": 600,
+      "ability": null
+    },
+    {
+      "from": "plat_cc3",
+      "to": "exit_plat",
+      "type": "Jump",
+      "vx": -97,
+      "vy": 600,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player_start",
+      "kind": "Start",
+      "anchor": "start_plat",
+      "section": "lower_mine",
+      "description": "player spawn",
+      "sprite": "miner",
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "gem1",
+      "kind": "Pickup",
+      "anchor": "plat_lm1",
+      "section": "lower_mine",
+      "description": "gem",
+      "sprite": "blue gem",
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "gem",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "gem2",
+      "kind": "Pickup",
+      "anchor": "plat_lm2",
+      "section": "lower_mine",
+      "description": "gem",
+      "sprite": "blue gem",
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "gem",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "gem3",
+      "kind": "Pickup",
+      "anchor": "plat_lm3",
+      "section": "lower_mine",
+      "description": "gem",
+      "sprite": "blue gem",
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "gem",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "gem4",
+      "kind": "Pickup",
+      "anchor": "plat_lm4",
+      "section": "lower_mine",
+      "description": "gem",
+      "sprite": "blue gem",
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "gem",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    },
+    {
+      "id": "exit_door",
+      "kind": "Exit",
+      "anchor": "exit_plat",
+      "section": "crystal_cavern",
+      "description": "exit",
+      "sprite": "mine elevator",
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "The level is a deep mine shaft that ascends across two sections.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": "lower_mine",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "There is a damp lower mine section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": "lower_mine",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "The damp lower mine contains 4 gems.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "gem",
+        "min_count": 4,
+        "section": "lower_mine",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "There is a crystal cavern section on top.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": "crystal_cavern",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    },
+    {
+      "id": "R5",
+      "text": "The crystal cavern section contains the exit.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "crystal_cavern",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null
+      }
+    }
+  ]
+}

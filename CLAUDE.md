@@ -43,7 +43,7 @@ Warnings about `WDeprecatedEnumAbstract` and `WDeprecated` are expected and harm
 
 ```bash
 source .venv/bin/activate
-pip install -e ".[server]"   # installs all deps including fastapi/uvicorn
+pip install -e ".[server,dev]"   # installs all deps including fastapi/uvicorn and pytest
 pip install pillow            # required for tileset generation script
 ```
 
@@ -84,7 +84,11 @@ App.ME.loadProject(path)   ← called from GldtkSidebar.hx after server responds
 
 **AbstractLevelGraph** (`symbolic/schema.py`): `nx.DiGraph` wrapper. Nodes have `NodeType` (PLATFORM, START, EXIT, HAZARD). Edges have `EdgeType` (WALK, JUMP, FALL). Physics oracle (`symbolic/physics.py`) validates jump arcs using `½g·t² − v·t + Δy = 0`.
 
-**Tileset layout** (`aesthetic/themes.py`): Three themes share one 256×256 PNG. Each occupies a 5×3 tile region at `base_x` offset: Dungeon=0, Forest=80, Sky=160. Placeholder PNGs live in `tilesets/`. Replace with real art — no code changes needed.
+**GameProfile** (`game/profile.py`, file `gldtk.game.json` beside the `.ldtk`): physics (gravity, jump_v, run_speed, walk_step_px) and abilities (double_jump, dash, wall_jump). It replaces the old `PhysicsParams`. The oracle entry points are `reachable()` / `best_ability()` in `symbolic/physics.py`; edges carry `metadata["ability"]` and `metadata["gravity_scale"]` (from the source section).
+
+**Asset library** (`assets/manifest.json`, loaded by `aesthetic/library.py`): 8 CC0 themes and 25 sprites (licences in `assets/LICENSES.md`). Each theme is its own 80×64 sheet: the 14 tile roles in a 5×3 grid plus a row of CENTER variants. `THEMES` in `aesthetic/themes.py` is built from the manifest. The server copies the sheet to `<ldtk_dir>/gldtk_assets/themes/` and the `.ldtk` references it there. Rebuild sheets with `python scripts/build_assets.py`. A level with several section themes gets one Tiles layer per theme (layer order: Entities, Tiles…, Collisions, which must match between `defs.layers` and `layerInstances` or LDtk marks the level modified on load), and the library sprites are packed into `gldtk_assets/sprites.png` and shown as entity icons (`sprite_tile` F_Tile field).
+
+**LDtk export** (`layout/ldtk_adapter.py`, catalog in `spec/catalog.py`, reader in `layout/ldtk_reader.py`): every entity kind has typed `fieldDefs`; GLDtk state is stored in the level fields `gldtk_prompt`, `gldtk_sections`, `gldtk_requirements`, `gldtk_game_profile`, `gldtk_spec` and `gldtk_version`. Exports are validated in tests against `ldtk-src/docs/JSON_SCHEMA.json`.
 
 **LDtk JSON format** (`layout/ldtk_adapter.py`): Layer instances require `__tilesetRelPath`, `__tilesetDefUid`, `__opacity`, `optionalRules` (cached computed fields). Levels require `__bgColor`, `__smartColor`. Project root requires `bgColor`, `worldLayout`, `flags`, etc. Missing any of these causes silent blank rendering in LDtk.
 
@@ -98,7 +102,17 @@ App.ME.loadProject(path)   ← called from GldtkSidebar.hx after server responds
 
 ## LLM providers
 
-Default is `ollama` (requires `ollama serve` + `ollama pull llama3.1`). Provider is set per-request via `GenerateRequest.provider`. Models default via `_DEFAULT_PROVIDER_MODELS` in `llm/validator.py`. Anthropic calls use prompt caching — `SYSTEM_PROMPT` in `llm/prompt.py` is the static cacheable prefix.
+Providers live in `llm/providers/` (one module each, built via `make_provider()` in `registry.py`; default models in `_DEFAULT_PROVIDER_MODELS` there). Default is `gemini` (key `GEMINI_API_KEY` in the git-ignored `.env`, loaded by `server.py`). Gemini, Claude (`anthropic`) and Ollama are first-class and all use schema-enforced output with `LevelSpec.json_schema()`; `openai`/`deepseek` are best effort. The Gemini free tier allows ~20 requests/day per Flash model, so when no model is given the provider falls back to `gemini-3.1-flash-lite` on 429/5xx. When Gemini still cannot answer (429/404/5xx, timeout, no connection), the server's default factory falls back to a local model (`FallbackProvider`, `make_provider_with_fallback`): `GLDTK_LOCAL_FALLBACK` (default `ollama:qwen2.5:14b`, `off` disables; pull it with `ollama pull qwen2.5:14b`). The switch appears as the first response warning. Ollama calls get a 900 s timeout. Provider is set per-request via `GenerateRequest.provider`. Anthropic calls use prompt caching — `SYSTEM_PROMPT` in `llm/prompt.py` is the static cacheable prefix.
+
+The LLM emits a `LevelSpec` (`spec/level_spec.py`): size, sections, the node/edge graph, entities anchored on nodes, and requirements. `LLMController.generate_spec()` runs generate → validate (`validate_spec`) → patch → repair; `spec.to_graph()` feeds the layout.
+
+## Tests
+
+```bash
+source .venv/bin/activate
+pytest                                   # offline; uses FakeProvider + tests/fixtures/llm/
+pytest -m e2e tests/e2e/test_gemini.py -s   # real Gemini call (uses free-tier quota)
+```
 
 ## Adding new parameters
 
@@ -108,14 +122,6 @@ To add a new generation parameter (e.g. a new constraint):
 3. `GldtkSidebar.hx` — add DOM input, read value, `Reflect.setField(payload, "key", value)`
 4. Rebuild Haxe renderer
 
-## Tileset regeneration
+## v2 work in progress
 
-```bash
-source .venv/bin/activate
-python - << 'EOF'
-# Run the inline tileset generator from the session that created tilesets/
-# (see aesthetic/themes.py for layout spec)
-EOF
-```
-
-The generator script is not saved as a file — it lives in the conversation history. To regenerate, recreate it using the spec in `aesthetic/themes.py` docstring (5×3 tile regions, `base_x` offsets 0/80/160).
+A major extension (full prompt fidelity, entity catalog, Game Profile, regional editing, AI art) is underway on branch `feat/v2`. The settled design is in `docs/v2/DESIGN.md`, and part-by-part status is in `docs/v2/PROGRESS.md`. Read both before working on v2.

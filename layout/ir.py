@@ -13,17 +13,19 @@ from typing import Dict, List, Optional
 
 class TileValue(IntEnum):
     """Canonical integer codes written into the grid."""
-    EMPTY  = 0
-    SOLID  = 1
+
+    EMPTY = 0
+    SOLID = 1
     HAZARD = 2
 
 
 @dataclass
 class IREntity:
     """A non-tile game object placed on the entity layer."""
-    entity_type: str          # "Start" | "Exit"
-    col: int                  # tile column of the entity's anchor cell
-    row: int                  # tile row  of the entity's anchor cell
+
+    entity_type: str  # "Start" | "Exit"
+    col: int  # tile column of the entity's anchor cell
+    row: int  # tile row  of the entity's anchor cell
     metadata: Dict[str, object] = field(default_factory=dict)
 
 
@@ -37,8 +39,8 @@ class IRLevel:
     identifier: str
     width_tiles: int
     height_tiles: int
-    tile_size: int                              # pixels per tile edge
-    grid: List[List[TileValue]]                 # [row][col]
+    tile_size: int  # pixels per tile edge
+    grid: List[List[TileValue]]  # [row][col]
     entities: List[IREntity] = field(default_factory=list)
     metadata: Dict[str, object] = field(default_factory=dict)
 
@@ -124,8 +126,15 @@ class IRLevel:
     def ascii_render(self, entity_chars: Optional[Dict[str, str]] = None) -> str:
         """Return a compact ASCII art view of the grid (useful in tests/REPL)."""
         _chars = entity_chars or {}
-        _tile_chars = {TileValue.EMPTY: ".", TileValue.SOLID: "#", TileValue.HAZARD: "^"}
-        entity_positions = {(e.col, e.row): _chars.get(e.entity_type, e.entity_type[0]) for e in self.entities}
+        _tile_chars = {
+            TileValue.EMPTY: ".",
+            TileValue.SOLID: "#",
+            TileValue.HAZARD: "^",
+        }
+        entity_positions = {
+            (e.col, e.row): _chars.get(e.entity_type, e.entity_type[0])
+            for e in self.entities
+        }
         lines = []
         for r, row in enumerate(self.grid):
             line = ""
