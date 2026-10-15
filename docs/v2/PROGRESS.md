@@ -34,7 +34,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 20 | Short hops + walk-first paths (user feedback) | strong | ✅ effort-based route cost, comfort pass (hop 4, rise 3, drop 6 tiles; profile `design`), Section.style; replayed three-sections moves 10–15 → 3–4 tiles; tall zigzag towers keep 5-row climbs (warning) | see git log |
 | 21 | Terrain from section types (corridor, parkour, labyrinth, arena, shaft, hub, open) | strong | ✅ Python (generators carve from rock, joined ports, logical anchors, per-section seed retries, `structure` check, section edits change structure without an LLM call); Haxe dropdown follow-up pending | see git log |
 | 18 | Packaged Mac app | medium | ✅ GLDtk.app 322 MB / dmg 144 MB, unsigned; bundled backend with --check, /settings key form, server dies with the app; `scripts/build_mac_app.sh` | see git log (both repos) |
-| | **v4** ([plan](../v4/PLAN.md), requested 2026-10-15): 22 soft-lock detection, 23 mission/space graphs, 24 complexity target, 25 noise terrain fill + endless chunks, 26 pattern library (RAG), 27 design memory | | 27a ✅ merged; 22, 25a, 26a running; 23, 24, 26b, 27b next | |
+| | **v4** ([plan](../v4/PLAN.md), requested 2026-10-15): 22 soft-lock detection, 23 mission/space graphs, 24 complexity target, 25 noise terrain fill + endless chunks, 26 pattern library (RAG), 27 design memory | | ✅ 22 soft-locks (SCC + item-state graph, auto-repair), 26a pattern library (28 accepted LDtk-sample patterns, not yet labelled with a real LLM), 27a design memory; ⏳ 24, 25a, 21b+27b sidebar; ⬜ 23, 26b, 28 tighter default physics (user chose ~4-tile jump) | |
 | 19 | Armenian README | — | ⬜ last (orchestrator) | |
 
 ## Notes
