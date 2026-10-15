@@ -234,3 +234,17 @@ pytest -m e2e tests/e2e/test_gemini.py -s    # one real Gemini call (uses free-t
   current Game Profile, so nothing was written. Try again (another seed) or simplify the request.
 - **Tiles are blank in LDtk:** the theme sheets are copied to `gldtk_assets/` next to the `.ldtk`. Keep
   that folder with the project.
+
+## Build the Mac app
+
+`scripts/build_mac_app.sh` builds an unsigned, Apple Silicon `GLDtk.app` and `.dmg` that bundle the
+backend (no terminal, venv or Node needed to run it):
+
+1. PyInstaller one-folder build of `server.py` (`packaging/gldtk-server.spec`) into `packaging/dist/gldtk-server`;
+2. Haxe release builds (`renderer.hxml`, `main.hxml`);
+3. `electron-builder --mac dmg --arm64` with `CSC_IDENTITY_AUTO_DISCOVERY=false` (no code signing or notarization).
+
+The `.dmg` lands in `ldtk-src/app/redist/`. The app starts `gldtk-server` on port 8765 (or a free port) and stops it on
+quit. Enter the Gemini API key in the sidebar on first launch; it is saved to
+`~/Library/Application Support/GLDtk/.env`. Note the release renderer build overwrites
+`ldtk-src/app/assets/js/renderer.js`; re-run `renderer.debug.hxml` for development. `gldtk-server --check` smoke-tests a bundle.

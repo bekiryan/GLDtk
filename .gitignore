@@ -62,3 +62,8 @@ package-lock.json
 
 # example.py output
 example_out/
+
+# Mac app build outputs
+packaging/dist/
+packaging/build/
+ldtk-src/app/redist/

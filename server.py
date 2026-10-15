@@ -29,7 +29,7 @@ import functools
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query
@@ -37,6 +37,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import logging
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
 from aesthetic.themes import THEMES, Theme, detect_theme
@@ -120,6 +121,16 @@ def load_env_file(path: Path) -> None:
             os.environ[key] = value
 
 
+def user_config_dir() -> Path:
+    """Where the packaged app keeps its settings (``GLDTK_CONFIG_DIR`` overrides, for tests)."""
+    override = os.getenv("GLDTK_CONFIG_DIR")
+    if override:
+        return Path(override)
+    return Path.home() / "Library" / "Application Support" / "GLDtk"
+
+
+# The per-user file wins over the repo one (already-set variables are never overridden).
+load_env_file(user_config_dir() / ".env")
 load_env_file(Path(__file__).resolve().parent / ".env")
 
 
@@ -133,6 +144,11 @@ def default_provider_factory(req: Any) -> LLMProvider:
 
     Gemini with its default model falls back to a local model (``GLDTK_LOCAL_FALLBACK``).
     """
+    fake = os.getenv("GLDTK_FAKE_LLM")  # tests only: a fixture file or directory of canned replies
+    if fake:
+        from llm.providers.fake import FakeProvider
+
+        return FakeProvider(fake if Path(fake).is_dir() else [Path(fake).read_text(encoding="utf-8")])
     return make_provider_with_fallback(req.provider, model=req.model)
 
 
@@ -236,6 +252,49 @@ def cancel_route(req: CancelRequest) -> CancelResponse:
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+class SettingsRequest(BaseModel):
+    gemini_api_key: Optional[str] = None
+    local_fallback: Optional[str] = None
+
+
+def _settings_state() -> Dict[str, Any]:
+    return {
+        "has_key": bool(os.getenv("GEMINI_API_KEY")),
+        "local_fallback": os.getenv("GLDTK_LOCAL_FALLBACK", ""),
+    }
+
+
+@app.get("/settings")
+def get_settings() -> Dict[str, Any]:
+    """Whether a Gemini key is configured (the key itself is never returned)."""
+    return _settings_state()
+
+
+@app.post("/settings")
+def post_settings(req: SettingsRequest) -> Dict[str, Any]:
+    """Write ``GEMINI_API_KEY`` / ``GLDTK_LOCAL_FALLBACK`` to the per-user ``.env``."""
+    updates = {
+        "GEMINI_API_KEY": (req.gemini_api_key or "").strip() or None,
+        "GLDTK_LOCAL_FALLBACK": (req.local_fallback or "").strip() or None,
+    }
+    updates = {k: v for k, v in updates.items() if v is not None}
+    for k, v in updates.items():
+        if "\n" in v or "\r" in v:
+            raise HTTPException(status_code=400, detail=f"{k} must be a single line")
+    path = user_config_dir() / ".env"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+        kept = [ln for ln in lines if ln.split("=", 1)[0].strip() not in updates]
+        kept += [f"{k}={v}" for k, v in updates.items()]
+        path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        path.chmod(0o600)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not write settings: {exc}")
+    os.environ.update(updates)
+    return _settings_state()
 
 
 @app.get("/themes")
@@ -906,8 +965,51 @@ def history_route(path: str = Query(..., description=".ldtk path"),
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
+def check() -> int:
+    """Smoke test for the packaged bundle: everything imported above, assets load."""
+    from aesthetic.library import load_library
+
+    lib = load_library()
+    print(f"gldtk-server check ok: {len(THEMES)} themes, {len(lib.sprites)} sprites")
+    return 0
+
+
+def _exit_with_parent(pid: int) -> None:
+    """Daemon thread: the server never outlives the app that started it, however the app exits."""
+    import threading
+    import time
+
+    def watch() -> None:
+        while True:
+            time.sleep(1.0)
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                os._exit(0)
+            except OSError:
+                pass
+
+    threading.Thread(target=watch, daemon=True).start()
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    import argparse
+    import sys
+
+    ap = argparse.ArgumentParser(description="GLDtk companion server")
+    ap.add_argument("--host", default=os.getenv("GLDTK_HOST", "127.0.0.1"))
+    ap.add_argument("--port", type=int, default=int(os.getenv("GLDTK_PORT", "8765")))
+    ap.add_argument("--parent-pid", type=int, default=0,
+                    help="exit when this process is gone (the packaged app passes its own pid)")
+    ap.add_argument("--check", action="store_true", help="import everything, load assets, exit")
+    args = ap.parse_args(argv)
+    if args.check:
+        sys.exit(check())
+    print(f"GLDtk companion → http://{args.host}:{args.port}")
+    if args.parent_pid:
+        _exit_with_parent(args.parent_pid)
+    uvicorn.run(app, host=args.host, port=args.port, reload=False)
+
+
 if __name__ == "__main__":
-    host = os.getenv("GLDTK_HOST", "127.0.0.1")
-    port = int(os.getenv("GLDTK_PORT", "8765"))
-    print(f"GLDtk companion → http://{host}:{port}")
-    uvicorn.run("server:app", host=host, port=port, reload=False)
+    main()
