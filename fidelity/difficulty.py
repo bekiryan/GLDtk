@@ -451,6 +451,16 @@ def apply_to_fidelity(report: DifficultyReport, fidelity: Any, prompt: Optional[
     return changed
 
 
+def level_scores(grid: Sequence[Sequence[Any]], entities: Sequence[IREntity], sections: Sequence[Any],
+                 profile: Optional[GameProfile] = None) -> Dict[str, float]:
+    """Measured score per section id, and ``"*"`` for the whole level (for the ``complexity`` check)."""
+    rep = measure_difficulty(grid, entities, sections, profile)
+    out = {s.id: s.score for s in rep.sections}
+    if rep.overall is not None:
+        out["*"] = rep.overall
+    return out
+
+
 def difficulty_of_file(path: Any, level: Optional[str] = None) -> DifficultyReport:
     """The difficulty of an ``.ldtk`` file, read like an edit reads it (hand edits count).
 
@@ -473,5 +483,6 @@ __all__ = [
     "SectionDifficulty",
     "apply_to_fidelity",
     "difficulty_of_file",
+    "level_scores",
     "measure_difficulty",
 ]

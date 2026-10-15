@@ -56,7 +56,7 @@ RequirementCategory = Literal[
 ]
 CheckType = Literal[
     "entity_count", "hazard", "start_item", "section", "ability", "size", "gravity",
-    "structure", "none"
+    "structure", "complexity", "none"
 ]
 Orientation = Literal["horizontal", "vertical"]
 
@@ -166,8 +166,13 @@ class Section(_SpecModel):
     params: Optional[StructureParams] = Field(
         None, description="Optional structure parameters; null = defaults."
     )
+    complexity: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description='This section\'s complexity target, 0 (relaxing) to 1 (very hard); only when '
+        'the description says so for this section ("very hard", "relaxing"); null = the level\'s.',
+    )
 
-    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure", "params"})
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure", "params", "complexity"})
 
     @field_validator("structure", mode="before")
     @classmethod
@@ -273,6 +278,9 @@ class RequirementCheck(_SpecModel):
     * ``structure``    — a section built as ``structure`` exists (``section``
       when set); for a labyrinth, its maze has at least ``min_count`` (null = 1)
       dead ends.
+    * ``complexity``   — the measured difficulty (0-10, ``fidelity/difficulty.py``)
+      of ``section`` (null = the whole level) is within 1.5 of ``target_difficulty``
+      (1-10); judged on the built level only.
     * ``none``         — no structured check (style, other); reported as
       unchecked.
     """
@@ -296,7 +304,13 @@ class RequirementCheck(_SpecModel):
         None, description='For type "structure": the section structure the prompt asks for.'
     )
 
-    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure"})
+    target_difficulty: Optional[float] = Field(
+        None, ge=1.0, le=10.0,
+        description='For type "complexity": the difficulty out of 10 the prompt asks for; '
+        '``section`` null = the whole level.',
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure", "target_difficulty"})
 
     @field_validator("structure", mode="before")
     @classmethod
@@ -327,6 +341,14 @@ class LevelSpec(_SpecModel):
     edges: List[SpecEdge]
     entities: List[SpecEntity]
     requirements: List[Requirement]
+    complexity: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description='Level complexity target 0 (relaxing) to 1 (very hard), only when the '
+        'description or the constraints state a difficulty number or "very hard"/"relaxing"; '
+        "else null.",
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"complexity"})
 
     @property
     def has_terrain(self) -> bool:

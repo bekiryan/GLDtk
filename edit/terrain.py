@@ -147,6 +147,7 @@ def _open_band(ctx: EditContext, band: Band, grid: List[List[Any]], entry: Port,
 
 def restructure_section(
     ctx: EditContext, section_id: str, structure: str, prompt: str = "", seed: int = 0,
+    complexity: Optional[float] = None,
 ) -> EditOutcome:
     """Carve section *section_id* again as *structure* (see the module docstring)."""
     mode = "section"
@@ -162,6 +163,14 @@ def restructure_section(
     if sec is None:
         return failure(mode, f"The level's spec has no section '{section_id}'.", rect)
     sec = sec.model_copy(update={"structure": want})
+    if complexity is not None:  # v4 Part 24: the section's own target and the terrain params it implies
+        from pipeline.complexity import _params_for, clamp01, targets
+        from spec.level_spec import StructureParams
+
+        c = clamp01(complexity)
+        have = sec.params.model_dump() if sec.params else {}
+        have.update(_params_for(sec, targets(c)))
+        sec = sec.model_copy(update={"complexity": c, "params": StructureParams(**have)})
     spec = spec0.model_copy(update={"sections": [sec if s.id == section_id else s
                                                  for s in spec0.sections]})
     baseline, _before = make_baseline(ctx, rect)

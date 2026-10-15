@@ -144,12 +144,14 @@ def run_prompt(
         "fidelity_counts": None,
         "fidelity_items": [],
         "expect_failures": [],
+        "complexity": entry.get("complexity"),  # v4 Part 24: the target 0..1, or None
     }
     slept0 = budget_slept()
     t0 = time.perf_counter()
     stats: Dict[str, Any] = {}
     try:
-        built = build_level(entry["prompt"], controller, profile, seed=seed)
+        built = build_level(entry["prompt"], controller, profile, seed=seed,
+                            complexity=entry.get("complexity"))
     except BudgetExceeded:
         raise
     except Exception as exc:  # a failed prompt is a result, not a crash
@@ -169,6 +171,7 @@ def run_prompt(
             rec["fidelity_items"] = built.fidelity.to_dict()["items"]
         rec["expect_failures"] = check_expectations(entry.get("expect", {}), built)
         rec["difficulty"] = measure_record_difficulty(built, profile, entry["prompt"])
+        rec["complexity_rounds"] = (built.stats.get("complexity") or {}).get("rounds")
         rec["warnings"] = len(built.warnings)
         rec["size_tiles"] = [built.spec.size.width_tiles, built.spec.size.height_tiles]
         rec["sections"] = len(built.spec.sections)

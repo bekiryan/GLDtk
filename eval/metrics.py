@@ -83,6 +83,23 @@ def difficulty_by_label(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, An
     }
 
 
+def complexity_rows(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Target against measured (v4 Part 24): one row per record that had a complexity target."""
+    from pipeline.complexity import targets, to_scale
+
+    rows = []
+    for r in records:
+        c = r.get("complexity")
+        overall = (r.get("difficulty") or {}).get("overall")
+        if c is None or overall is None:
+            continue
+        t = targets(c)
+        rows.append({"id": r["id"], "complexity": c, "scale": to_scale(c), "score_min": t.score_min,
+                     "score_max": t.score_max, "measured": overall,
+                     "in_range": t.score_min - 1.5 <= overall <= t.score_max + 1.5})
+    return rows
+
+
 def group_key(r: Dict[str, Any]) -> str:
     return f"{r.get('provider', '?')}/{r.get('model') or 'default'}"
 
@@ -163,6 +180,14 @@ def render_report(records: List[Dict[str, Any]], summary: Optional[Dict[str, Any
                   "| provider/model | label | sections | mean score | min | max |", "|---|---|---|---|---|---|"]
         for key, label, d in diff_rows:
             lines.append(f"| {key} | {label} | {d['n']} | {_f(d['mean'], 1)} | {_f(d['min'], 1)} | {_f(d['max'], 1)} |")
+    cx_rows = complexity_rows(records)
+    if cx_rows:
+        lines += ["", "## Complexity target against measured score", "",
+                  "| prompt | complexity | target score | measured | within 1.5 |", "|---|---|---|---|---|"]
+        for row in cx_rows:
+            lines.append(f"| {row['id']} | {row['scale']:g}/10 | {row['score_min']:.1f} to "
+                         f"{row['score_max']:.1f} | {_f(row['measured'], 1)} | "
+                         f"{'yes' if row['in_range'] else 'no'} |")
     lines += ["", "## Per prompt", "", "| prompt | tags | status | fidelity | calls | wall | notes |", "|---|---|---|---|---|---|---|"]
     for r in records:
         status = "ok" if r.get("verified") else (r.get("failure") or {}).get("type", "failed")
