@@ -24,7 +24,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | 6 | AI theme/sprite generation | medium | ✅ code done, not tested on real images (pulled forward) | see git log |
 | **M4** | **Final review** | | ◐ cleanup done; PRs open: bekiryan/GLDtk#1, bekiryan/ldtk#1 (waiting for the user to merge) | |
 | | **v3** ([plan](../v3/PLAN.md), requested 2026-10-15) | | | |
-| 11 | Physics accuracy (cross-section gravity, headroom, exact wall jumps) | strong | ⏳ running (wave 1) | |
+| 11 | Physics accuracy (cross-section gravity, headroom, exact wall jumps) | strong | ✅ (eval replay unchanged: 8/8, fidelity 1.00) | see git log |
 | 12 | Densify inside edits | medium | ✅ (generate output byte-identical for a seed, checked) | see git log |
 | 13 | Route overlay (API + canvas) | strong | ◐ 13a API merged (`GET/POST /route`, route in responses); 13b overlay running | see git log |
 | 14 | Live progress + Cancel | strong | ⬜ wave 2 | |

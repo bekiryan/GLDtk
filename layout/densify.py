@@ -67,7 +67,7 @@ from .repair import _swept_cells
 from .spec_entities import place_spec_entities
 from .spec_layout import Rect, SectionBand, SpecLayout
 from .sugiyama import NodeLayout
-from .verify import GridReport, verify_grid
+from .verify import GridReport, gravity_field_of, verify_grid
 
 FILL_PREFIX = "fill_"
 MIN_WIDTH, MAX_WIDTH = 3, 8  # tiles
@@ -115,7 +115,8 @@ def _move_cells(layout: SpecLayout, profile: GameProfile, ability, p1, p2, scale
     grid = layout.ir.grid
     ts = float(layout.tile_size)
     hitbox = (profile.player.width_px, profile.player.height_px)
-    for samples in trajectory_candidates(grid, p1, p2, profile, scale, ability):
+    field = gravity_field_of(layout, profile)  # gravity changes at section borders
+    for samples in trajectory_candidates(grid, p1, p2, profile, scale, ability, gravity_field=field):
         if not trajectory_hits(grid, samples, p2, ts, hitbox):
             return _swept_cells(layout, samples, hitbox)
     return set()
@@ -211,6 +212,7 @@ class _Densifier:
         self.profile = profile
         self.rng = random.Random(seed)
         self.grid = layout.ir.grid
+        self.field = gravity_field_of(layout, profile)
         self.bounds = bounds
         self.protected = protected_cells(layout, report, profile) | set(extra_protected or ())
         self.avoid = _entity_cells(layout)
@@ -297,7 +299,8 @@ class _Densifier:
         cells: Set[Cell] = set()
         for src in nearest(sources if sources is not None else pool):
             s = lay.rect(src)
-            move = move_between(self.grid, s, rect, self.profile, lay.gravity_scale_of(s))
+            move = move_between(self.grid, s, rect, self.profile, lay.gravity_scale_of(s),
+                                gravity_field=self.field)
             if move is not None:
                 cells |= _move_cells(lay, self.profile, move[0], move[1], move[2],
                                      lay.gravity_scale_of(s))
@@ -306,7 +309,8 @@ class _Densifier:
             return None
         scale = lay.gravity_scale_of(rect)
         for dst in nearest(targets if targets is not None else pool):
-            move = move_between(self.grid, rect, lay.rect(dst), self.profile, scale)
+            move = move_between(self.grid, rect, lay.rect(dst), self.profile, scale,
+                                gravity_field=self.field)
             if move is not None:
                 cells |= _move_cells(lay, self.profile, move[0], move[1], move[2], scale)
                 return cells
