@@ -26,7 +26,7 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
 | | **v3** ([plan](../v3/PLAN.md), requested 2026-10-15) | | | |
 | 11 | Physics accuracy (cross-section gravity, headroom, exact wall jumps) | strong | ⏳ running (wave 1) | |
 | 12 | Densify inside edits | medium | ✅ (generate output byte-identical for a seed, checked) | see git log |
-| 13 | Route overlay (API + canvas) | strong | ⏳ running (wave 1) | |
+| 13 | Route overlay (API + canvas) | strong | ◐ 13a API merged (`GET/POST /route`, route in responses); 13b overlay running | see git log |
 | 14 | Live progress + Cancel | strong | ⬜ wave 2 | |
 | 15 | Difficulty curve | medium | ⬜ wave 3 | |
 | 16 | Play mode | strong | ⬜ wave 4 | |
