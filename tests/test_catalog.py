@@ -40,7 +40,10 @@ def test_every_spec_entity_field_has_a_home():
     """Each SpecEntity kind field belongs to at least one catalog kind."""
     spec_fields = set(SpecEntity.model_fields) - _BASE
     catalog_fields = {f.name for k in KINDS.values() for f in k.fields}
-    assert spec_fields == catalog_fields
+    # fields added later sit in tail_fields so the older field uids stay put
+    tail = {f.name for k in KINDS.values() for f in k.tail_fields}
+    assert spec_fields == catalog_fields | (tail & spec_fields)
+    assert "grants_ability" in {f.name for f in KINDS["Pickup"].tail_fields}
 
 
 def test_common_fields_on_every_kind():

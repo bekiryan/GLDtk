@@ -207,6 +207,25 @@ of requirements extracted from the description. Output nothing else — no markd
       "arena_center", "ledge", "entry" or "exit"; null = on its anchor node. Pickups and
       chests in a labyrinth go to "dead_end", a boss to "arena_center". In "open" sections
       "place" and "position" are null.
+    • "grants_ability" (a Pickup that gives the player an ability) is null unless the
+      description says so.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ MISSION (optional)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  When the description asks for keys and locked doors, an ability that opens the way on,
+  a shortcut that loops back, optional treasure or a boss before the exit, set "mission"
+  (otherwise null). A deterministic grammar builds the keys, doors and links from it — do
+  NOT add those Key / door entities yourself:
+    {"rules": [...], "keys": N or null, "ability": null or "double_jump"|"dash"|"wall_jump",
+     "locks": [{"key_section": id or null, "lock_section": id or null}, ...] or null}
+    rules: "lock_key_cycle" (a key on a side branch opens a door further on),
+           "ability_gate" (an ability pickup, then a passage that needs it; the GAME PROFILE
+           must enable the ability), "shortcut_loop" (after a door, a one-way shortcut back
+           to the hub), "treasure_branch", "boss_before_exit".
+  Keys go best in "hub" rooms and "labyrinth" dead ends, the boss in an "arena"; each lock is
+  a later section's entrance. "a key in the cave opens the castle gate" →
+  locks [{"key_section": "cave", "lock_section": "castle"}].
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  REQUIREMENTS
@@ -217,7 +236,7 @@ of requirements extracted from the description. Output nothing else — no markd
   "check" makes the requirement machine-checkable. All its keys are always present; set the
   ones its "type" uses and null for the rest:
     "type"             — "entity_count" | "hazard" | "start_item" | "section" | "ability" |
-                         "size" | "gravity" | "structure" | "none"
+                         "size" | "gravity" | "structure" | "mission" | "none"
                          ("hazard": spikes, pits, lava, acid, ... — counts Hazard NODES; never
                          use entity_count for a hazard)
     "entity_kind"      — entity_count: the entity kind ("Enemy", "Pickup", ...)
@@ -233,6 +252,11 @@ of requirements extracted from the description. Output nothing else — no markd
     "gravity_scale"    — gravity: the section's gravity scale (e.g. 0.5 for "low gravity")
     "structure"        — structure: the structure asked for ("there is a labyrinth" →
                          "labyrinth"; min_count = dead ends wanted, null = 1)
+    mission            — subkind "lock" | "loop" | "gate" | "treasure" | "boss": the mission
+                         structure is really built ("the key in the cave opens the castle
+                         gate" → subkind "lock", section "cave", target_section "castle";
+                         "the level loops back to the hub" → subkind "loop", section = hub)
+    "target_section"   — mission lock: the section of the lock (null otherwise)
   Use type "none" (or a null check) for style, music, mood and anything else not listed.
   • Split compound claims ("3 coins and a boss" → two requirements).
   • Include claims you cannot fully satisfy (e.g. "the player can fly", "music plays") —

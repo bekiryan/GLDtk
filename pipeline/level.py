@@ -42,6 +42,7 @@ from layout.repair import repair_grid
 from layout.spec_entities import place_spec_entities
 from layout.spec_layout import SpecLayout, grid_to_spec, layout_spec
 from layout.terrain import MAX_ATTEMPTS as TERRAIN_ATTEMPTS
+from mission import build_with_mission, mission_of, verify_mission
 from layout.verify import GridReport, verify_grid
 from spec.level_spec import LevelSpec, SpecNode
 
@@ -56,6 +57,7 @@ class BuiltLevel:
     warnings: List[str] = field(default_factory=list)
     stats: Dict[str, Any] = field(default_factory=dict)
     fidelity: Optional[FidelityReport] = None  # check_level on the final layout
+    mission: Optional[Dict[str, Any]] = None  # v4 Part 23: {nodes, edges, rules, realised, features}
 
 
 class LevelBuildFailed(RuntimeError):
@@ -206,9 +208,19 @@ def build_level(
 
     repairs: List[str] = []
     report: Optional[GridReport] = None
+    mission = mission_of(spec)  # v4 Part 23 (None for specs without one)
     for attempt in range(max_layout_retries + 1):
         jobs.report("layout", "Laying out the level" + (f" (round {attempt + 1})" if attempt else ""))
-        spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
+        lvl_spec, outcome = spec, None
+        if mission is None:
+            spec_layout, report, applied = _layout_and_verify(spec, profile, seed)
+        else:
+            jobs.report("mission", "Placing the mission (keys, locks, loops)")
+            outcome = build_with_mission(spec, mission, profile.abilities.enabled_names(), seed,
+                                         lambda s: _layout_and_verify(s, profile, seed))
+            lvl_spec = outcome.spec
+            spec_layout, report, applied = outcome.result
+            notes += outcome.warnings
         regen = [a for a in applied if a.startswith("terrain:")]
         stats["grid_repairs"] += len(applied) - len(regen)
         if regen:
@@ -216,18 +228,28 @@ def build_level(
         repairs += applied
         if report.ok:
             jobs.report("comfort", "Shortening long jumps")
-            comfy = make_comfortable(spec_layout, report, profile, spec)
+            comfy = make_comfortable(spec_layout, report, profile, lvl_spec)
             report = comfy.report or report
             stats["comfort_added"] = len(comfy.added)
             notes += comfy.notes
         if report.ok and densify:
             jobs.report("densify", "Adding fill platforms")
-            dense = densify_layout(spec_layout, report, profile, spec, seed=seed)
+            dense = densify_layout(spec_layout, report, profile, lvl_spec, seed=seed)
             report = dense.report or report
             stats["densify_added"] = len(dense.added)
             notes += dense.notes
         if report.ok:
             stats["verify"] = report.stats
+            mission_info = None
+            if outcome is not None and outcome.plan is not None:
+                was = bool(outcome.check and outcome.check.realised)
+                outcome.check = verify_mission(spec_layout, report, outcome.plan)
+                if was and not outcome.check.realised:
+                    notes.append("mission: the comfort / densify pass broke the mission: "
+                                 + "; ".join(outcome.check.problems))
+                mission_info = outcome.to_dict()
+                stats["mission"] = {"rules": mission_info["rules"],
+                                    "realised": mission_info["realised"], "tries": outcome.tries}
             warnings = (
                 notes
                 + list(spec_layout.adjustments)
@@ -235,7 +257,7 @@ def build_level(
                 + repairs
                 + list(report.warnings)
             )
-            final = _with_added_nodes(spec, spec_layout)
+            final = _with_added_nodes(lvl_spec, spec_layout)
             return BuiltLevel(
                 spec=final,
                 spec_layout=spec_layout,
@@ -243,8 +265,10 @@ def build_level(
                 warnings=warnings,
                 stats=stats,
                 fidelity=check_level(
-                    final, spec_layout.ir, profile, verified=report.ok, auto_filled=filled
+                    final, spec_layout.ir, profile, verified=report.ok, auto_filled=filled,
+                    **({"mission": mission_info} if mission_info is not None else {}),
                 ),
+                mission=mission_info,
             )
         if attempt == max_layout_retries:
             break

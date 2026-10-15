@@ -200,6 +200,8 @@ class GenerateResponse(BaseModel):
     levels: List[LevelSummary] = Field(default_factory=list)
     world: Optional["WorldFidelityModel"] = None  # world report (a multi-level generate only)
     patterns_used: List[Dict[str, str]] = Field(default_factory=list)  # [{id, title}] (Part 26a)
+    # v4 Part 23: the mission graph {nodes, edges, rules, realised, features} (None = no mission)
+    mission: Optional[Dict[str, Any]] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

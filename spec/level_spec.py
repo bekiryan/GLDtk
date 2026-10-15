@@ -56,8 +56,12 @@ RequirementCategory = Literal[
 ]
 CheckType = Literal[
     "entity_count", "hazard", "start_item", "section", "ability", "size", "gravity",
-    "structure", "none"
+    "structure", "mission", "none"
 ]
+MissionRule = Literal[
+    "lock_key_cycle", "ability_gate", "shortcut_loop", "treasure_branch", "boss_before_exit"
+]
+MissionFeature = Literal["lock", "loop", "gate", "treasure", "boss"]
 Orientation = Literal["horizontal", "vertical"]
 
 
@@ -218,7 +222,7 @@ class SpecEntity(_SpecModel):
         None, ge=0.0, le=1.0, description='With place "floor": 0 = section start, 1 = section end.'
     )
 
-    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"place", "position"})
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"place", "position", "grants_ability"})
 
     # ── Start ──
     facing: Optional[Facing] = None
@@ -247,6 +251,10 @@ class SpecEntity(_SpecModel):
     dialogue: Optional[str] = None
     # ── Key ──
     opens: Optional[str] = Field(None, description="Entity id this key opens.")
+    # ── ability pickup (v4 Part 23) ──
+    grants_ability: Optional[AbilityName] = Field(
+        None, description="A pickup that gives the player this ability (an ability gate's key)."
+    )
 
 
 class RequirementCheck(_SpecModel):
@@ -273,6 +281,11 @@ class RequirementCheck(_SpecModel):
     * ``structure``    — a section built as ``structure`` exists (``section``
       when set); for a labyrinth, its maze has at least ``min_count`` (null = 1)
       dead ends.
+    * ``mission``      — the mission structure ``subkind`` is realised in the
+      built level (v4 Part 23): ``lock`` (a key in ``section`` opens a lock in
+      ``target_section``; either may be null), ``loop`` (a shortcut loops back
+      to the hub in ``section``), ``gate`` (an ability gate), ``treasure``,
+      ``boss``.
     * ``none``         — no structured check (style, other); reported as
       unchecked.
     """
@@ -296,7 +309,11 @@ class RequirementCheck(_SpecModel):
         None, description='For type "structure": the section structure the prompt asks for.'
     )
 
-    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure"})
+    target_section: Optional[str] = Field(
+        None, description='For type "mission" / "lock": the Section.id of the lock the key opens.'
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure", "target_section"})
 
     @field_validator("structure", mode="before")
     @classmethod
@@ -310,6 +327,29 @@ class Requirement(_SpecModel):
     category: RequirementCategory
     check: Optional[RequirementCheck] = Field(
         None, description="Structured check; null when the requirement cannot be checked."
+    )
+
+
+class MissionLock(_SpecModel):
+    key_section: Optional[str] = Field(None, description="Section.id the key is in; null = any.")
+    lock_section: Optional[str] = Field(None, description="Section.id of the lock; null = any.")
+
+
+class MissionSpec(_SpecModel):
+    """The level's mission structure (v4 Part 23): the grammar in ``mission/``
+    builds the mission graph from it deterministically."""
+
+    rules: List[MissionRule] = Field(
+        ..., description="Grammar rules to apply, in order (a rule may repeat)."
+    )
+    keys: Optional[int] = Field(
+        None, ge=0, le=4, description="Number of key → lock cycles; null = one per lock_key_cycle."
+    )
+    ability: Optional[AbilityName] = Field(
+        None, description="The ability an ability_gate needs (from the game profile)."
+    )
+    locks: Optional[List[MissionLock]] = Field(
+        None, description="Where the keys and their locks go, in order; null = anywhere."
     )
 
 
@@ -327,6 +367,13 @@ class LevelSpec(_SpecModel):
     edges: List[SpecEdge]
     entities: List[SpecEntity]
     requirements: List[Requirement]
+    mission: Optional[MissionSpec] = Field(
+        None,
+        description="Optional mission structure (keys and locks, ability gates, shortcut "
+        "loops, treasure, boss); null = none.",
+    )
+
+    _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"mission"})
 
     @property
     def has_terrain(self) -> bool:
