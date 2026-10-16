@@ -323,10 +323,12 @@ def stack_grids(bottom: Grid, top: Grid, width: int, height: int, head: int,
             for k in range(1, head + 2):
                 if r - k >= 0:
                     out[r - k][c] = AIR
-        # joined, and no air region cut in two by the ramp
+        # joined, and no air region cut in two by the ramp; parts already joined (open pits
+        # in the top part over the open sky of the bottom one) need not lose a region
         regions = _air_regions(out)
+        merged = 0 if before.get((rt - 1, ct)) == before.get((rb - 1, cb)) is not None else 1
         if regions.get((rt - 1, ct)) == regions.get((rb - 1, cb)) is not None \
-                and len(set(regions.values())) <= len(set(before.values())) - 1:
+                and len(set(regions.values())) <= len(set(before.values())) - merged:
             return out
     return None
 

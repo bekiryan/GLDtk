@@ -175,6 +175,18 @@ def test_each_generator_is_beatable_over_seeds_horizontal(structure):
         assert report.ok, (structure, seed, report.error_messages())
 
 
+@pytest.mark.parametrize("height", [24, 34, 40])
+@pytest.mark.parametrize("structures", [["shaft", "shaft"], ["corridor", "shaft", "corridor"],
+                                        ["shaft", "shaft", "shaft"]])
+def test_shafts_are_beatable_at_each_height(structures, height):
+    """A down shaft's lowest ledge pillar once landed on the exit wall (ledge-count parity, 24
+    rows) and blocked the floor corridor: the zigzag keeps that wall's foot clear."""
+    spec = terrain_spec(structures, size=(120, height))
+    for seed in range(5):
+        lay, report, _ = _layout_and_verify(spec, PROFILE, seed)
+        assert report.ok, (structures, height, seed, report.error_messages())
+
+
 @pytest.mark.parametrize("structure", ["corridor", "shaft", "labyrinth", "arena"])
 def test_generators_in_a_vertical_level(structure):
     spec = terrain_spec(["corridor", structure, "hub"], size=(40, 75), orientation="vertical")

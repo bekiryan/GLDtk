@@ -288,12 +288,17 @@ def link(cv: Canvas, slab_row: int, col: int, landing: bool = True) -> Tuple[Lis
 def zigzag(
     cv: Canvas, x0: int, low_row: int, high_row: int, high_side: str,
     ledge: int = ZIGZAG_LEDGE, step: int = ZIGZAG_STEP, width: int = ZIGZAG_WIDTH,
-    air: int = JUMP_AIR,
+    air: int = JUMP_AIR, clear_side: Optional[str] = None,
 ) -> List[Cell]:
     """Ledges on alternating walls of the chamber ``x0 .. x0 + width - 1`` from
     *low_row* (the chamber floor) up to *high_row* (the top ledge, on
     *high_side*).  Carves the chamber air (*air* rows above the top
-    ledge, ``ctx.jump_air``).  Returns the ledge floor cells from the bottom up."""
+    ledge, ``ctx.jump_air``).  Returns the ledge floor cells from the bottom up.
+
+    The lowest ledge stands on a pillar.  Which wall that is depends on the ledge
+    count, so a *clear_side* wall (a corridor leaves the chamber floor there) keeps
+    its foot clear: the ledge on it floats and, when there is room, a 2-row pillar
+    ledge on the other wall takes its place as the lowest step."""
     x1 = x0 + width - 1
     cv.carve_rect(x0, high_row - air - 1, x1, low_row - 1)
     rows = []
@@ -314,6 +319,16 @@ def zigzag(
         side = "right" if side == "left" else "left"
     for c in range(x0, x1 + 1):
         cv.floor(c, low_row)
+    if rows and clear_side and (cells[-1][0] == x0) == (clear_side == "left") \
+            and low_row - rows[-1] >= 3:
+        if low_row - rows[-1] == 3:  # float it: 2 rows to walk under
+            return list(reversed(cells))
+        far = "right" if clear_side == "left" else "left"
+        rows.append(low_row - 2)
+        cols = range(x0, x0 + ledge) if far == "left" else range(x1 - ledge + 1, x1 + 1)
+        for c in cols:
+            cv.floor(c, low_row - 2)
+        cells.append((cols[0] if far == "left" else cols[-1], low_row - 2))
     if rows:  # the lowest ledge stands on a pillar, so the floor run ends beside it
         last = rows[-1]
         side = cells[-1][0]

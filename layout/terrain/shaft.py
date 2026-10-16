@@ -48,7 +48,8 @@ def horizontal_shaft(ctx: TerrainContext, cv: Canvas, ledge: int = ZIGZAG_LEDGE,
         high = min(high, low - 6)
         high = max(high, ctx.inner_rows[0] + ctx.jump_air + 1)
     high_side = "right" if up else "left"
-    ledges = zigzag(cv, x0, low, high, high_side, ledge=ledge, width=width, air=ctx.jump_air)
+    ledges = zigzag(cv, x0, low, high, high_side, ledge=ledge, width=width, air=ctx.jump_air,
+                    clear_side="left" if up else "right")  # the floor-level corridor's wall
     if up:  # room to jump from the entry corridor onto a ledge by the left wall
         cv.carve_rect(x0 - 6, low - ctx.jump_air, x0 - 1, low - 1)
     if up:

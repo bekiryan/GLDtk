@@ -164,3 +164,32 @@ def test_same_seed_and_index_give_the_same_level():
         assert rep.ok
         grids.append(sl.ir.grid)
     assert grids[0] == grids[1]
+
+
+def parkour_ascii(w: int = 40, h: int = 20, pit=(12, 15)) -> str:
+    """Open sky (no rock on top), floating platforms, ground with bottomless pits."""
+    rows = []
+    for r in range(h):
+        line = []
+        for c in range(w):
+            if r >= h - 3:
+                line.append("." if pit[0] <= c <= pit[1] or 26 <= c <= 29 else "#")
+            elif (r == 7 and 10 <= c <= 14) or (r == 12 and 20 <= c <= 24):
+                line.append("#")
+            else:
+                line.append(".")
+        rows.append("".join(line))
+    return "\n".join(rows)
+
+
+def test_open_parkour_windows_stack_in_tall_sections():
+    """Part 26f: the top window's open pits already reach the bottom window's sky, so the ramp
+    need not merge two air regions; such stacks used to be rejected (no parkour stamp at 34+)."""
+    store = make_store(record("p0", parkour_ascii(), structure="parkour"),
+                       record("p1", parkour_ascii(pit=(13, 16)), structure="parkour"))
+    for h in (34, 40):
+        finder = StampFinder("a parkour level", store=store, embedder=ConstEmbedder())
+        sl, rep, _a = _layout_and_verify(terrain_spec(["parkour", "parkour"], size=(120, h)),
+                                         PROFILE, 0, finder)
+        assert rep.ok, rep.error_messages()
+        assert all(b.pattern and b.stacked for b in sl.sections), h
