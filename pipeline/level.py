@@ -47,6 +47,7 @@ from layout.verify import GridReport, verify_grid
 from spec.level_spec import LevelSpec, SpecNode
 
 from . import complexity as cx
+from .stamps import stamped_patterns
 from .completeness import ensure_complete
 
 
@@ -59,6 +60,7 @@ class BuiltLevel:
     stats: Dict[str, Any] = field(default_factory=dict)
     fidelity: Optional[FidelityReport] = None  # check_level on the final layout
     mission: Optional[Dict[str, Any]] = None  # v4 Part 23: {nodes, edges, rules, realised, features}
+    patterns_stamped: List[Dict[str, str]] = field(default_factory=list)  # v4 Part 26b
 
 
 class LevelBuildFailed(RuntimeError):
@@ -107,12 +109,16 @@ def _failing_sections(layout: SpecLayout, report: GridReport) -> Set[str]:
 
 
 def _layout_and_verify(
-    spec: LevelSpec, profile: GameProfile, seed: int
+    spec: LevelSpec, profile: GameProfile, seed: int, stamp_finder: Any = None,
 ) -> Tuple[SpecLayout, GridReport, List[str]]:
+    """Lay out and verify *spec*; failing terrain sections are carved again (first the
+    next stamped pattern of *stamp_finder*, v4 Part 26b, then other generator seeds)."""
     attempts: Dict[str, int] = {}
+    stamps = stamp_finder(spec) if stamp_finder is not None else {}
     retries = 0
     while True:
-        spec_layout = layout_spec(spec, profile, seed=seed, terrain_attempts=attempts)
+        spec_layout = layout_spec(spec, profile, seed=seed, terrain_attempts=attempts,
+                                  stamps=stamps or None)
         place_spec_entities(spec, spec_layout)
         jobs.report("verify", "Verifying the grid")
         report = verify_grid(spec_layout, profile, spec)
@@ -120,7 +126,7 @@ def _layout_and_verify(
             break
         # v3 Part 21: another seed for the failing sections' generators first
         bump = [sid for sid in sorted(_failing_sections(spec_layout, report))
-                if attempts.get(sid, 0) + 1 < TERRAIN_ATTEMPTS]
+                if attempts.get(sid, 0) + 1 < TERRAIN_ATTEMPTS + len(stamps.get(sid, ()))]
         if not bump:
             break
         for sid in bump:
@@ -134,6 +140,7 @@ def _layout_and_verify(
         spec_layout, fixes = repair_grid(spec_layout, report, profile, spec)
         applied += fixes
         report = verify_grid(spec_layout, profile, spec)
+    spec_layout.stamps = stamps  # type: ignore[attr-defined]  (read by stamped_patterns)
     return spec_layout, report, applied
 
 
@@ -227,6 +234,7 @@ def build_level(
     densify: bool = True,
     fill: Any = None,
     complexity: Optional[float] = None,
+    stamp_finder: Any = None,
 ) -> BuiltLevel:
     """Generate, lay out, verify and repair a level (see the module docstring).
 
@@ -238,6 +246,9 @@ def build_level(
 
     ``stats`` adds ``comfort_added`` (comfort-pass platforms kept), ``densify_added`` (fill platforms kept), ``fill_added`` (noise rock tiles kept; *fill* is a density or a ``layout.fill.FillParams``, None = off), ``completeness_reprompts`` (0 or 1) and ``entities_filled``
     (entities the deterministic fill added, over all fills).
+
+    *stamp_finder* (v4 Part 26b, ``pipeline.stamps.StampFinder``) gives terrain sections
+    retrieved patterns to stamp; None = generators only.  ``patterns_stamped`` lists them.
 
     *complexity* (0..1, v4 Part 24) is the level's complexity target; it wins over the
     spec's own and is told to the LLM.  Null everywhere = nothing changes.  With a
@@ -303,7 +314,7 @@ def build_level(
 
     def stage(current: LevelSpec) -> Tuple[SpecLayout, GridReport, List[str], List[str]]:
         """Layout, verify, repair, then the comfort and densify passes (limits scaled by complexity)."""
-        sl, rep, applied = _layout_and_verify(current, profile, seed)
+        sl, rep, applied = _layout_and_verify(current, profile, seed, stamp_finder)
         return post(sl, rep, applied, current)
 
     def post(sl: SpecLayout, rep: GridReport, applied: List[str], current: LevelSpec
@@ -336,7 +347,7 @@ def build_level(
         else:
             jobs.report("mission", "Placing the mission (keys, locks, loops)")
             outcome = build_with_mission(spec, mission, profile.abilities.enabled_names(), seed,
-                                         lambda s: _layout_and_verify(s, profile, seed))
+                                         lambda s: _layout_and_verify(s, profile, seed, stamp_finder))
             lvl_spec = outcome.spec
             spec_layout, report, applied = outcome.result
             notes += outcome.warnings
@@ -389,6 +400,7 @@ def build_level(
                     **({"mission": mission_info} if mission_info is not None else {}),
                 ),
                 mission=mission_info,
+                patterns_stamped=stamped_patterns(spec_layout, getattr(spec_layout, "stamps", None)),
             )
         if attempt == max_layout_retries:
             break

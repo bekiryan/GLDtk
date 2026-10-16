@@ -63,6 +63,11 @@ class GenerateRequest(BaseModel):
         description="Pattern library (v4 Part 26a): retrieve this many reference patterns per "
                     "query and add them to the user message; None = off",
     )
+    stamp_patterns: bool = Field(
+        True,
+        description="v4 Part 26b: carve a terrain section from a matching indexed pattern when "
+                    "one fits (no LLM call); False = structure generators only",
+    )
 
 
 class LevelSummary(BaseModel):
@@ -256,6 +261,7 @@ class SectionEditRequest(EditRequestBase):
     # v3 Part 21: carve the section again as this structure (corridor, parkour,
     # labyrinth, arena, shaft, hub, open); None = from the prompt, else a region edit
     structure: Optional[str] = None
+    stamp_patterns: bool = True  # v4 Part 26b: a carved section may be stamped from a pattern
 
 
 class EntityEditRequest(EditRequestBase):

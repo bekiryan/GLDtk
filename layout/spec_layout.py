@@ -121,6 +121,7 @@ class SectionBand:
     style: Optional[str] = None  # walk | parkour | mixed; None = mixed (v3 Part 20)
     structure: Optional[str] = None  # v3 Part 21; None / "open" = open air
     params: Optional[Dict[str, Any]] = None  # structure parameters (non-null ones)
+    pattern: Optional[str] = None  # v4 Part 26b: id of the pattern stamped into the section
 
     @property
     def is_terrain(self) -> bool:
@@ -146,6 +147,7 @@ class SectionBand:
             "style": self.style,
             # only terrain sections carry these, so open-air levels export as before
             **({"structure": self.structure, "params": self.params} if self.is_terrain else {}),
+            **({"pattern": self.pattern} if self.pattern else {}),
         }
 
 
@@ -553,6 +555,7 @@ def layout_spec(
     profile: Optional[GameProfile] = None,
     seed: int = 0,
     terrain_attempts: Optional[Dict[str, int]] = None,
+    stamps: Optional[Dict[str, List[Dict[str, Any]]]] = None,
 ) -> SpecLayout:
     """Lay *spec* out on a ``spec.size`` grid (see the module docstring).
 
@@ -642,5 +645,5 @@ def layout_spec(
     if spec.has_terrain:
         from .terrain import build_terrain
 
-        build_terrain(layout, spec, seed, terrain_attempts)
+        build_terrain(layout, spec, seed, terrain_attempts, stamps)
     return layout

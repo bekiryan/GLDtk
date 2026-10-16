@@ -147,9 +147,10 @@ def _open_band(ctx: EditContext, band: Band, grid: List[List[Any]], entry: Port,
 
 def restructure_section(
     ctx: EditContext, section_id: str, structure: str, prompt: str = "", seed: int = 0,
-    complexity: Optional[float] = None,
+    complexity: Optional[float] = None, stamp_finder: Any = None,
 ) -> EditOutcome:
-    """Carve section *section_id* again as *structure* (see the module docstring)."""
+    """Carve section *section_id* again as *structure* (see the module docstring).
+    *stamp_finder* (v4 Part 26b) may give patterns to stamp first."""
     mode = "section"
     want = normal_structure(structure)
     if want is None:
@@ -188,16 +189,22 @@ def restructure_section(
         band.raw.pop("params", None)
     else:
         band.raw["structure"] = want
-    for attempt in range(MAX_ATTEMPTS):
+    stamps = (stamp_finder(spec).get(section_id, []) if stamp_finder is not None
+              and want in TERRAIN_STRUCTURES and band.orientation != "vertical" else [])
+    band.raw.pop("pattern", None)
+    for attempt in range(MAX_ATTEMPTS + len(stamps)):
         grid = [list(r) for r in ctx.grid]
         if want in TERRAIN_STRUCTURES:
-            result = generate_section(shim, spec, sec, bounds, entry, exit_, seed, attempt, grid)
+            result = generate_section(shim, spec, sec, bounds, entry, exit_, seed, attempt, grid,
+                                      stamps)
         else:
             result = _open_band(ctx, band, grid, entry, exit_)
         placer = SectionPlacer(shim, spec, sec, result, bounds, grid)
         entities = list(outside) + _move_entities(placer, spec, want, inside)
         check = verify_level(ctx, grid, entities, baseline)
         if check.ok:
+            if result.stats.get("pattern"):
+                band.raw["pattern"] = result.stats["pattern"]
             break
         last_errors = check.messages()
     else:
@@ -210,7 +217,8 @@ def restructure_section(
         entities=entities, spec=spec, check=check, rect=rect,
         modified=[str(e.metadata["iid"]) for e in inside if e.metadata.get("iid")],
         warnings=[f"section '{section_id}' rebuilt as {want}"
-                  + (f" (generator seed attempt {attempt})" if attempt else "")],
+                  + (f" from pattern {result.stats['pattern']}" if result.stats.get("pattern")
+                     else f" (generator seed attempt {attempt})" if attempt else "")],
         stats={"llm_attempts": 0, "terrain_attempts": attempt + 1},
     )
 

@@ -24,6 +24,8 @@ out exactly as before):
 3. **Carving.**  Each terrain band is filled with rock and its generator
    carves it (``random.Random(f"{seed}:{section}:{attempt}")``).  The level
    border of a terrain band stays rock (a frame); open sections stay open air.
+   A section with retrieved patterns (v4 Part 26b, :mod:`.stamp`) is stamped from
+   them first; the generator runs when none fits or verification rejected them.
 4. **Placement** (:mod:`.place`): nodes snap onto the carved floors, synthetic
    nodes cover the rest, entities with logical places get anchors.
 
@@ -36,7 +38,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from spec.level_spec import TERRAIN_STRUCTURES, LevelSpec, Section
 
@@ -44,6 +46,7 @@ from ..ir import TileValue
 from . import arena, corridor, hub, labyrinth, open as open_, parkour, shaft
 from .base import HOP_AIR, JUMP_AIR, Canvas, Port, TerrainContext, TerrainResult
 from .place import SectionPlacer
+from .stamp import stamp_section
 
 GENERATORS: Dict[str, Callable[[TerrainContext, Canvas], TerrainResult]] = {
     "corridor": corridor.generate,
@@ -278,9 +281,15 @@ def _rect(band) -> Tuple[int, int, int, int]:  # type: ignore[no-untyped-def]
 def generate_section(
     layout, spec: LevelSpec, sec: Section, rect: Tuple[int, int, int, int],  # type: ignore[no-untyped-def]
     entry: Port, exit_: Port, seed: int, attempt: int, grid: List[List[TileValue]],
+    stamps: Optional[List[Dict[str, Any]]] = None,
 ) -> TerrainResult:
-    """Carve one section into *grid* (in place) and return its result."""
+    """Carve one section into *grid* (in place) and return its result.
+
+    *stamps* (v4 Part 26b) are retrieved patterns for this section, best first: attempt
+    ``k`` stamps the ``k``-th one that fits (``stats["pattern"]`` is its id); later
+    attempts run the generator with seed attempt ``attempt - fits``."""
     params = sec.params.model_dump() if sec.params else {}
+    gen_attempt = attempt
     hazards = sum(1 for n in spec.nodes if n.section == sec.id and n.type == "Hazard")
     ctx = TerrainContext(
         section_id=sec.id,
@@ -290,13 +299,20 @@ def generate_section(
         orientation=layout.orientation,
         entry=entry,
         exit=exit_,
-        rng=random.Random(f"{seed}:{sec.id}:{attempt}"),
+        rng=random.Random(f"{seed}:{sec.id}:{gen_attempt}"),
         params=params,
         hazards_wanted=hazards,
         player_h=layout.player_tiles[1],
         hop_air=getattr(layout, "hop_air", HOP_AIR),
     )
     cv = Canvas(ctx)
+    if stamps:
+        result, fits = stamp_section(ctx, cv, stamps, attempt)
+        if result is not None:
+            cv.apply(grid)
+            return result
+        gen_attempt = attempt - fits
+        ctx.rng = random.Random(f"{seed}:{sec.id}:{gen_attempt}")
     result = GENERATORS[ctx.structure](ctx, cv)
     cv.apply(grid)
     return result
@@ -305,8 +321,10 @@ def generate_section(
 def build_terrain(
     layout, spec: LevelSpec, seed: int = 0,  # type: ignore[no-untyped-def]
     attempts: Optional[Dict[str, int]] = None,
+    stamps: Optional[Dict[str, List[Dict[str, Any]]]] = None,
 ) -> Optional[TerrainLayout]:
-    """Carve every terrain section of *layout* (mutated in place; see the module doc)."""
+    """Carve every terrain section of *layout* (mutated in place; see the module doc).
+    *stamps* maps a section id to its retrieved patterns (v4 Part 26b, ``generate_section``)."""
     if not spec.has_terrain:
         return None
     attempts = attempts or {}
@@ -325,7 +343,9 @@ def build_terrain(
             continue
         entry, exit_ = ports[band.id]
         attempt = attempts.get(band.id, 0)
-        result = generate_section(layout, spec, sec, _rect(band), entry, exit_, seed, attempt, base)
+        result = generate_section(layout, spec, sec, _rect(band), entry, exit_, seed, attempt, base,
+                                  (stamps or {}).get(band.id))
+        band.pattern = result.stats.get("pattern")  # type: ignore[assignment]
         terrain.sections[band.id] = SectionTerrain(band.id, sec.structure or "open", _rect(band),
                                                    entry, exit_, attempt, result)
     layout.terrain = terrain

@@ -433,7 +433,9 @@ def generate(req: GenerateRequest) -> GenerateResponse:
             size_override=(req.width_tiles, req.height_tiles),
             densify=req.densify, fill=req.fill,
             complexity=req.complexity,
+            stamp_finder=stamp_finder_for(req),
         )
+        patterns_used = patterns_used + built.patterns_stamped
     except MaxRetriesExceeded as exc:
         return GenerateResponse(
             success=False, error=str(exc), profile_path=str(profile_path),
@@ -597,7 +599,16 @@ def attach_patterns(controller: Any, req: GenerateRequest, description: str | No
 
     text = description or req.description
     controller.examples, used = examples_block([text, req.theme or ""], req.patterns)
-    return used
+    return [{**u, "use": "example"} for u in used]
+
+
+def stamp_finder_for(req: GenerateRequest, description: str | None = None) -> Any:
+    """Patterns to stamp into terrain sections (v4 Part 26b); None when off."""
+    if not req.stamp_patterns:
+        return None
+    from pipeline.stamps import StampFinder
+
+    return StampFinder(description or req.description)
 
 
 def _pattern_note(out: EditOutcome) -> EditOutcome:
@@ -615,7 +626,7 @@ def _build_one(description: str, theme_text: str, cons: Dict[str, Any], provider
     built = build_level(
         description, controller, profile, constraints=cons or None, seed=seed,
         size_override=(req.width_tiles, req.height_tiles), densify=req.densify, fill=req.fill,
-        complexity=req.complexity,
+        complexity=req.complexity, stamp_finder=stamp_finder_for(req, description),
     )
     jobs.report("aesthetic", "Tiling and decorating the level")
     result = _dress(built, f"{theme_text} {description}".strip(), req, density, seed)
@@ -888,7 +899,7 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
     out = edit_section(req.path, req.section_id, req.prompt, provider, max_retries=req.max_retries,
                        densify=req.densify, seed=req.seed, level=req.level,
                        structure=req.structure, patterns=req.patterns, fill=req.fill,
-                       complexity=req.complexity)
+                       complexity=req.complexity, stamp_patterns=req.stamp_patterns)
     out.warnings[:0] = provider_notes(provider)
     return edit_response(_pattern_note(out), req.path, req.level)
 

@@ -778,7 +778,7 @@ def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
                  *, max_retries: int = 3, densify: bool = True, seed: int = 0,
                  level: Optional[str] = None, structure: Optional[str] = None,
                  patterns: Optional[int] = None, fill: Any = None,
-                 complexity: Optional[float] = None) -> EditOutcome:
+                 complexity: Optional[float] = None, stamp_patterns: bool = False) -> EditOutcome:
     """A region edit over the section's band (column or row band) of *level*.
 
     With *structure* (or a prompt like "make this a labyrinth", v3 Part 21) the
@@ -786,6 +786,7 @@ def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
     seams it shares with its neighbours (no LLM call).  *complexity* (0..1, v4 Part 24)
     sets the section's target: a carved section is carved again with the terrain params it
     implies (no LLM call); an open one gets the targets as a line of the prompt.
+    *stamp_patterns* (v4 Part 26b) lets a carved section be stamped from an indexed pattern.
     """
     try:
         ctx = load_context(path, level)
@@ -800,8 +801,13 @@ def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
         if band is not None and band.is_terrain:
             structure = band.structure
     if structure:
+        finder = None
+        if stamp_patterns:
+            from pipeline.stamps import StampFinder
+
+            finder = StampFinder(prompt)
         return restructure_section(ctx, section_id, structure, prompt, seed=seed,
-                                   complexity=complexity)
+                                   complexity=complexity, stamp_finder=finder)
     if complexity is not None:
         from pipeline.complexity import targets
 
