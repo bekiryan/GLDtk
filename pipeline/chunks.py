@@ -86,6 +86,12 @@ def chunk_size(orientation: str) -> Tuple[int, int]:
     return (CHUNK_W, CHUNK_H) if orientation == "horizontal" else (CHUNK_H, CHUNK_W)
 
 
+def chunk_origin(k: int, orientation: str = "horizontal") -> Tuple[int, int]:
+    """World cell offset of chunk *k* (shared noise fields line up at the seams)."""
+    width, height = chunk_size(orientation)
+    return (k * width, 0) if orientation == "horizontal" else (0, k * height)
+
+
 def fill_style(theme: str) -> str:
     t = theme.lower()
     if any(w in t for w in ("sky", "cloud", "air", "float", "space")):
@@ -299,7 +305,8 @@ def seeded_iids(seed: int) -> Iterator[None]:
         state.rng = old
 
 
-def dress_chunk(chunk: Chunk, theme: str, seed: int) -> Any:
+def dress_chunk(chunk: Chunk, theme: str, seed: int, background: bool = False,
+                orientation: str = "horizontal") -> Any:
     """The aesthetic layer (tiles, entity sprites) of a built chunk."""
     from aesthetic import build_aesthetic_layer
     from aesthetic.themes import detect_theme
@@ -311,18 +318,20 @@ def dress_chunk(chunk: Chunk, theme: str, seed: int) -> Any:
     return build_aesthetic_layer(
         description=theme, graph=built.spec.to_graph(), node_layouts=built.spec_layout.node_layouts,
         ir_level=built.spec_layout.ir, theme_override=tile_theme.identifier, density=0.5,
-        seed=seed, place_random_entities=False,
+        seed=seed, place_random_entities=False, background=background,
+        origin=chunk_origin(chunk.k, orientation),
     )
 
 
 def export_chunk(chunk: Chunk, theme: str, seed: int, out: Path, profile_path: Path,
-                 profile: GameProfile) -> Tuple[Dict[str, Any], Any, List[str]]:
+                 profile: GameProfile, background: bool = False,
+                 orientation: str = "horizontal") -> Tuple[Dict[str, Any], Any, List[str]]:
     """``(fresh LDtk doc of the chunk alone, aesthetic result, export warnings)``."""
     import os
 
     from layout import LDtkConfig, LevelMeta, to_ldtk_dict_with_warnings
 
-    result = dress_chunk(chunk, theme, seed)
+    result = dress_chunk(chunk, theme, seed, background, orientation)
     tw, th = profile.player_tiles()
     meta = LevelMeta(
         prompt=f"endless chunk {chunk.k} ({theme})",
@@ -355,7 +364,8 @@ class ChunkRun:
 
 
 def append_chunks(path: str | Path, count: int, seed: int, start_k: Optional[int] = None,
-                  theme: Optional[str] = None, orientation: str = "horizontal") -> ChunkRun:
+                  theme: Optional[str] = None, orientation: str = "horizontal",
+                  background: bool = False) -> ChunkRun:
     """Build chunks ``start_k .. start_k + count - 1`` and append them to the world at
     *path* (created when missing; a one-level file becomes a world), linked Exit →
     next Start.  *start_k* None continues after the file's last chunk.  Raises
@@ -394,7 +404,8 @@ def append_chunks(path: str | Path, count: int, seed: int, start_k: Optional[int
     edit_history.snapshot(out, edit_history.make_label("chunks", f"{count} chunk(s) from {k0}"))
     for i, c in enumerate(chunks, 1):
         jobs.report("chunk", f"Chunk {i}/{count}: writing chunk {c.k}")
-        fresh, result, warnings = export_chunk(c, theme, seed, out, profile_path, profile)
+        fresh, result, warnings = export_chunk(c, theme, seed, out, profile_path, profile,
+                                              background, orientation)
         copy_aesthetic_assets(result, out.parent)
         if doc is None:
             doc = new_world_doc(fresh)
@@ -414,7 +425,7 @@ def chunks_response(req: Any) -> Any:
 
     try:
         run = append_chunks(req.path, req.count, req.seed, req.start_k, req.theme,
-                            req.orientation)
+                            req.orientation, req.background)
     except Exception as exc:  # LevelBuildFailed, unreadable file, ...
         return ChunksResponse(success=False, error=f"Chunks: {exc}")
     return ChunksResponse(

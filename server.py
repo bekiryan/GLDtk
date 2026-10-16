@@ -525,6 +525,7 @@ def _dress(built: Any, description: str, req: GenerateRequest, density: float, s
         ).identifier
     theme = section_theme(ordered_sections[0].theme, description, req.theme)
     return build_aesthetic_layer(
+        background=req.background,
         description=description,
         graph=spec.to_graph(),
         node_layouts=built.spec_layout.node_layouts,

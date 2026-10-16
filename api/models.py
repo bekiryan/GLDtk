@@ -44,6 +44,9 @@ class GenerateRequest(BaseModel):
         None, ge=0.0, le=1.0,
         description="Noise rock fill density 0-1 after densify (v4 Part 25a); null = off",
     )
+    background: bool = Field(
+        False, description="Add a decorative Background layer of seeded noise (caves, strata, "
+                           "stalactites) below the gameplay layers; no gameplay effect (v4 Part 29c)")
     job_id: Optional[str] = Field(
         None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
     )
@@ -372,6 +375,7 @@ class ChunksRequest(BaseModel):
                                                      "file's last Chunk_<k> level (0 if none)")
     theme: Optional[str] = Field(None, description="Theme of this chunk group (default cave)")
     orientation: str = Field("horizontal", pattern="^(horizontal|vertical)$")
+    background: bool = Field(False, description="Add the decorative Background layer (v4 Part 29c)")
     job_id: Optional[str] = Field(None, description="Client-made id for GET /progress and POST /cancel")
 
 

@@ -29,8 +29,9 @@ LDtk keeps ``defs.layers`` and every level's ``layerInstances`` in the same
 order (first = drawn on top) and silently re-sorts / re-creates instances that
 differ from the defs on load -- which also marks the level as modified.  Both
 lists are therefore built from the same layer list: Entities, the Tiles
-layer(s), then Collisions (the IntGrid) at the bottom so it never covers the
-tile art.
+layer(s), then Collisions (the IntGrid) so it never covers the tile art, and
+last the optional decorative ``Background`` IntGrid (v4 Part 29c: no collision
+or gameplay meaning; its values are drawn with theme tiles at low opacity).
 
 Entity sprites
 --------------
@@ -133,6 +134,21 @@ class EntityAtlas:
 
 
 @dataclass
+class BackgroundData:
+    """The decorative ``Background`` IntGrid layer (v4 Part 29c).
+
+    ``values[row][col]`` is 0 (none) or a value that appears in ``tiles``;
+    ``tiles`` maps each value to ``(tileset_uid, src_x, src_y)`` (the tile LDtk
+    draws for it).  ``tilesets`` are the sheets those tiles come from.
+    """
+
+    values: List[List[int]]
+    tiles: Dict[int, Tuple[int, int, int]]
+    tilesets: List["TilesetInfo"] = field(default_factory=list)
+    opacity: float = 0.45
+
+
+@dataclass
 class AestheticData:
     """Aesthetic layer payload consumed by ``to_ldtk_dict``.
 
@@ -152,6 +168,7 @@ class AestheticData:
     tileset_image: Optional[Union[str, Path, bytes]] = None  # for cachedPixelData
     extra_tilesets: List[TilesetInfo] = field(default_factory=list)
     entity_atlas: Optional[EntityAtlas] = None
+    background: Optional[BackgroundData] = None  # decorative layer under Collisions
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -274,6 +291,7 @@ def _editor_value(fs: FieldSpec, raw: Any) -> Optional[Dict[str, Any]]:
 # IntGrid opacity when it sits under tile art (it still shows through gaps).
 COLLISIONS_OPACITY_UNDER_TILES = 0.5
 _EXTRA_LAYER_UIDS = (4, 5, 6, 7, 8, 9)
+BACKGROUND_LAYER_UID = 50  # entity defs use 10-49; this uid is free
 _OVERFLOW_LAYER_UID = 2000
 
 
@@ -373,6 +391,22 @@ def _make_layer_def_intgrid(cfg: LDtkConfig, grid_size: int, under_tiles: bool =
         {"value": cfg.hazard_value, "identifier": "Hazard", "color": cfg.hazard_color,
          "tile": None, "groupUid": 0},
     ]
+    return d
+
+
+def _make_layer_def_background(bg: "BackgroundData", grid_size: int) -> Dict[str, Any]:
+    d = _layer_def_base("Background", "IntGrid", BACKGROUND_LAYER_UID)
+    d["gridSize"] = grid_size
+    d["displayOpacity"] = bg.opacity
+    used = sorted({v for line in bg.values for v in line if v})
+    d["intGridValues"] = []
+    for v in used:
+        tile = None
+        if v in bg.tiles:
+            uid, x, y = bg.tiles[v]
+            tile = {"tilesetUid": uid, "x": x, "y": y, "w": grid_size, "h": grid_size}
+        d["intGridValues"].append({"value": v, "identifier": f"Bg{v}", "color": "#3a3f5c",
+                                   "tile": tile, "groupUid": 0})
     return d
 
 
@@ -594,7 +628,16 @@ def _make_defs(cfg: LDtkConfig, aesthetic: Optional[AestheticData], tile_size: i
     layers = [_make_layer_def_entities(cfg, tile_size)]
     layers += [_make_layer_def_tiles(tl, tile_size) for tl in tile_layers]
     layers.append(_make_layer_def_intgrid(cfg, tile_size, under_tiles=bool(tile_layers)))
+    bg = aesthetic.background if aesthetic is not None else None
+    if bg is not None:
+        layers.append(_make_layer_def_background(bg, tile_size))
     tilesets: List[Dict[str, Any]] = [_make_tileset_def(tl.tileset, tile_size) for tl in tile_layers]
+    if bg is not None:  # sheets only the background uses still need a tileset def
+        have = {tl.tileset.uid for tl in tile_layers}
+        for ts in bg.tilesets:
+            if ts.uid not in have:
+                have.add(ts.uid)
+                tilesets.append(_make_tileset_def(ts, tile_size))
     atlas = aesthetic.entity_atlas if aesthetic is not None else None
     if atlas is not None:
         tilesets.append(_make_tileset_def(atlas.tileset, tile_size))
@@ -896,6 +939,15 @@ def _make_layer_instance_intgrid(ir: IRLevel, level_uid: int, cfg: LDtkConfig) -
     return base
 
 
+def _make_layer_instance_background(ir: IRLevel, level_uid: int, bg: "BackgroundData") -> Dict[str, Any]:
+    base = _layer_instance_base(
+        "Background", "IntGrid", ir.width_tiles, ir.height_tiles, ir.tile_size,
+        BACKGROUND_LAYER_UID, level_uid,
+    )
+    base["intGridCsv"] = [int(v) for line in bg.values for v in line]
+    return base
+
+
 def grid_tile_json(te: TileEntry, tile_size: int, width_tiles: int, tileset_px_width: int) -> Dict[str, Any]:
     """One ``gridTiles`` entry of a Tiles layer instance."""
     tiles_per_row = max(1, tileset_px_width // tile_size)
@@ -1032,6 +1084,8 @@ def _make_level(
             _make_layer_instance_tiles(tl, ir, level_uid) for tl in _tile_layers(aesthetic, cfg)
         ]
     layer_instances.append(_make_layer_instance_intgrid(ir, level_uid, cfg))
+    if aesthetic and aesthetic.background is not None:
+        layer_instances.append(_make_layer_instance_background(ir, level_uid, aesthetic.background))
 
     values = _level_field_values(ir, level_meta)
     field_instances = []

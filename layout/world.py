@@ -181,7 +181,9 @@ def graft_level(doc: Dict[str, Any], fresh: Dict[str, Any], index: Optional[int]
     slots = _tiles_defs(doc)
     tilesets = {int(t["uid"]): t for t in defs.get("tilesets") or []}
     grid = int(doc.get("defaultGridSize") or 16)
-    by_type = {li.get("__type"): li for li in lvl["layerInstances"] if li.get("__type") != "Tiles"}
+    # IntGrids are told apart by identifier (Collisions / the optional Background)
+    by_type = {(li.get("__identifier") if li.get("__type") == "IntGrid" else li.get("__type")): li
+               for li in lvl["layerInstances"] if li.get("__type") != "Tiles"}
     out: List[Dict[str, Any]] = []
     for d in defs["layers"]:
         t = d.get("__type")
@@ -194,7 +196,13 @@ def graft_level(doc: Dict[str, Any], fresh: Dict[str, Any], index: Optional[int]
             else:
                 li = _empty_tiles_instance(d, lvl, tilesets, grid)
         else:
-            li = by_type.get(t)
+            li = by_type.get(d["identifier"] if t == "IntGrid" else t)
+            if li is None and t == "IntGrid" and d["identifier"] == "Background":
+                # the world has the decorative layer but this level does not: an empty one
+                w, h = int(lvl["pxWid"]) // grid, int(lvl["pxHei"]) // grid
+                li = _layer_instance_base("Background", "IntGrid", w, h, grid, int(d["uid"]),
+                                          uid)
+                li["intGridCsv"] = [0] * (w * h)
             if li is None:
                 continue
             li["layerDefUid"] = int(d["uid"])
