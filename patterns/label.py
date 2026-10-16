@@ -20,7 +20,7 @@ LABEL_SYSTEM_PROMPT: str = """\
 You label fragments of 2-D platformer levels for a pattern library. You get one fragment as
 ASCII ("." empty, "#" solid, "^" hazard, S start, X exit, E enemy, P pickup; row 0 is the TOP)
 and measured features. Output ONE JSON object and nothing else:
-  "title": 2-5 words naming the fragment ("Spike pit stairs"),
+  "title": 2-5 words naming what is distinctive in THIS fragment (its shape, hazard or challenge),
   "purpose": one sentence on what it does for a level's pacing,
   "mood": 1-3 words ("tense", "calm"),
   "mechanics": the skills it asks of the player (jump, double jump, drop, climb, dodge, ...),
@@ -63,6 +63,29 @@ def label_messages(rec: dict) -> List[dict]:
     return [{"role": "user", "content": f"FRAGMENT:\n{rec['ascii']}\n\nFEATURES: {json.dumps(feats)}"}]
 
 
+def spread(recs: List[dict]) -> List[dict]:
+    """Round-robin over sources, then over levels within a source, so a capped run labels a
+    bit of every game and level instead of the first level's windows only."""
+    by_src: dict = {}
+    for r in recs:
+        by_src.setdefault(r.get("source", ""), {}).setdefault(r.get("level", ""), []).append(r)
+    per_src = []
+    for levels in by_src.values():
+        queues = list(levels.values())
+        seq = []
+        while any(queues):
+            for q in queues:
+                if q:
+                    seq.append(q.pop(0))
+        per_src.append(seq)
+    out = []
+    while any(per_src):
+        for s in per_src:
+            if s:
+                out.append(s.pop(0))
+    return out
+
+
 def label_pending(
     store: PatternStore,
     provider: Any,
@@ -75,7 +98,8 @@ def label_pending(
     from edit.llm import EditLLMFailed, run_structured
     from eval.providers import BudgetExceeded, CallBudget, CountingProvider
 
-    todo = [r for r in store if r.get("accepted") and not r.get("label") and r.get("kind", "pattern") == "pattern"]
+    todo = spread([r for r in store if r.get("accepted") and not r.get("label")
+                   and r.get("kind", "pattern") == "pattern"])
     rep = LabelReport(cached=sum(1 for r in store if r.get("label")), dry_run=dry_run)
     if dry_run:
         rep.pending = len(todo)

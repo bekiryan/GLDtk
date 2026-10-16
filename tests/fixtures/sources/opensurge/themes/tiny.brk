@@ -1,0 +1,37 @@
+// Hand-written test brickset (not from Open Surge). No images: bricks are boxes.
+brick 0
+{
+    type                SOLID
+    behavior            DEFAULT
+
+    sprite
+    {
+        source_file     "images/none.png"
+        source_rect     0 0 128 32
+        frame_size      128 32
+    }
+}
+
+brick 1
+{
+    type                PASSABLE
+    behavior            DEFAULT
+    sprite
+    {
+        source_file     "images/none.png"
+        source_rect     0 0 64 64
+        frame_size      64 64
+    }
+}
+
+brick 2
+{
+    type                CLOUD
+    behavior            DEFAULT
+    sprite
+    {
+        source_file     "images/none.png"
+        source_rect     0 0 64 16
+        frame_size      64 16
+    }
+}

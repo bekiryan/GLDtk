@@ -1,0 +1,6 @@
+// Hand-written test level with a non-commercial licence: must be skipped.
+name "NC Zone"
+author "Someone"
+license "CC BY-NC 4.0"
+theme "themes/tiny.brk"
+brick 0 0 96

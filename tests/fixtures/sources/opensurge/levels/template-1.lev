@@ -1,0 +1,6 @@
+// Hand-written template level with a placeholder author: must be skipped.
+name "Template"
+author "YOUR NAME HERE"
+license "CC-BY 4.0"
+theme "themes/tiny.brk"
+brick 0 0 96
