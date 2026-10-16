@@ -7,6 +7,10 @@ with a summary card.
 The user chose the manual side to be **scripted at human pace** (2026-10-17). It is labelled
 "simulated at human pace" in the video.
 
+The user capped the manual recording at **5 minutes of real time** (2026-10-17): the script
+works in a sensible order for 5:00 and stops, and the full manual build is **estimated** from
+the rest of the plan (see "Manual estimate").
+
 ## Level
 - **Prompt:** "A crypt: a long corridor with three skeletons, then a small labyrinth of
   catacombs with a treasure chest in a dead end, and a boss arena where the lich waits by the
@@ -41,6 +45,18 @@ Drive LDtk's own editor UI (no GLDtk sidebar) through CDP / DOM events, the way 
      instance panel (for example the Enemy kind, or the Chest contents).
 5. Save.
 
+Order: the whole structure first (level setup → big rock rectangles → rock details → hazards →
+tiles), and only then the entities (Start, enemies, boss, chests/doors/keys, exit).
+
+**5-minute cap.** The run stops at the first action after 5:00 of real time. It logs progress on
+every action-log line: share of the target collision cells painted, tile cells painted,
+entities placed (n/N), steps so far and the share of the modeled work done.
+
+**Manual estimate.** Count every action of the whole plan per phase (the same order and kinds
+as the script: clicks, choices, drags, keystrokes, look pauses), multiply by the timing
+constants, then scale by the measured real/modeled ratio of the 5:00 that was recorded (mouse
+travel, LDtk redraws). It is labelled as an estimate everywhere.
+
 **Human timing model** (applied as real waits, so the recorded time is honest):
 - a click is 0.6 s;
 - choosing a tool or layer, or switching panels, is 1.2 s;
@@ -73,11 +89,14 @@ level is unverified, while GLDtk's is verified and soft-lock-free.
     "Generating…").
   - Build them from the action logs with an ASS subtitle file or drawtext.
 - **Speed:**
-  - The manual side is long, so play it sped up, for example ×16, with a "×16" badge.
+  - The manual side is 5:00, so play it at ×1 or a small speed-up (for example ×3) with a
+    badge, keeping the timer, the step counter and a "% done" overlay.
   - The AI side plays at ×1. When it finishes, its panel holds the final level with a
     "Done in N s" banner while the manual side keeps going.
   - Choose the speed so the whole video is about 60–120 s.
-- **End card:** a table of real time, steps (clicks, drags, keys), whether the level is
+- **End card:** for the manual side "5:00 recorded, X% done" and "estimated full build ≈ mm:ss,
+  ~N steps" (labelled as an estimate), next to the AI's real numbers; a table of real time,
+  steps (clicks, drags, keys), whether the level is
   verified, and edit turnaround.
 - **Outputs:**
   - `comparison.mp4` (H.264);
