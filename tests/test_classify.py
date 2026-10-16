@@ -197,3 +197,16 @@ def test_tall_level_stamps_a_verified_stack():
     bands = [b for b in built.spec_layout.sections if b.pattern]
     assert bands and bands[0].stacked
     assert {p["id"] for p in built.patterns_stamped} == {"a", "b"}  # both credited
+
+
+def test_embed_text_names_the_measured_structure():
+    from patterns.embed import embed_text
+
+    rec = {"kind": "pattern", "label": {"title": "Room", "structure_type": "open"},
+           "features": {"structure": "open", "structure_geo": {"type": "hub", "confidence": 0.9}}}
+    assert "hub" in embed_text(rec)
+    rec["label"]["structure_type"] = "parkour"  # a specific label wins
+    assert "hub" not in embed_text(rec)
+    rec["label"]["structure_type"] = "open"
+    rec["features"]["structure_geo"]["confidence"] = 0.4
+    assert "hub" not in embed_text(rec)

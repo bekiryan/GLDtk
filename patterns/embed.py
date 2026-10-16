@@ -15,6 +15,8 @@ import re
 import urllib.request
 from typing import Any, Dict, List, Optional
 
+from patterns.classify import GENERIC, MIN_CONFIDENCE
+
 _sumprod = getattr(math, "sumprod", None)
 
 _WORD = re.compile(r"[a-z0-9_]+")
@@ -111,6 +113,16 @@ def cosine(a: List[float], b: List[float]) -> float:
     return sum(x * y for x, y in zip(a, b))
 
 
+# Words for a geometry-classified structure type (Part 26f), so retrieval can find it.
+GEO_WORDS = {
+    "labyrinth": "labyrinth maze branching paths dead ends",
+    "arena": "arena enclosed room combat boss fight",
+    "hub": "hub room several exits doors crossroads",
+    "shaft": "vertical shaft climb",
+    "parkour": "parkour jumps",
+}
+
+
 def embed_text(rec: Dict[str, Any]) -> str:
     """The text a pattern is embedded as: its label when it has one, plus geometry words."""
     lab = rec.get("label") or {}
@@ -132,6 +144,10 @@ def embed_text(rec: Dict[str, Any]) -> str:
     parts = [lab.get("title", ""), lab.get("purpose", ""), lab.get("mood", ""),
              " ".join(lab.get("mechanics") or []), lab.get("structure_type") or f.get("structure", ""),
              " ".join(lab.get("tags") or [])]
+    geo = f.get("structure_geo") or {}
+    if geo.get("type") and float(geo.get("confidence") or 0) >= MIN_CONFIDENCE \
+            and (not lab.get("structure_type") or lab.get("structure_type") in GENERIC):
+        parts.append(GEO_WORDS.get(geo["type"], geo["type"]))  # Part 26f: name the measured shape
     if f.get("hazards"):
         parts.append("hazard spikes lava")
     if f.get("enemies"):
