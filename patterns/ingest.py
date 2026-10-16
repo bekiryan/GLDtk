@@ -6,8 +6,9 @@ Sources:
     mapped per layer by name (``SOLID_NAMES`` / ``HAZARD_NAMES``); a layer whose values do not
     map is skipped, and so are the files in ``SKIP_FILES``.
   * GLDtk's own levels (``add_path``: the demo folders and any ``.ldtk`` the user approves).
-  * Open corpora: ``OPEN_CORPORA_HOOK`` documents where to add one; none is downloaded, and
-    a corpus must have its licence checked first.
+  * Open-licensed game levels (Part 26d, ``patterns.sources``): SuperTux and Open Surge,
+    converted per level after a licence check; each record carries ``attribution``.
+    ``OPEN_CORPORA_HOOK`` documents how to add another corpus.
 """
 
 from __future__ import annotations
@@ -36,8 +37,9 @@ SKIP_FILES = {
 SAMPLE_LICENSE = "MIT (LDtk, ldtk-src/LICENSE)"
 GLDTK_LICENSE = "project-owned (GLDtk)"
 OPEN_CORPORA_HOOK = (
-    "Open corpora (for example VGLC, Mario AI levels): not ingested. Check the corpus licence "
-    "first, convert it to a raw grid and call ingest_grid(..., source=<name>, license=<spdx>)."
+    "Other open corpora: check the licence first, convert to a raw grid and call "
+    "ingest_grid(..., source=<name>, license=<spdx>, attribution=<authors, URL>); open-licensed "
+    "game levels come from patterns.sources (--source)."
 )
 
 TILE = 16  # GLDtk's tile size; foreign layers of another size are skipped
@@ -334,7 +336,8 @@ def thumbnail(grid: Sequence[Sequence[Any]], ents: Sequence[IREntity],
 def ingest_level(store: PatternStore, grid: List[List[Any]], entities: List[IREntity], *,
                  source: str, license: str, origin_path: str, level: str,
                  prompt: str = "", sections: Optional[List[Dict[str, Any]]] = None,
-                 profile: Optional[GameProfile] = None) -> bool:
+                 profile: Optional[GameProfile] = None, attribution: Optional[str] = None,
+                 title: Optional[str] = None) -> bool:
     """Add one whole-level entry (``kind`` "level"); False when it is already there (same file,
     level and content) or the level is empty.  The label stays None: it is filled lazily."""
     if not grid or not grid[0]:
@@ -349,8 +352,9 @@ def ingest_level(store: PatternStore, grid: List[List[Any]], entities: List[IREn
     ents = guess_start_exit(grid, list(entities))
     feats = window_features(grid, ents, profile)
     secs = [{k: s[k] for k in ("name", "theme", "difficulty", "style") if s.get(k)} for s in sections or []]
-    title = (prompt or "").strip().split("\n")[0][:60] or f"{feats['structure']} level"
-    return store.add({
+    title = title or (prompt or "").strip().split("\n")[0][:60] or f"{feats['structure']} level"
+    extra = {"attribution": attribution} if attribution else {}
+    return store.add({**extra,
         "id": pid, "kind": "level", "source": source, "license": license, "origin_path": origin_path,
         "level": level, "title": title, "prompt": (prompt or "")[:300], "sections": secs,
         "window": {"col": 0, "row": 0, "w": len(grid[0]), "h": len(grid)},
@@ -372,42 +376,60 @@ def ingest_grid(
     origin_path: str,
     level: str,
     profile: Optional[GameProfile] = None,
+    attribution: Optional[str] = None,
+    max_windows: Optional[int] = None,
+    max_fill: Optional[float] = None,
 ) -> IngestReport:
-    """Cut one level into patterns and add them to *store* (not saved)."""
+    """Cut one level into patterns and add them to *store* (not saved).
+
+    *max_windows* keeps at most that many windows, evenly spread over the level (big game
+    levels, Part 26d); *max_fill* drops windows whose share of non-empty cells is higher
+    (solid rock around a few corridors)."""
     profile = profile or GameProfile()
     rep = IngestReport()
     if not grid or not grid[0]:
         return rep
     width = len(grid[0])
+    cands = []
     for r0, r1 in _row_cuts(len(grid)):
         for c0, c1 in _snap_cuts(grid[r0:r1], width):
             if c1 - c0 < MIN_WIN_W:
                 continue
             win = [[TileValue(int(v)) if int(v) in (0, 1, 2) else TileValue.SOLID for v in row[c0:c1]]
                    for row in grid[r0:r1]]
-            if sum(1 for row in win for v in row if int(v)) < 0.08 * (c1 - c0) * (r1 - r0):
+            filled = sum(1 for row in win for v in row if int(v))
+            if filled < 0.08 * (c1 - c0) * (r1 - r0):
+                continue
+            if max_fill is not None and filled > max_fill * (c1 - c0) * (r1 - r0):
                 continue
             if not _surface_runs(_standable_cells(win)):
                 continue
-            wents = [IREntity(e.entity_type, e.col - c0, e.row - r0, {})
-                     for e in entities if c0 <= e.col < c1 and r0 <= e.row < r1]
-            wents = guess_start_exit(win, wents)
-            f = window_features(win, wents, profile)
-            text = _ascii(win, wents)
-            if len(text.splitlines()) > MAX_ASCII_H or max(len(x) for x in text.splitlines()) > MAX_ASCII_W:
-                continue
-            ok = accept_features(f)
-            rec = {
-                "id": make_id(source, origin_path, level, text),
-                "source": source, "license": license, "origin_path": origin_path,
-                "level": level, "window": {"col": c0, "row": r0, "w": c1 - c0, "h": r1 - r0},
-                "ascii": text, "features": f, "accepted": ok, "label": None,
-            }
-            if store.add(rec):
-                rep.added += 1
-                rep.rejected += 0 if ok else 1
-            else:
-                rep.duplicates += 1
+            cands.append((r0, r1, c0, c1, win))
+    if max_windows is not None and len(cands) > max_windows:
+        step = len(cands) / float(max_windows)
+        cands = [cands[int(i * step)] for i in range(max_windows)]
+    for r0, r1, c0, c1, win in cands:
+        wents = [IREntity(e.entity_type, e.col - c0, e.row - r0, {})
+                 for e in entities if c0 <= e.col < c1 and r0 <= e.row < r1]
+        wents = guess_start_exit(win, wents)
+        f = window_features(win, wents, profile)
+        text = _ascii(win, wents)
+        if len(text.splitlines()) > MAX_ASCII_H or max(len(x) for x in text.splitlines()) > MAX_ASCII_W:
+            continue
+        ok = accept_features(f)
+        rec = {
+            "id": make_id(source, origin_path, level, text),
+            "source": source, "license": license, "origin_path": origin_path,
+            "level": level, "window": {"col": c0, "row": r0, "w": c1 - c0, "h": r1 - r0},
+            "ascii": text, "features": f, "accepted": ok, "label": None,
+        }
+        if attribution:  # open-licensed game levels (Part 26d): authors, URL, licence
+            rec["attribution"] = attribution
+        if store.add(rec):
+            rep.added += 1
+            rep.rejected += 0 if ok else 1
+        else:
+            rep.duplicates += 1
     return rep
 
 

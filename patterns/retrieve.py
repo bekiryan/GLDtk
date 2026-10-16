@@ -27,6 +27,8 @@ EXTRA_CHECKS: List[Callable[[Dict[str, Any]], bool]] = [_no_softlocks]
 
 def accept(pattern: Dict[str, Any]) -> bool:
     """True when the pattern may be offered as an example (Part 22 fills in the soft-lock check)."""
+    if pattern.get("kind") == "note":  # design notes (Part 26d) are text: no route to check
+        return bool(pattern.get("accepted"))
     if not (pattern.get("features", {}).get("route") or {}).get("ok"):
         return False
     return all(check(pattern) for check in EXTRA_CHECKS)

@@ -78,7 +78,8 @@ class PatternStore:
             by_source[r["source"]] = by_source.get(r["source"], 0) + 1
         return {
             "patterns": len(recs),
-            "levels": len(allrecs) - len(recs),
+            "levels": sum(1 for r in allrecs if r.get("kind") == "level"),
+            "notes": sum(1 for r in allrecs if r.get("kind") == "note"),
             "accepted": sum(1 for r in recs if r.get("accepted")),
             "labelled": sum(1 for r in recs if r.get("label")),
             "embedded": len(self.vectors),

@@ -6,6 +6,12 @@ provider from tests; ``--dry-run`` makes no LLM call.
 
     python -m patterns.build --dry-run
     python -m patterns.build --provider gemini --max-calls 40 --embedder gemini
+    python -m patterns.build --source all --max-levels 40 \\
+        --provider ollama --model qwen2.5:14b --max-calls 150 --embedder ollama
+
+``--source`` (Part 26d) shallow-clones the game into the app-data ``sources/`` folder when it is
+missing, checks each level's licence, converts and ingests it (see ``patterns.sources``).
+Design notes are built separately: ``python -m patterns.notes``.
 """
 
 from __future__ import annotations
@@ -16,7 +22,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from patterns.embed import make_embedder, sync_vectors
-from patterns.ingest import OPEN_CORPORA_HOOK, add_path, ingest_samples
+from patterns.ingest import add_path, ingest_samples
 from patterns.label import label_pending
 from patterns.store import PatternStore
 
@@ -49,6 +55,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--model", default=None)
     ap.add_argument("--max-calls", type=int, default=None, help="cap on labelling LLM calls")
     ap.add_argument("--dry-run", action="store_true", help="ingest and count, no LLM call, nothing saved")
+    ap.add_argument("--source", choices=["supertux", "opensurge", "frogatto", "all"], default=None,
+                    help="also download (if missing), convert and ingest an open-licensed game")
+    ap.add_argument("--max-levels", type=int, default=None, help="cap on converted levels per game")
     args = ap.parse_args(argv)
 
     store = PatternStore()
@@ -68,7 +77,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"  mapped   {name}: {n}")
     for name, why in sorted(rep.skipped_files.items()):
         print(f"  skipped  {name}: {why}")
-    print(f"  ({OPEN_CORPORA_HOOK.split(':')[0]}: not ingested)")
+    if args.source:
+        from patterns.sources import GAMES, ingest_source
+
+        for game in (GAMES if args.source == "all" else [args.source]):
+            srep, irep = ingest_source(store, game, max_levels=args.max_levels)
+            print(f"source {game}: {len(srep.included)} level file(s) included {srep.licenses}, "
+                  f"{irep.added} new pattern(s) ({irep.rejected} rejected: no route), "
+                  f"{irep.duplicates} already indexed, {irep.levels_added} whole level(s)")
+            for name, n in sorted(irep.mapped_files.items()):
+                print(f"  level    {name}: {n}")
+            for name, why in sorted(srep.skipped.items()):
+                print(f"  skipped  {name}: {why}")
+            if not args.dry_run:
+                store.save()
+    else:
+        print(f"  (open-licensed game levels: --source supertux|opensurge|frogatto|all)")
 
     lrep = None
     if args.provider or args.dry_run:

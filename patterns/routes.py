@@ -1,4 +1,6 @@
-"""HTTP API of the pattern library: ``GET /patterns``, ``POST /patterns/add``, ``GET /patterns/stats``."""
+"""HTTP API of the pattern library: ``GET /patterns``, ``POST /patterns/add``, ``GET /patterns/stats``,
+``GET /patterns/levels``, ``GET /patterns/attribution``, ``GET /patterns/notes`` and
+``POST /patterns/notes/review`` (Part 26d)."""
 
 from __future__ import annotations
 
@@ -67,3 +69,46 @@ def similar_levels(query: str = Query("", description="what to look for"),
         {"id": h.id, "title": h.title, "source": h.pattern["source"],
          "origin_path": h.pattern["origin_path"], "level": h.pattern["level"],
          "score": round(h.score, 4)} for h in hits]}
+
+
+@router.get("/patterns/attribution")
+def pattern_attribution() -> Dict[str, Any]:
+    """Credits for the open-licensed game levels in the index (Part 26d): ``text`` (plain-text
+    ATTRIBUTION) and ``sources`` (per game: URL, commit, levels with authors and licence)."""
+    from patterns.sources import attribution_text
+
+    return attribution_text(PatternStore())
+
+
+@router.get("/patterns/notes")
+def list_notes(query: str = Query("", description="optional: rank by relevance"),
+               k: int = Query(50, ge=1, le=200)) -> Dict[str, Any]:
+    """Design notes (Part 26d) with their review state."""
+    from patterns.notes import excluded_notes
+
+    store = PatternStore()
+    excluded = excluded_notes()
+    if query:
+        recs = [h.pattern for h in retrieve(query, k, store=store, kind="note")]
+    else:
+        recs = [r for r in store if r.get("kind") == "note"][:k]
+    return {"notes": [{"id": r["id"], **(r.get("note") or {}), "reviewed": bool(r.get("reviewed")),
+                       "excluded": r["id"] in excluded} for r in recs]}
+
+
+class ReviewNoteRequest(BaseModel):
+    id: str
+    reviewed: Optional[bool] = None
+    exclude: Optional[bool] = None  # True: never offer this note again
+
+
+@router.post("/patterns/notes/review")
+def review_note_route(req: ReviewNoteRequest) -> Dict[str, Any]:
+    from fastapi import HTTPException
+
+    from patterns.notes import excluded_notes, review_note
+
+    rec = review_note(PatternStore(), req.id, reviewed=req.reviewed, exclude=req.exclude)
+    if rec is None:
+        raise HTTPException(404, f"no note {req.id!r}")
+    return {"id": req.id, "reviewed": bool(rec.get("reviewed")), "excluded": req.id in excluded_notes()}
