@@ -1,0 +1,58 @@
+{
+  "note": "Open-licensed game levels converted into the pattern library (v4 Part 26d). Only collision structure and entity positions are used, never art or code. The converted patterns live in the app-data index, not in git; GET /patterns/attribution lists every level used.",
+  "games": [
+    {
+      "game": "supertux",
+      "title": "SuperTux",
+      "url": "https://github.com/SuperTux/supertux",
+      "commit": "18da122ffc1fc065bb57c839116fe0b95081c35b",
+      "code_license": "GPL-3.0-or-later (LICENSE.txt)",
+      "included": [
+        {"folder": "data/levels/world1, world2, bonus1, revenge_in_redmond, ...",
+         "license": "per level file: (license \"CC-BY-SA 4.0 International\") -> CC-BY-SA-4.0; four files \"GPL 2+ / CC-by-sa 3.0\" -> GPL-2.0-or-later OR CC-BY-SA-3.0",
+         "decided_by": "the (license ...) field of each .stl; a file without a recognised reusable licence is skipped"},
+        {"folder": "data/images/*.strf",
+         "license": "tileset metadata (tile id -> solid / unisolid / hurts flags); read only to classify tiles",
+         "decided_by": "used as data, not redistributed"}
+      ],
+      "skipped": [
+        {"folder": "data/levels/misc", "reason": "menus and credits, not levels"},
+        {"folder": "*cutscene*, *intro*, *outro*", "reason": "cutscenes, not levels"}
+      ],
+      "attribution": "Level layouts derived from SuperTux (https://github.com/SuperTux/supertux) by the SuperTux team and the level authors named per level; CC-BY-SA 4.0 unless noted."
+    },
+    {
+      "game": "opensurge",
+      "title": "Open Surge",
+      "url": "https://github.com/alemart/opensurge",
+      "commit": "61975c23e7e877a55dfcab0e10f035907ae4ecb4",
+      "code_license": "GPL-3.0-or-later (LICENSE)",
+      "included": [
+        {"folder": "levels/*.lev",
+         "license": "per level header: license \"CC-BY 3.0\" (Sunshine Paradise, Waterworks) / \"CC-BY 4.0\" (Demo, Waterworks Zone)",
+         "decided_by": "the license line of each .lev; a placeholder author (\"YOUR NAME HERE\") is skipped as attribution is unclear"},
+        {"folder": "themes/*.brk, images/*_mask.png",
+         "license": "MIT (brickset headers); read only for brick type and collision mask",
+         "decided_by": "used as data, not redistributed"}
+      ],
+      "skipped": [
+        {"folder": "levels/demo-2.lev", "reason": "no author named (\"YOUR NAME HERE\")"},
+        {"folder": "levels/empty.lev, sandbox.lev, surgescript.lev", "reason": "templates / test levels"},
+        {"folder": "levels/scenes, levels/legacy", "reason": "menus, cutscenes, legacy format"}
+      ],
+      "attribution": "Level layouts derived from Open Surge (https://github.com/alemart/opensurge) by Alexandre Martins and contributors; CC-BY 3.0 / 4.0 per level."
+    },
+    {
+      "game": "frogatto",
+      "title": "Frogatto & Friends",
+      "url": "https://github.com/frogatto/frogatto",
+      "commit": "a7b725b8db3fad2cf0aee01fc501987e9fa87037",
+      "code_license": "CC-BY-3.0 for most files; Anura engine source Zlib",
+      "included": [],
+      "skipped": [
+        {"folder": "data/levels", "reason": "CC-BY-NC-SA 4.0 per LICENSE (non-commercial): not used; level data not downloaded"}
+      ],
+      "attribution": ""
+    }
+  ]
+}

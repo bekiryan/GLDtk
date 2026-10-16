@@ -1,0 +1,18 @@
+// Hand-written test level (not from Open Surge).
+name "Tiny Zone"
+author "Test Author"
+license "CC-BY 4.0"
+act 1
+theme "themes/tiny.brk"
+spawn_point 40 40
+
+// bricks
+brick 0 0 96
+brick 0 128 96
+brick 0 320 96
+brick 1 0 0
+brick 2 192 48
+entity "Spikes" 272 96 "a1"
+entity "Wolfey" 160 64 "a2"
+entity "Collectible" 208 16 "a3"
+entity "Goal" 400 64 "a4"

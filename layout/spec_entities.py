@@ -32,7 +32,7 @@ from .spec_layout import SpecLayout
 FLYER_HEIGHTS = (3, 2)  # tiles above the surface, preferred first
 ENTITY_SPACING = 2  # tiles of platform width per entity
 _FIXED_KINDS = ("Start", "Exit")  # never relocated
-_BASE_FIELDS = {"id", "kind", "anchor", "section", "description", "sprite"}
+_BASE_FIELDS = {"id", "kind", "anchor", "section", "description", "sprite", "place", "position"}
 
 
 def spread_cols(col_start: int, width: int, count: int) -> List[int]:
@@ -82,7 +82,7 @@ def widen_node(layout: SpecLayout, node_id: str, target_width: int) -> int:
     in place.
     """
     nl = layout.node_layouts[node_id]
-    if not layout.standable(node_id):
+    if not layout.standable(node_id) or node_id in layout.fixed_nodes:
         return nl.width
     lo, hi = _section_limits(layout, node_id)
     ir = layout.ir
@@ -212,6 +212,7 @@ def place_spec_entities(spec: LevelSpec, spec_layout: SpecLayout) -> List[IREnti
             continue
         cols_on_anchor = list(range(nl.col, nl.col + nl.width))
         for ent, pref in zip(ents, spread_cols(nl.col, nl.width, len(ents))):
+            pref = spec_layout.entity_cols.get(ent.id, pref)
             height = player_h if ent.kind == "Start" else 1
             rows = [nl.row - 1]
             if ent.kind == "Enemy" and ent.archetype == "flyer":

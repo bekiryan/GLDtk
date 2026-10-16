@@ -1,0 +1,106 @@
+{
+ "title": "Whispering Forest",
+ "size": {
+  "width_tiles": 40,
+  "height_tiles": 15
+ },
+ "sections": [
+  {
+   "id": "woods",
+   "name": "Woods",
+   "theme": "forest",
+   "difficulty": "easy",
+   "gravity_scale": 1.0,
+   "description": "Woods",
+   "order": 0
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "type": "Start",
+   "x": 0,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "woods"
+  },
+  {
+   "id": "mid",
+   "type": "Platform",
+   "x": 64,
+   "y": 32,
+   "w": 96,
+   "h": 16,
+   "section": "woods"
+  },
+  {
+   "id": "exit",
+   "type": "Exit",
+   "x": 176,
+   "y": 32,
+   "w": 48,
+   "h": 16,
+   "section": "woods"
+  }
+ ],
+ "edges": [
+  {
+   "from": "start",
+   "to": "mid",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0
+  },
+  {
+   "from": "mid",
+   "to": "exit",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0
+  }
+ ],
+ "entities": [
+  {
+   "id": "player",
+   "kind": "Start",
+   "anchor": "start",
+   "section": "woods",
+   "description": "player",
+   "sprite": "",
+   "facing": "right"
+  },
+  {
+   "id": "coin",
+   "kind": "Pickup",
+   "anchor": "mid",
+   "section": "woods",
+   "description": "a gold coin",
+   "sprite": "coin",
+   "pickup_kind": "coin",
+   "value": 1
+  },
+  {
+   "id": "door",
+   "kind": "Exit",
+   "anchor": "exit",
+   "section": "woods",
+   "description": "exit",
+   "sprite": "",
+   "requires_key": false
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "text": "There is a gold coin.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Pickup",
+    "subkind": "coin",
+    "min_count": 1
+   }
+  }
+ ]
+}

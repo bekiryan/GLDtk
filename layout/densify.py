@@ -15,8 +15,9 @@ phases, in this priority:
 3. **fill**: platforms 3–8 tiles wide in the emptiest cells — the cell with
    the largest Chebyshev distance (capped at ``EMPTINESS_CAP``) to any tile
    first, seeded-random among ties — among the cells within a plain jump of
-   a node the player can reach, while a cell at least ``MIN_EMPTINESS``
-   tiles from every tile exists, up to about one platform per
+   a node the player can reach (cells within *comfortable* reach of one —
+   the Game Profile's ``design`` limits, v3 Part 20 — first), while a cell
+   at least ``MIN_EMPTINESS`` tiles from every tile exists, up to about one platform per
    ``TILES_PER_PLATFORM`` empty tiles in all (at most ``MAX_ADDED``).
 
 Every addition must:
@@ -30,10 +31,13 @@ Every addition must:
   hitbox sweeps along one collision-free trajectory per edge of a spanning
   tree of the grid's reachable spans (first the spans reachable without
   passing an Exit, then the rest), so every span reachable before stays
-  reachable by the same move — in particular no tile lies on a golden-path arc;
-* be reachable from a node the player can reach and reach one back
-  (``move_between``: the oracle's collision-aware reach with the profile's
-  abilities and the section's gravity).  The trajectories of those two moves
+  reachable by the same move — in particular no tile lies on a golden-path arc —
+  plus the arcs of the golden route (the cheapest path by effort,
+  ``layout.route.cheapest_path``), so the short hops the comfort pass made stay
+  the route;
+* be reachable from a node the player can reach and reach one back, trying
+  the nodes within comfortable reach first (``move_between``: the oracle's
+  collision-aware reach with the profile's abilities and the section's gravity).  The trajectories of those two moves
   join the protected cells.
 
 The additions are not trusted blindly: the layout is re-rasterised, the
@@ -49,7 +53,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from game.profile import GameProfile
 from spec.level_spec import LevelSpec
@@ -62,15 +66,20 @@ from symbolic.physics import (
     trajectory_hits,
 )
 
-from .ir import TileValue
+from .ir import IREntity, IRLevel, TileValue
 from .repair import _swept_cells
+from .route import move_measure
 from .spec_entities import place_spec_entities
-from .spec_layout import Rect, SpecLayout
+from .spec_layout import Rect, SectionBand, SpecLayout
 from .sugiyama import NodeLayout
-from .verify import GridReport, verify_grid
+from .verify import GridReport, gravity_field_of, verify_grid
 
 FILL_PREFIX = "fill_"
 MIN_WIDTH, MAX_WIDTH = 3, 8  # tiles
+import contextvars as _cv
+
+# Design memory (v4 Part 27): multiplier on the platform budget, set per request.
+DENSITY_SCALE: "_cv.ContextVar[float]" = _cv.ContextVar("densify_scale", default=1.0)
 TILES_PER_PLATFORM = 50  # target: about one platform per this many empty tiles
 MIN_EMPTINESS = 4  # a fill platform's centre is at least this far (Chebyshev) from any tile
 EMPTINESS_CAP = 10
@@ -115,7 +124,8 @@ def _move_cells(layout: SpecLayout, profile: GameProfile, ability, p1, p2, scale
     grid = layout.ir.grid
     ts = float(layout.tile_size)
     hitbox = (profile.player.width_px, profile.player.height_px)
-    for samples in trajectory_candidates(grid, p1, p2, profile, scale, ability):
+    field = gravity_field_of(layout, profile)  # gravity changes at section borders
+    for samples in trajectory_candidates(grid, p1, p2, profile, scale, ability, gravity_field=field):
         if not trajectory_hits(grid, samples, p2, ts, hitbox):
             return _swept_cells(layout, samples, hitbox)
     return set()
@@ -150,6 +160,20 @@ def protected_cells(layout: SpecLayout, report: GridReport, profile: GameProfile
                     nxt.append(succ)
                     cells |= _edge_cells(layout, profile, graph.get_edge(cur, succ))
             frontier = nxt
+    return cells
+
+
+def route_cells(layout: SpecLayout, report: GridReport, profile: GameProfile) -> Set[Cell]:
+    """Cells swept along the golden route (cheapest Start → Exit path by effort)."""
+    from .route import cheapest_path
+
+    graph = report.graph
+    if graph is None or report.start_span is None or not report.exit_spans:
+        return set()
+    path = cheapest_path(graph, report.start_span, sorted(report.exit_spans), profile)
+    cells: Set[Cell] = set()
+    for u, v in zip(path or [], (path or [])[1:]):
+        cells |= _edge_cells(layout, profile, graph.get_edge(u, v))
     return cells
 
 
@@ -200,28 +224,48 @@ def _stamp(dist: List[List[int]], row: int, c0: int, c1: int) -> None:
 
 class _Densifier:
     def __init__(
-        self, layout: SpecLayout, report: GridReport, profile: GameProfile, seed: int
+        self, layout: SpecLayout, report: GridReport, profile: GameProfile, seed: int,
+        bounds: Optional[Tuple[int, int, int, int]] = None,
+        reachable: Optional[Set[str]] = None,
+        extra_protected: Optional[Set[Cell]] = None,
     ) -> None:
+        """*bounds* ``(col0, row0, col1, row1)`` (inclusive) confines every addition to
+        a rectangle (edits); *reachable* overrides ``report.reachable_nodes``."""
         self.layout = layout
         self.profile = profile
         self.rng = random.Random(seed)
         self.grid = layout.ir.grid
-        self.protected = protected_cells(layout, report, profile)
+        self.field = gravity_field_of(layout, profile)
+        self.bounds = bounds
+        self.protected = (protected_cells(layout, report, profile)
+                          | route_cells(layout, report, profile) | set(extra_protected or ()))
         self.avoid = _entity_cells(layout)
         self.reachable: List[str] = sorted(
-            n for n in report.reachable_nodes if layout.standable(n)
+            n for n in (report.reachable_nodes if reachable is None else reachable)
+            if layout.standable(n)
         )
         self.added: List[str] = []
         self.dist = _emptiness(self.grid)
-        empty = sum(row.count(TileValue.EMPTY) for row in self.grid)
-        standable = sum(1 for n in layout.node_layouts if layout.standable(n))
-        self.budget = min(MAX_ADDED, max(0, round(empty / TILES_PER_PLATFORM) - standable))
+        if bounds is None:
+            empty = sum(row.count(TileValue.EMPTY) for row in self.grid)
+            standable = sum(1 for n in layout.node_layouts if layout.standable(n))
+        else:
+            empty = sum(1 for r in range(bounds[1], bounds[3] + 1) for c in range(bounds[0], bounds[2] + 1)
+                        if self.grid[r][c] == TileValue.EMPTY)
+            standable = sum(1 for n in layout.node_layouts if layout.standable(n)
+                            and self._in(layout.rect(n)[1], layout.rect(n)[0]))
+        self.budget = min(MAX_ADDED, max(0, round(empty / TILES_PER_PLATFORM * DENSITY_SCALE.get()) - standable))
         # Cells within a jump of a node the player can reach (fill candidates).
         g = gravity_for(profile, 1.0)
         ts = float(layout.tile_size)
         self.rise = max(1, int(max_jump_height(g, profile.physics.jump_v) / ts))
         self.reach = max(1, int(flat_jump_reach(g, profile.physics.jump_v, profile.physics.run_speed) / ts))
         self.near = [[False] * layout.width for _ in range(layout.height)]
+        # Cells within comfortable reach (design limits) of a reachable node: tried first.
+        d = profile.design
+        self.comfy = [[False] * layout.width for _ in range(layout.height)]
+        self.comfy_up, self.comfy_down = d.comfort_rise_tiles, d.comfort_drop_tiles
+        self.comfy_hop = d.comfort_hop_tiles
         for nid in self.reachable:
             self._mark_near(layout.rect(nid))
         n = 1
@@ -229,12 +273,23 @@ class _Densifier:
             n += 1
         self.next_id = n
 
+    def _in(self, col: int, row: int) -> bool:
+        b = self.bounds
+        return b is None or (b[0] <= col <= b[2] and b[1] <= row <= b[3])
+
     def _mark_near(self, rect: Rect) -> None:
         row, c0, c1 = rect
         lay = self.layout
         for r in range(max(0, row - self.rise), min(lay.height, row + self.rise + 1)):
             line = self.near[r]
             for c in range(max(0, c0 - self.reach), min(lay.width, c1 + self.reach + 1)):
+                line[c] = True
+        # A platform centred here is comfortable when its edge is within the hop
+        # (a fill platform is at least MIN_WIDTH wide, so half of it lies toward the source).
+        hop = self.comfy_hop + 1 + MIN_WIDTH // 2
+        for r in range(max(0, row - self.comfy_up), min(lay.height, row + self.comfy_down + 1)):
+            line = self.comfy[r]
+            for c in range(max(0, c0 - hop), min(lay.width, c1 + hop + 1)):
                 line[c] = True
 
     # ── checks ──────────────────────────────────────────────────────────
@@ -245,8 +300,12 @@ class _Densifier:
         row, c0, c1 = rect
         if c0 < 0 or c1 >= lay.width or not lay.player_tiles[1] <= row <= lay.height - 1:
             return None
+        if not (self._in(c0, row) and self._in(c1, row)):
+            return None
         band = lay.section_at(c0, row)
         if not (band.contains(c0, row) and band.contains(c1, row)):
+            return None
+        if band.is_terrain:  # carved terrain is never filled (v3 Part 21)
             return None
         line = self.grid[row]
         for c in range(max(0, c0 - SAME_ROW_GAP), min(lay.width, c1 + SAME_ROW_GAP + 1)):
@@ -276,9 +335,18 @@ class _Densifier:
 
         pool = self.reachable + self.added
         cells: Set[Cell] = set()
-        for src in nearest(sources if sources is not None else pool):
+        design = self.profile.design
+
+        def comfortable_first(ids: List[str], into: bool) -> List[str]:
+            def ok(n: str) -> bool:
+                a, b = (lay.rect(n), rect) if into else (rect, lay.rect(n))
+                return design.is_comfortable(*move_measure(a, b))
+            return sorted(nearest(ids), key=lambda n: not ok(n))  # stable: nearest within each
+
+        for src in comfortable_first(sources if sources is not None else pool, True):
             s = lay.rect(src)
-            move = move_between(self.grid, s, rect, self.profile, lay.gravity_scale_of(s))
+            move = move_between(self.grid, s, rect, self.profile, lay.gravity_scale_of(s),
+                                gravity_field=self.field)
             if move is not None:
                 cells |= _move_cells(lay, self.profile, move[0], move[1], move[2],
                                      lay.gravity_scale_of(s))
@@ -286,8 +354,9 @@ class _Densifier:
         else:
             return None
         scale = lay.gravity_scale_of(rect)
-        for dst in nearest(targets if targets is not None else pool):
-            move = move_between(self.grid, rect, lay.rect(dst), self.profile, scale)
+        for dst in comfortable_first(targets if targets is not None else pool, False):
+            move = move_between(self.grid, rect, lay.rect(dst), self.profile, scale,
+                                gravity_field=self.field)
             if move is not None:
                 cells |= _move_cells(lay, self.profile, move[0], move[1], move[2], scale)
                 return cells
@@ -332,6 +401,8 @@ class _Densifier:
             return
 
         def open_col(c: int) -> bool:
+            if not self._in(c, row):
+                return False
             band = lay.section_at(c, row)
             if any(word in band.theme.lower() for word in NO_GROUND_THEMES):
                 return False
@@ -395,10 +466,12 @@ class _Densifier:
                 for r in range(min_row, lay.height)
                 for c in range(lay.width)
                 if self.near[r][c] and self.dist[r][c] >= MIN_EMPTINESS and (r, c) not in tried
+                and self._in(c, r)
             ]
             if not cells:
                 return
-            cells.sort(key=lambda t: (-t[0], self.rng.random()))
+            # comfortable positions first, then the emptiest (seeded random among equals)
+            cells.sort(key=lambda t: (not self.comfy[t[1]][t[2]], -t[0], self.rng.random()))
             placed = False
             for _d, r, c in cells:
                 if len(self.added) >= self.budget or tries >= MAX_FILL_TRIES:
@@ -420,6 +493,19 @@ class _Densifier:
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def longest_valid_prefix(n: int, ok: Callable[[int], bool]) -> int:
+    """Largest k < n such that the first k additions verify (binary search; k = 0 is
+    the input, which verifies).  Called once the full set of *n* has failed."""
+    lo, hi = 0, n  # prefix lo verifies, hi does not
+    while hi - lo > 1:
+        mid = (lo + hi) // 2
+        if ok(mid):
+            lo = mid
+        else:
+            hi = mid
+    return lo
 
 
 def _apply(
@@ -472,14 +558,8 @@ def densify(
     final = _apply(layout, spec, profile, base, fills, len(fills), saved)
     keep = len(fills)
     if not final.ok:
-        lo, hi = 0, len(fills)  # prefix lo verifies (the input layout), hi does not
-        while hi - lo > 1:
-            mid = (lo + hi) // 2
-            if _apply(layout, spec, profile, base, fills, mid, saved).ok:
-                lo = mid
-            else:
-                hi = mid
-        keep = lo
+        keep = longest_valid_prefix(
+            len(fills), lambda k: _apply(layout, spec, profile, base, fills, k, saved).ok)
         final = _apply(layout, spec, profile, base, fills, keep, saved)
     result.added = fills[:keep]
     result.dropped = fills[keep:]
@@ -489,3 +569,107 @@ def densify(
         + (f", dropped {len(result.dropped)} that broke verification" if result.dropped else "")
     )
     return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Grid-level entry point (region and section edits)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class GridDensifyResult:
+    grid: List[List[int]]  # the input grid plus the kept platforms
+    added: List[Rect] = field(default_factory=list)  # kept platforms (row, col0, col1), in order
+    dropped: List[Rect] = field(default_factory=list)  # removed to keep the level verified
+
+
+@dataclass
+class _GridReach:
+    """What ``_Densifier`` reads from a ``GridReport`` (here from an edit's Spans)."""
+
+    graph: object
+    start_span: Optional[str]
+    exit_spans: Set[str]
+    reachable_nodes: Set[str] = field(default_factory=set)
+
+
+def _grid_layout(grid: List[List[int]], entities: Sequence[IREntity], tile_size: int,
+                 sections: List[SectionBand], player_tiles: Tuple[int, int]) -> SpecLayout:
+    """A SpecLayout over a raw grid: every horizontal run of tiles is a node."""
+    height, width = len(grid), len(grid[0])
+    nodes: Dict[str, NodeLayout] = {}
+    kinds: Dict[str, str] = {}
+    for r, line in enumerate(grid):
+        c = 0
+        while c < width:
+            v = int(line[c])
+            if v == TileValue.EMPTY:
+                c += 1
+                continue
+            c0 = c
+            while c < width and int(line[c]) == v:
+                c += 1
+            nid = f"g{r}_{c0}"
+            nodes[nid] = NodeLayout(node_id=nid, col=c0, row=r, width=c - c0, height=1)
+            kinds[nid] = "Hazard" if v == TileValue.HAZARD else "Platform"
+    ir = IRLevel(identifier="grid", width_tiles=width, height_tiles=height, tile_size=tile_size,
+                 grid=[[int(v) for v in line] for line in grid], entities=list(entities))
+    return SpecLayout(node_layouts=nodes, ir=ir, sections=sections, node_kinds=kinds,
+                      player_tiles=player_tiles)
+
+
+def densify_grid(
+    grid: List[List[int]],
+    entities: Sequence[IREntity],
+    bounds: Tuple[int, int, int, int],
+    profile: GameProfile,
+    *,
+    sections: List[SectionBand],
+    graph,
+    start_span: Optional[str],
+    exit_spans: Set[str],
+    reach_rects: Sequence[Rect],
+    protected: Set[Cell],
+    verify: Callable[[List[List[int]]], bool],
+    seed: int = 0,
+    tile_size: int = 16,
+) -> GridDensifyResult:
+    """Add fill platforms inside *bounds* ``(col0, row0, col1, row1)`` of a raw grid.
+
+    The same ground / ledge / fill algorithm as :func:`densify` (one ``_Densifier``),
+    run on a ``SpecLayout`` built from the grid, with additions confined to *bounds*.
+
+    *graph*, *start_span*, *exit_spans* describe the collision-aware span graph of *grid*
+    (its arcs are protected); *reach_rects* are the spans the player can reach (nodes
+    standing on them are fill sources); *protected* cells stay empty on top of the arcs.
+    *verify(grid)* says whether a candidate grid still passes the caller's checks;
+    additions that break it are dropped (longest valid prefix), so this never fails.
+    """
+    layout = _grid_layout(grid, entities, tile_size, sections, profile.player_tiles())
+    reach_by_row: Dict[int, List[Tuple[int, int]]] = {}
+    for row, c0, c1 in reach_rects:
+        reach_by_row.setdefault(row, []).append((c0, c1))
+    reachable = {
+        nid for nid, nl in layout.node_layouts.items()
+        if layout.standable(nid)
+        and any(a <= nl.col + nl.width - 1 and nl.col <= b for a, b in reach_by_row.get(nl.row, ()))
+    }
+    reach = _GridReach(graph, start_span, exit_spans, reachable)
+    d = _Densifier(layout, reach, profile, seed, bounds=bounds, reachable=reachable,
+                   extra_protected=protected)  # type: ignore[arg-type]
+    if d.budget > 0:
+        d.ground()
+        d.ledges()
+        d.fill()
+    rects = [layout.rect(n) for n in d.added]
+
+    def stamped(k: int) -> List[List[int]]:
+        out = [list(line) for line in grid]
+        for row, c0, c1 in rects[:k]:
+            out[row][c0 : c1 + 1] = [TileValue.SOLID] * (c1 - c0 + 1)
+        return out
+
+    keep = len(rects)
+    if rects and not verify(stamped(keep)):
+        keep = longest_valid_prefix(len(rects), lambda k: verify(stamped(k)))
+    return GridDensifyResult(stamped(keep), rects[:keep], rects[keep:])

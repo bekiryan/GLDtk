@@ -39,7 +39,9 @@ of requirements extracted from the description. Output nothing else — no markd
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  TOP-LEVEL KEYS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  "title", "size", "orientation", "sections", "nodes", "edges", "entities", "requirements"
+  "title", "size", "orientation", "sections", "nodes", "edges", "entities", "requirements",
+  "complexity" (0..1 or null: set only when the description or constraints state a difficulty
+  number or "very hard"/"relaxing"; else null)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  SIZE
@@ -55,9 +57,36 @@ of requirements extracted from the description. Output nothing else — no markd
  SECTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   At least one. Each: "id" (no spaces), "name", "theme" (free text, e.g. "ice cave"),
-  "difficulty" ("easy"|"medium"|"hard"), "gravity_scale" (0.25..2.0, 1.0 = normal; only
+  "difficulty" ("easy"|"medium"|"hard"), "complexity" (0..1 or null: a numeric difficulty for
+  this section, only when the description gives one for it, e.g. "very hard" 0.9, "relaxing"
+  0.1; null = the level's), "gravity_scale" (0.25..2.0, 1.0 = normal; only
   change it if the description asks, e.g. "low gravity moon section" → 0.5),
-  "description" (what happens there), "order" (0-based).
+  "description" (what happens there), "order" (0-based),
+  "style" ("walk" | "mixed" | "parkour" | null; null = "mixed") — how the section plays:
+    "walk"    — walking, fighting and short hops from one platform to the next;
+    "mixed"   — mostly walking and short hops, an occasional longer jump;
+    "parkour" — long, precise jumps. Use it ONLY when the description asks for parkour,
+                precise platforming or a jumping challenge in that section.
+  "structure" — what the section is BUILT as. Every type but "open" is carved from solid
+  rock by the level generator (floors, walls, ceilings), like Blasphemous, Spelunky or
+  Neon Abyss; most of a level is walking, fighting and finding the way, some parkour:
+    "corridor"  — walk and fight: a floor with stairs, a ceiling, small pits (DEFAULT for
+                  caves, dungeons, crypts, castles, tunnels, mines, sewers, halls)
+    "parkour"   — gaps and ledges over spikes; a jumping challenge
+    "labyrinth" — a maze with dead ends to find the way through (treasure in the dead ends)
+    "arena"     — a closed room for a fight or a boss
+    "shaft"     — a vertical climb or drop (the usual type in a tower / vertical level)
+    "hub"       — connected rooms with side rooms (a key, a secret)
+    "open"      — platforms in the open air: sky, clouds, outdoors, forests, rooftops
+  "params" — null, or {"ceiling_height" (3..7), "corridor_width" (3..8), "complexity" (0..1),
+  "branches" (0..4), "pits" (0..8), "vertical" ("up"|"down")}, each null = default.
+  Pick the structures and their order from the description, e.g. "a crypt: corridors with
+  skeletons, a parkour shaft, a small labyrinth, a boss arena" → four sections: corridor,
+  parkour (vertical "up"), labyrinth, arena.
+  In a section whose structure is not "open" the generator re-positions the nodes on the
+  carved floor: give it a short chain of nodes (Start / Exit where they belong, one Platform
+  per area where entities stand, a Hazard node per pit) linked by plain Walk edges; their
+  exact coordinates do not matter.
   Horizontal level: sections run LEFT → RIGHT in "order"; place each section's nodes in its
   own x range (section 0 leftmost).
   Vertical level (a tower, a climb, a descent — taller than wide): sections run BOTTOM → TOP
@@ -106,6 +135,10 @@ of requirements extracted from the description. Output nothing else — no markd
     row band.
   • Scale the platform count with the level: roughly one Platform node per 5–8 tiles of
     width, more for tall levels, and at least 3 per section.
+  • Most of a level is walking, fighting and short hops. Build the path from Start to Exit
+    out of walks and short jumps from one platform to the NEXT one (within the GAME
+    PROFILE's comfortable hop, rise and drop), never a huge jump over one or more
+    platforms. Long jumps belong only in "parkour" sections.
   • Spread entities over several platforms: at most 2–3 entities per platform, and never
     more entities on one platform than its width in tiles. Patrolling enemies suit wide
     platforms.
@@ -173,6 +206,30 @@ of requirements extracted from the description. Output nothing else — no markd
       a "ghost" → Enemy flyer, a "heart" → Pickup health); keep the original wording in
       "description".
     • "linked_to" / "opens" must reference existing entity ids.
+    • In a section whose structure is not "open", also set "place" — where the entity goes:
+      "floor" (with "position" 0..1 along the section), "room", "dead_end" (labyrinth),
+      "arena_center", "ledge", "entry" or "exit"; null = on its anchor node. Pickups and
+      chests in a labyrinth go to "dead_end", a boss to "arena_center". In "open" sections
+      "place" and "position" are null.
+    • "grants_ability" (a Pickup that gives the player an ability) is null unless the
+      description says so.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ MISSION (optional)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  When the description asks for keys and locked doors, an ability that opens the way on,
+  a shortcut that loops back, optional treasure or a boss before the exit, set "mission"
+  (otherwise null). A deterministic grammar builds the keys, doors and links from it — do
+  NOT add those Key / door entities yourself:
+    {"rules": [...], "keys": N or null, "ability": null or "double_jump"|"dash"|"wall_jump",
+     "locks": [{"key_section": id or null, "lock_section": id or null}, ...] or null}
+    rules: "lock_key_cycle" (a key on a side branch opens a door further on),
+           "ability_gate" (an ability pickup, then a passage that needs it; the GAME PROFILE
+           must enable the ability), "shortcut_loop" (after a door, a one-way shortcut back
+           to the hub), "treasure_branch", "boss_before_exit".
+  Keys go best in "hub" rooms and "labyrinth" dead ends, the boss in an "arena"; each lock is
+  a later section's entrance. "a key in the cave opens the castle gate" →
+  locks [{"key_section": "cave", "lock_section": "castle"}].
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  REQUIREMENTS
@@ -183,7 +240,7 @@ of requirements extracted from the description. Output nothing else — no markd
   "check" makes the requirement machine-checkable. All its keys are always present; set the
   ones its "type" uses and null for the rest:
     "type"             — "entity_count" | "hazard" | "start_item" | "section" | "ability" |
-                         "size" | "gravity" | "none"
+                         "size" | "gravity" | "structure" | "complexity" | "mission" | "none"
                          ("hazard": spikes, pits, lava, acid, ... — counts Hazard NODES; never
                          use entity_count for a hazard)
     "entity_kind"      — entity_count: the entity kind ("Enemy", "Pickup", ...)
@@ -197,6 +254,15 @@ of requirements extracted from the description. Output nothing else — no markd
                          in the description ("fly") when it is none of those
     "min_width_tiles", "min_height_tiles" — size: the minimum level size asked for
     "gravity_scale"    — gravity: the section's gravity scale (e.g. 0.5 for "low gravity")
+    "structure"        — structure: the structure asked for ("there is a labyrinth" →
+                         "labyrinth"; min_count = dead ends wanted, null = 1)
+    "target_difficulty" — complexity: the difficulty N out of 10 the description states
+                         ("difficulty 7/10" → 7; "section" null = the whole level)
+    mission            — subkind "lock" | "loop" | "gate" | "treasure" | "boss": the mission
+                         structure is really built ("the key in the cave opens the castle
+                         gate" → subkind "lock", section "cave", target_section "castle";
+                         "the level loops back to the hub" → subkind "loop", section = hub)
+    "target_section"   — mission lock: the section of the lock (null otherwise)
   Use type "none" (or a null check) for style, music, mood and anything else not listed.
   • Split compound claims ("3 coins and a boss" → two requirements).
   • Include claims you cannot fully satisfy (e.g. "the player can fly", "music plays") —
@@ -215,7 +281,7 @@ Description: "A grassy meadow with coins, then a dungeon with a spike pit, a ske
 brevity — in your output, set them to null. The velocities are illustrative — use the GAME
 PROFILE values. A real level of this size has more platforms; this one is kept short.)
 
-{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"orientation":null,"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee"},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section","check":{"type":"section","section":"meadow"}},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section","check":{"type":"section","section":"dungeon"}},{"id":"R3","text":"The meadow contains coins.","category":"entity","check":{"type":"entity_count","entity_kind":"Pickup","subkind":"coin","min_count":2,"section":"meadow"}},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity","check":{"type":"entity_count","entity_kind":"Enemy","subkind":"walker","min_count":1,"section":"dungeon"}},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity","check":{"type":"entity_count","entity_kind":"Interactive","subkind":"chest","min_count":1,"section":"dungeon"}},{"id":"R6","text":"The player starts with a sword.","category":"entity","check":{"type":"start_item","subkind":"sword"}},{"id":"R7","text":"The player can double jump.","category":"ability","check":{"type":"ability","ability":"double_jump"}},{"id":"R8","text":"The dungeon has a spike pit.","category":"layout","check":{"type":"hazard","min_count":1,"section":"dungeon"}}]}
+{"title":"Meadow to Dungeon","size":{"width_tiles":60,"height_tiles":20},"orientation":null,"sections":[{"id":"meadow","name":"Grassy Meadow","theme":"forest","difficulty":"easy","gravity_scale":1.0,"description":"Gentle jumps over grass, coins to collect.","order":0,"style":"walk","structure":"open","params":null},{"id":"dungeon","name":"Dungeon","theme":"dungeon","difficulty":"medium","gravity_scale":1.0,"description":"A spike pit, a skeleton guard and a treasure chest.","order":1,"style":"mixed","structure":"corridor","params":null}],"nodes":[{"id":"start","type":"Start","x":0,"y":32,"w":48,"h":16,"section":"meadow"},{"id":"p1","type":"Platform","x":96,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"p2","type":"Platform","x":192,"y":64,"w":48,"h":16,"section":"meadow"},{"id":"spikes","type":"Hazard","x":288,"y":16,"w":48,"h":16,"section":"dungeon"},{"id":"p3","type":"Platform","x":352,"y":32,"w":48,"h":16,"section":"dungeon"},{"id":"exit","type":"Exit","x":448,"y":64,"w":48,"h":16,"section":"dungeon"}],"edges":[{"from":"start","to":"p1","type":"Jump","vx":82,"vy":600},{"from":"p1","to":"p2","type":"Walk","vx":200,"vy":0},{"from":"p2","to":"p3","type":"Fall","vx":626,"vy":0},{"from":"p3","to":"exit","type":"Jump","vx":82,"vy":600}],"entities":[{"id":"player","kind":"Start","anchor":"start","section":"meadow","description":"the player, starting with a sword","sprite":"knight","facing":"right","starting_items":[],"starting_weapon":"sword"},{"id":"coin1","kind":"Pickup","anchor":"p1","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"coin2","kind":"Pickup","anchor":"p2","section":"meadow","description":"coin","sprite":"gold coin","pickup_kind":"coin","value":1},{"id":"skeleton","kind":"Enemy","anchor":"p3","section":"dungeon","description":"a skeleton guard","sprite":"skeleton","archetype":"walker","health":3,"damage":1,"patrol_range":3,"facing":"left","attack":"melee","place":"floor","position":0.6},{"id":"chest","kind":"Interactive","anchor":"exit","section":"dungeon","description":"a treasure chest","sprite":"wooden chest","interactive_kind":"chest","contents":"gold"},{"id":"door","kind":"Exit","anchor":"exit","section":"dungeon","description":"exit door","sprite":"door","requires_key":false}],"requirements":[{"id":"R1","text":"There is a grassy meadow section.","category":"section","check":{"type":"section","section":"meadow"}},{"id":"R2","text":"A dungeon section comes after the meadow.","category":"section","check":{"type":"section","section":"dungeon"}},{"id":"R3","text":"The meadow contains coins.","category":"entity","check":{"type":"entity_count","entity_kind":"Pickup","subkind":"coin","min_count":2,"section":"meadow"}},{"id":"R4","text":"The dungeon has a skeleton guard enemy.","category":"entity","check":{"type":"entity_count","entity_kind":"Enemy","subkind":"walker","min_count":1,"section":"dungeon"}},{"id":"R5","text":"The dungeon contains a treasure chest.","category":"entity","check":{"type":"entity_count","entity_kind":"Interactive","subkind":"chest","min_count":1,"section":"dungeon"}},{"id":"R6","text":"The player starts with a sword.","category":"entity","check":{"type":"start_item","subkind":"sword"}},{"id":"R7","text":"The player can double jump.","category":"ability","check":{"type":"ability","ability":"double_jump"}},{"id":"R8","text":"The dungeon has a spike pit.","category":"layout","check":{"type":"hazard","min_count":1,"section":"dungeon"}}]}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
@@ -228,10 +294,14 @@ OUTPUT ONLY THE JSON OBJECT. NO OTHER TEXT.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+from memory.prefs import with_block as with_preferences  # noqa: E402  (design memory, v4 Part 27)
+
+
 def build_generate_messages(
     description: str,
     constraints: Optional[Dict[str, Any]] = None,
     profile: Optional[GameProfile] = None,
+    examples: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """First-turn message list for a fresh generation request.
 
@@ -246,6 +316,7 @@ def build_generate_messages(
                    as a GAME PROFILE block — the physics and abilities the
                    level must respect.  Kept out of SYSTEM_PROMPT so the
                    cached prefix stays profile-independent.
+    examples     : optional reference-pattern block (patterns.prompt), appended last.
     """
     content = description.strip()
     if constraints:
@@ -268,6 +339,11 @@ def build_generate_messages(
                 "hard": "many jumps, fewer coins, frequent enemies",
             }
             lines.append(f"- Difficulty: {d} ({notes.get(d, d)})")
+        if constraints.get("complexity") is not None:
+            from pipeline.complexity import targets  # local: pipeline imports llm
+
+            lines.append(f"- {targets(constraints['complexity']).for_prompt()} Set the level "
+                         f"\"complexity\" to {constraints['complexity']:g}.")
         if constraints.get("width_tiles") or constraints.get("height_tiles"):
             w = constraints.get("width_tiles") or "your choice"
             h = constraints.get("height_tiles") or "your choice"
@@ -276,7 +352,9 @@ def build_generate_messages(
             content += "\n\nCONSTRAINTS (follow exactly):\n" + "\n".join(lines)
     profile = profile or GameProfile()
     content += "\n\nGAME PROFILE (fixed for this game):\n" + profile.summary_for_prompt()
-    return [{"role": "user", "content": content}]
+    if examples:  # pattern library (Part 26a): user message only, the system prompt stays cacheable
+        content += "\n\n" + examples
+    return [{"role": "user", "content": with_preferences(content)}]
 
 
 def build_repair_messages(
@@ -363,3 +441,58 @@ def build_grid_repair_messages(
         {"role": "assistant", "content": spec_json},
         {"role": "user", "content": correction_request},
     ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# World outline (v3 Part 17)
+# ─────────────────────────────────────────────────────────────────────────────
+
+WORLD_SYSTEM_PROMPT: str = """\
+You are an expert 2-D platformer game designer for GLDtk (Generative Level Design Toolkit).
+
+Your task: given a game description, plan the WORLD — the ordered list of levels the player
+plays one after the other — and output ONE WorldOutline as strict JSON. Output nothing else.
+
+How many levels
+  * If the user states a number of levels ("3 levels", "a 4-stage campaign"), use exactly it.
+  * If a LEVELS line below gives a number, use exactly that number.
+  * Otherwise use one level per distinct place / stage the description lists in sequence
+    ("a forest, then a cave, then a castle" = 3 levels). A description of a single place is ONE
+    level. Never more than 8.
+
+Each level
+  * id: short lowercase id, unique ("forest", "cave", "castle").
+  * title: a short name.
+  * prompt: a SELF-CONTAINED level description, as a user would write it for that level alone:
+    its theme and look, its layout, its difficulty, and EVERY entity, hazard, item and ability
+    the user asked for in this level (including what the world requirements put there, e.g.
+    "the boss waits on the last platform", "a key lies in the middle of the level"). Keep the
+    user's wording for named things. Do not mention the other levels.
+  * size_hint: small | medium | large (or null).
+  * difficulty: easy | medium | hard (a campaign usually gets harder level by level unless the
+    user says otherwise).
+  * theme: free-text visual theme ("forest", "ice cave", "castle").
+
+World requirements (W1, W2, …): atomic statements about the world as a whole, taken from the
+description — "the final level has the boss", "the key is found in level 2". Give each a check
+when possible:
+  * {"type": "entity_in_level", "level": <level id>, "entity_kind": "Enemy", "subkind": "boss",
+     "min_count": 1}
+  * {"type": "level_count", "min_count": 3}
+  * otherwise check = null.
+The shared Game Profile (physics, abilities) is fixed for every level; do not invent abilities.
+"""
+
+
+def build_outline_messages(
+    description: str,
+    levels: Optional[int] = None,
+    profile: Optional[GameProfile] = None,
+) -> List[Dict[str, Any]]:
+    """The user turn of the world outline call (*levels*: the number the user picked)."""
+    content = description.strip()
+    if levels:
+        content += f"\n\nLEVELS: {levels} (use exactly this many levels)"
+    profile = profile or GameProfile()
+    content += "\n\nGAME PROFILE (shared by every level):\n" + profile.summary_for_prompt()
+    return [{"role": "user", "content": content}]

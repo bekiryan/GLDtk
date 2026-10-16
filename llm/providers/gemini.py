@@ -18,8 +18,9 @@ timeout once.
 from __future__ import annotations
 
 import os
-import time
 from typing import Any, Dict, List, Optional, Sequence
+
+from api import jobs
 
 from . import base
 
@@ -152,6 +153,7 @@ class GeminiProvider:
                 except base.ProviderError as err:
                     retryable = err.status in _FALLBACK_STATUSES or err.timed_out
                     if retryable and i < len(candidates) - 1:
+                        jobs.report("llm", f"{model} {_failure(err)}, trying {candidates[i + 1]}")
                         continue
                     raise
                 self.model_used = model
@@ -163,16 +165,39 @@ class GeminiProvider:
     def _post_with_retry(
         self, url: str, headers: Dict[str, str], payload: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """POST, retrying transient 5xx overload errors ("high demand" 503s)."""
+        """POST, retrying transient 5xx overload errors ("high demand" 503s).
+
+        A cancelled job stops before each POST, right after it returns (an
+        in-flight call cannot be interrupted) and during the backoff sleep.
+        """
         for attempt in range(self._transient_retries + 1):
+            jobs.checkpoint()
             try:
-                return base.http_json_post(url, headers, payload, self._timeout_seconds)
+                response = base.http_json_post(url, headers, payload, self._timeout_seconds)
             except base.ProviderError as err:
+                jobs.checkpoint()
                 transient = err.status in _TRANSIENT_STATUSES
                 if not transient or attempt == self._transient_retries:
                     raise
-                time.sleep(self._backoff_seconds * (2**attempt))
+                delay = self._backoff_seconds * (2**attempt)
+                jobs.report("llm", f"Gemini busy ({err.status}), retrying in {delay:g} s "
+                                   f"({attempt + 1}/{self._transient_retries})")
+                jobs.sleep(delay)
+                continue
+            jobs.checkpoint()
+            return response
         raise AssertionError("unreachable")
+
+
+def _failure(err: base.ProviderError) -> str:
+    """Why a model was given up on, for the progress line."""
+    if err.status == 429:
+        return "out of quota"
+    if err.status == 404:
+        return "is not available"
+    if err.timed_out:
+        return "timed out"
+    return f"still busy ({err.status})"
 
 
 _TRANSIENT_STATUSES = {500, 502, 503, 504}

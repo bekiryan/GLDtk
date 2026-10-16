@@ -1,0 +1,382 @@
+{
+ "title": "The Keep",
+ "size": {
+  "width_tiles": 180,
+  "height_tiles": 40
+ },
+ "orientation": "horizontal",
+ "sections": [
+  {
+   "id": "hall",
+   "name": "Gatehouse",
+   "theme": "crypt",
+   "difficulty": "easy",
+   "gravity_scale": 1.0,
+   "description": "A short corridor into the keep.",
+   "order": 0,
+   "style": null,
+   "structure": "corridor",
+   "params": {
+    "ceiling_height": 5,
+    "corridor_width": null,
+    "complexity": 0.6,
+    "branches": null,
+    "pits": null,
+    "vertical": null
+   }
+  },
+  {
+   "id": "hub",
+   "name": "Great Hall",
+   "theme": "dungeon",
+   "difficulty": "easy",
+   "gravity_scale": 1.0,
+   "description": "A hub with side rooms; the first key lies here.",
+   "order": 1,
+   "style": null,
+   "structure": "hub",
+   "params": null
+  },
+  {
+   "id": "maze",
+   "name": "Cellars",
+   "theme": "crypt",
+   "difficulty": "medium",
+   "gravity_scale": 1.0,
+   "description": "A labyrinth behind the first door; the second key is in a dead end.",
+   "order": 2,
+   "style": null,
+   "structure": "labyrinth",
+   "params": null
+  },
+  {
+   "id": "boss",
+   "name": "Throne Room",
+   "theme": "crypt",
+   "difficulty": "hard",
+   "gravity_scale": 1.0,
+   "description": "The boss arena behind the second door.",
+   "order": 3,
+   "style": null,
+   "structure": "arena",
+   "params": null
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "type": "Start",
+   "x": 16,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "hall"
+  },
+  {
+   "id": "hall_mid",
+   "type": "Platform",
+   "x": 400,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "hall"
+  },
+  {
+   "id": "hall_pit",
+   "type": "Hazard",
+   "x": 300,
+   "y": 48,
+   "w": 32,
+   "h": 16,
+   "section": "hall"
+  },
+  {
+   "id": "hub_a",
+   "type": "Platform",
+   "x": 800,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "hub"
+  },
+  {
+   "id": "maze_a",
+   "type": "Platform",
+   "x": 1300,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "maze"
+  },
+  {
+   "id": "boss_floor",
+   "type": "Platform",
+   "x": 2100,
+   "y": 64,
+   "w": 96,
+   "h": 16,
+   "section": "boss"
+  },
+  {
+   "id": "exit",
+   "type": "Exit",
+   "x": 2600,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "boss"
+  }
+ ],
+ "edges": [
+  {
+   "from": "start",
+   "to": "hall_mid",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "hall_mid",
+   "to": "hub_a",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "hub_a",
+   "to": "maze_a",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "maze_a",
+   "to": "boss_floor",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "boss_floor",
+   "to": "exit",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  }
+ ],
+ "entities": [
+  {
+   "id": "player",
+   "kind": "Start",
+   "anchor": "start",
+   "section": "hall",
+   "description": "the player",
+   "sprite": "",
+   "facing": "right",
+   "starting_weapon": "sword"
+  },
+  {
+   "id": "skel1",
+   "kind": "Enemy",
+   "anchor": "hall_mid",
+   "section": "hall",
+   "description": "skeleton",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.3
+  },
+  {
+   "id": "skel2",
+   "kind": "Enemy",
+   "anchor": "hall_mid",
+   "section": "hall",
+   "description": "skeleton",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.6
+  },
+  {
+   "id": "skel3",
+   "kind": "Enemy",
+   "anchor": "hall_mid",
+   "section": "hall",
+   "description": "skeleton",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.85
+  },
+  {
+   "id": "coin1",
+   "kind": "Pickup",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "coin",
+   "sprite": "",
+   "pickup_kind": "coin",
+   "place": "dead_end"
+  },
+  {
+   "id": "coin2",
+   "kind": "Pickup",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "coin",
+   "sprite": "",
+   "pickup_kind": "coin",
+   "place": "dead_end"
+  },
+  {
+   "id": "chest",
+   "kind": "Interactive",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "chest",
+   "sprite": "",
+   "interactive_kind": "chest",
+   "place": "dead_end"
+  },
+  {
+   "id": "lich",
+   "kind": "Enemy",
+   "anchor": "boss_floor",
+   "section": "boss",
+   "description": "the lich boss",
+   "sprite": "",
+   "archetype": "boss",
+   "place": "arena_center"
+  },
+  {
+   "id": "door",
+   "kind": "Exit",
+   "anchor": "exit",
+   "section": "boss",
+   "description": "crypt gate",
+   "sprite": "",
+   "requires_key": false
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "text": "A crypt corridor with skeletons.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "corridor",
+    "section": "hall"
+   }
+  },
+  {
+   "id": "R2",
+   "text": "Three skeletons in the corridor.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Enemy",
+    "subkind": "walker",
+    "min_count": 3,
+    "section": "hall"
+   }
+  },
+  {
+   "id": "R4",
+   "text": "A small labyrinth.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "labyrinth",
+    "min_count": 2
+   }
+  },
+  {
+   "id": "R5",
+   "text": "A boss arena.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "arena"
+   }
+  },
+  {
+   "id": "R6",
+   "text": "A boss guards the exit.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Enemy",
+    "subkind": "boss",
+    "section": "boss"
+   }
+  },
+  {
+   "id": "R7",
+   "text": "A hub with side rooms.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "hub",
+    "section": "hub"
+   }
+  },
+  {
+   "id": "R8",
+   "text": "A key in the great hall opens the cellar door.",
+   "category": "layout",
+   "check": {
+    "type": "mission",
+    "subkind": "lock",
+    "section": "hub",
+    "target_section": "maze"
+   }
+  },
+  {
+   "id": "R9",
+   "text": "A key in the cellars opens the throne room.",
+   "category": "layout",
+   "check": {
+    "type": "mission",
+    "subkind": "lock",
+    "section": "maze",
+    "target_section": "boss"
+   }
+  },
+  {
+   "id": "R10",
+   "text": "The level loops back to the hub.",
+   "category": "layout",
+   "check": {
+    "type": "mission",
+    "subkind": "loop",
+    "section": "hub"
+   }
+  }
+ ],
+ "mission": {
+  "rules": [
+   "lock_key_cycle",
+   "lock_key_cycle",
+   "shortcut_loop",
+   "boss_before_exit"
+  ],
+  "keys": 2,
+  "ability": null,
+  "locks": [
+   {
+    "key_section": "hub",
+    "lock_section": "maze"
+   },
+   {
+    "key_section": "maze",
+    "lock_section": "boss"
+   }
+  ]
+ }
+}

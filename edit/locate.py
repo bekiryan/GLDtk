@@ -73,9 +73,10 @@ def build_locate_messages(ctx: EditContext, text: str) -> List[Dict[str, Any]]:
     return [{"role": "user", "content": "\n".join(lines)}]
 
 
-def locate(path: str, text: str, provider: LLMProvider, max_retries: int = 3) -> LocateOutcome:
+def locate(path: str, text: str, provider: LLMProvider, max_retries: int = 3,
+           level: Optional[str] = None) -> LocateOutcome:
     try:
-        ctx = load_context(path)
+        ctx = load_context(path, level)
     except EditError as exc:
         return LocateOutcome(False, error=str(exc))
     if not text or not text.strip():
@@ -96,7 +97,7 @@ def locate(path: str, text: str, provider: LLMProvider, max_retries: int = 3) ->
 
     try:
         run = run_structured(provider, LOCATE_SYSTEM_PROMPT, build_locate_messages(ctx, text),
-                             LocateResult, parse, max_retries)
+                             LocateResult, parse, max_retries, what="the location")
     except EditLLMFailed as exc:
         return LocateOutcome(False, error=str(exc))
     except Exception as exc:  # provider errors

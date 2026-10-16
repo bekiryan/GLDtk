@@ -8,7 +8,10 @@
        footing of kept entities win), place its entities
     4. verify the whole level (``check.verify_level``); on failure repair
        deterministically inside the region (stepping stones, moving region
-       entities), then at most one LLM re-prompt with the errors
+       entities), then at most one LLM re-prompt with the errors; once it
+       verifies, the comfort pass (``layout.comfort.comfort_grid``) shortens
+       long golden-path moves that start or end in the region with platforms
+       inside it, then densify fills the region
     5. still failing → an error, nothing written; otherwise ``outcome.finish``
        snapshots and writes the file
 
@@ -25,9 +28,12 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from pydantic import Field
 
+from api import jobs
+from layout.comfort import comfort_grid
+from layout.densify import densify_grid
 from layout.ir import IREntity, TileValue
 from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
-from layout.spec_layout import grid_to_spec
+from layout.spec_layout import SectionBand, grid_to_spec
 from llm.providers import LLMProvider
 from spec.level_spec import (
     AbilityName,
@@ -40,7 +46,7 @@ from spec.level_spec import (
 )
 from symbolic.extractor import move_between
 
-from .check import Baseline, LevelCheck, make_baseline, verify_level
+from .check import Baseline, LevelCheck, make_baseline, preexisting_blocker, verify_level
 from .context import (
     FIXED_KINDS,
     Cell,
@@ -57,7 +63,7 @@ from .context import (
 )
 from .llm import EditLLMFailed, run_structured
 from .outcome import EditOutcome, add_requirements, base_spec, failure, finish, spec_entity
-from .prompts import REGION_SYSTEM_PROMPT
+from .prompts import REGION_SYSTEM_PROMPT, with_preferences
 from .stitch import RegionNode, apply_region
 
 MAX_REPAIR_ROUNDS = 4
@@ -117,7 +123,8 @@ def _entity_brief(ent: IREntity, rect: Rect) -> Dict[str, Any]:
 
 
 def build_region_messages(
-    ctx: EditContext, rect: Rect, seams: List[Seam], prompt: str, region_entities: List[IREntity]
+    ctx: EditContext, rect: Rect, seams: List[Seam], prompt: str, region_entities: List[IREntity],
+    examples: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     lines = [f"REQUEST: {prompt.strip()}", ""]
     if ctx.level.prompt:
@@ -133,6 +140,8 @@ def build_region_messages(
             f"gravity_scale {b.gravity_scale:g}; region columns "
             f"{max(b.col_start, rect.col) - rect.col}..{min(b.col_end, rect.right) - rect.col}, rows "
             f"{max(b.row_start, rect.row) - rect.row}..{min(b.row_end, rect.bottom) - rect.row}"
+            + (f"; built as {b.structure}, carved from rock: the rock and the carved space "
+               "stay, your nodes are added inside the carved space" if b.is_terrain else "")
         )
     lines.append("SEAMS (locked; connect your content to them):")
     if not seams:
@@ -152,7 +161,9 @@ def build_region_messages(
         lines.append("  " + json.dumps(_entity_brief(e, rect), ensure_ascii=False))
     lines += ["", "MAP (region and surroundings):", region_view(ctx, rect, seams), ""]
     lines += ["GAME PROFILE (fixed for this game):", ctx.profile.summary_for_prompt()]
-    return [{"role": "user", "content": "\n".join(lines)}]
+    if examples:  # pattern library (Part 26a)
+        lines += ["", examples]
+    return [{"role": "user", "content": with_preferences("\n".join(lines))}]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -418,6 +429,18 @@ def repair_region(
                 ent = next((e for e in entities if e.metadata.get("iid") == err.entity_iid), None)
                 if ent is None or err.entity_iid not in region_iids:
                     continue
+                if err.code == "ENTITY_UNREACHABLE" and err.span in rects:
+                    # Keep the ledge the prompt asked for: link it to the reachable part first.
+                    target = rects[err.span]
+                    sources = sorted((rects[s] for s in check.reach if s in rects),
+                                     key=lambda s: _dist(_centre(s), _centre(target)))[:6]
+                    stone = _insert_stone(ctx, rect, grid, locks, taken, sources, [target])
+                    if stone:
+                        r, c0, _c1 = stone
+                        applied.append(f"inserted a stepping stone at {name(c0, r)} (3 tiles) so "
+                                       f"{ent.metadata.get('spec_id') or ent.entity_type} can be reached")
+                        done = True
+                        break  # re-check: the stone may reach other entities too
                 old = (ent.col, ent.row)
                 if _move_entity(ctx, rect, grid, ent, reach_spans, taken):
                     applied.append(f"moved {ent.metadata.get('spec_id') or ent.entity_type} from "
@@ -485,6 +508,104 @@ class _Attempt:
     check: LevelCheck
     warnings: List[str] = field(default_factory=list)
     repairs: List[str] = field(default_factory=list)
+    fills: List[RegionNode] = field(default_factory=list)  # densify's fill platforms
+    dropped_fills: int = 0
+    hops: List[RegionNode] = field(default_factory=list)  # the comfort pass's platforms
+    comfort_notes: List[str] = field(default_factory=list)
+
+
+def _section_bands(ctx: EditContext) -> List[SectionBand]:
+    return [SectionBand(id=b.id, name=b.name, col_start=b.col_start, col_end=b.col_end,
+                        gravity_scale=b.gravity_scale, theme=b.theme or "",
+                        difficulty=b.difficulty, row_start=b.row_start, row_end=b.row_end,
+                        orientation=b.orientation, style=b.raw.get("style"))
+            for b in ctx.bands]
+
+
+def _new_node_ids(ctx: EditContext, rects, prefix: str, taken: Set[str]) -> List[RegionNode]:
+    out: List[RegionNode] = []
+    for row, c0, c1 in rects:
+        n = 1
+        while f"{prefix}{n}" in taken:
+            n += 1
+        taken.add(f"{prefix}{n}")
+        out.append(RegionNode(f"{prefix}{n}", c0, row, c1 - c0 + 1, "Platform"))
+    return out
+
+
+def _comfort_region(
+    ctx: EditContext, rect: Rect, grid, entities: List[IREntity], locks: Locks,
+    baseline: Baseline, check: LevelCheck, name,
+) -> Tuple[List[List[Any]], LevelCheck, List[RegionNode], List[str]]:
+    """Shorten long golden-path moves touching *rect* with platforms inside it (v3 Part 20).
+
+    Kept clear: the locked seams and their headroom and every entity's cell and
+    headroom.  Platforms that break verification are removed, so this never fails
+    an edit.
+    """
+    ph = ctx.player_h
+    forbidden: Set[Cell] = set(locks.solid) | set(locks.clear)
+    for e in entities:
+        for d in range(0, ph + 1):
+            forbidden.add((e.col, e.row - d))
+    latest = [check]
+
+    def recheck(g):
+        c = verify_level(ctx, g, entities, baseline, name)
+        if not c.ok:
+            return None
+        latest[0] = c
+        return c.spans.graph, c.start_span, set(c.exit_spans)
+
+    res = comfort_grid(
+        grid, entities, (rect.col, rect.row, rect.right, rect.bottom), ctx.profile,
+        sections=_section_bands(ctx), graph=check.spans.graph, start_span=check.start_span,
+        exit_spans=set(check.exit_spans), forbidden=forbidden, check=recheck,
+        tile_size=ctx.tile_size,
+    )
+    if not res.added:
+        return grid, check, [], res.warnings
+    taken = {n.id for n in ctx.spec.nodes} if ctx.spec else set()
+    return res.grid, latest[0], _new_node_ids(ctx, res.added, "hop_", taken), res.notes
+
+
+def _densify_region(
+    ctx: EditContext, rect: Rect, grid, entities: List[IREntity], locks: Locks,
+    baseline: Baseline, check: LevelCheck, name, seed: int,
+) -> Tuple[List[List[Any]], LevelCheck, List[RegionNode], int]:
+    """Add fill platforms inside *rect* (``layout.densify.densify_grid``), then re-verify.
+
+    Protected, left empty: the locked seams and their headroom, every move arc of the
+    current level (including arcs that cross the rect border) and the headroom of every
+    entity.  Additions that break verification are dropped, so this never fails an edit.
+    """
+    ph = ctx.player_h
+    protected: Set[Cell] = set(locks.solid) | set(locks.clear)
+    for e in entities:
+        for d in range(0, ph + 1):
+            protected.add((e.col, e.row - d))
+    sections = _section_bands(ctx)
+    spans = check.spans
+    res = densify_grid(
+        grid, entities, (rect.col, rect.row, rect.right, rect.bottom), ctx.profile,
+        sections=sections, graph=spans.graph, start_span=check.start_span,
+        exit_spans=check.exit_spans,
+        reach_rects=[spans.rects[s] for s in check.reach if s in spans.rects],
+        protected=protected,
+        verify=lambda g: verify_level(ctx, g, entities, baseline, name).ok,
+        seed=seed, tile_size=ctx.tile_size,
+    )
+    if not res.added:
+        return grid, check, [], len(res.dropped)
+    taken = {n.id for n in ctx.spec.nodes} if ctx.spec else set()
+    fills: List[RegionNode] = []
+    for row, c0, c1 in res.added:
+        n = 1
+        while f"fill_{n}" in taken:
+            n += 1
+        taken.add(f"fill_{n}")
+        fills.append(RegionNode(f"fill_{n}", c0, row, c1 - c0 + 1, "Platform"))
+    return res.grid, verify_level(ctx, res.grid, entities, baseline, name), fills, len(res.dropped)
 
 
 def edit_region(
@@ -496,10 +617,21 @@ def edit_region(
     mode: str = "region",
     max_retries: int = 3,
     ctx: Optional[EditContext] = None,
+    densify: bool = True,
+    seed: int = 0,
+    level: Optional[str] = None,
+    patterns: Optional[int] = None,
+    fill: Any = None,
 ) -> EditOutcome:
-    """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring)."""
+    """Regenerate *rect* of the level at *path* from *prompt* (see the module docstring).
+
+    *level* (an iid or identifier; None = the first level) picks the level of a world.
+
+    With *densify*, a verified result is filled with extra platforms inside the rect
+    (as generate does for a whole level), seeded by *seed*.
+    """
     try:
-        ctx = ctx or load_context(path)
+        ctx = ctx or load_context(path, level)
     except EditError as exc:
         return failure(mode, str(exc), rect)
     clipped = rect.clipped(ctx.width, ctx.height)
@@ -509,8 +641,12 @@ def edit_region(
     rect = clipped
 
     spans0 = ctx.extract(ctx.grid)
-    baseline, _before = make_baseline(ctx, rect, spans0)
+    baseline, before = make_baseline(ctx, rect, spans0)
+    blocker = preexisting_blocker(before, ctx, rect)
+    if blocker:
+        return failure(mode, blocker, rect)
     seams = find_seams(ctx, rect, spans0)
+    jobs.report("seams", f"Found {len(seams)} seam(s) on the region border")
     locks = locked_cells(ctx, rect, seams)
     region_old = [e for e in ctx.entities
                   if rect.contains(e.col, e.row) and e.entity_type not in FIXED_KINDS]
@@ -527,28 +663,60 @@ def edit_region(
     def attempt(region: RegionSpec) -> _Attempt:
         nodes = {n.id: RegionNode(n.id, n.col + rect.col, n.row + rect.row, n.w, n.type)
                  for n in region.nodes}
-        grid = apply_region(ctx.grid, rect, nodes.values(), locks)
+        grid = apply_region(ctx.grid, rect, nodes.values(), locks,
+                            keep=(lambda c, r: ctx.band_at(c, r).is_terrain) if ctx.has_terrain
+                            else None)
         taken = {(e.col, e.row) for e in kept}
         placed, warns = place_region_entities(ctx, rect, grid, region, nodes, seams, taken)
         entities = [IREntity(e.entity_type, e.col, e.row, dict(e.metadata)) for e in kept] + placed
+        jobs.report("region", "Stamping the region and verifying the level")
         check = verify_level(ctx, grid, entities, baseline, name)
         region_iids = {str(e.metadata["iid"]) for e in placed}
         repairs: List[str] = []
         if not check.ok:
+            jobs.report("repair", f"Repairing the region ({len(check.messages())} problem(s))")
             check, repairs = repair_region(ctx, rect, grid, entities, region_iids, locks,
                                            baseline, check, name)
-        return _Attempt(grid, entities, placed, nodes, check, warns, repairs)
+        hops: List[RegionNode] = []
+        comfort_notes: List[str] = []
+        if check.ok:
+            jobs.report("comfort", "Shortening long jumps")
+            grid, check, hops, comfort_notes = _comfort_region(
+                ctx, rect, grid, entities, locks, baseline, check, name)
+        fills: List[RegionNode] = []
+        dropped = 0
+        if densify and check.ok:
+            jobs.report("densify", "Adding fill platforms")
+            grid, check, fills, dropped = _densify_region(
+                ctx, rect, grid, entities, locks, baseline, check, name, seed)
+        rock.update(n=0, note="")
+        if fill is not None and check.ok:  # v4 Part 25a: noise rock inside the rect
+            from .fill import fill_region
+            grid, check, rock["n"], rock["note"] = fill_region(
+                ctx, rect, grid, entities, locks, baseline, check, name, seed, fill)
+        return _Attempt(grid, entities, placed, nodes, check, warns, repairs, fills, dropped,
+                        hops, comfort_notes)
 
     stats: Dict[str, Any] = {"llm_attempts": 0, "grid_repairs": 0, "layout_retries": 0,
                              "seams": len(seams)}
+    rock: Dict[str, Any] = {"n": 0, "note": ""}
     parse = _parser(ctx, rect, seams, outside_ids)
-    messages = build_region_messages(ctx, rect, seams, prompt, region_old)
+    examples = None
+    if patterns:  # pattern-library examples (Part 26a): the prompt and the sections in the region
+        from patterns.prompt import examples_block
+
+        examples, used = examples_block([prompt] + [b.name for b in ctx.bands_in(rect)], patterns)
+        stats["patterns"] = used
+    messages = build_region_messages(ctx, rect, seams, prompt, region_old, examples)
     try:
-        run = run_structured(provider, REGION_SYSTEM_PROMPT, messages, RegionSpec, parse, max_retries)
+        run = run_structured(provider, REGION_SYSTEM_PROMPT, messages, RegionSpec, parse, max_retries,
+                             what="the region")
         stats["llm_attempts"] += run.attempts
         result = attempt(run.value)
         if not result.check.ok:  # at most one LLM re-prompt with the grid errors
             stats["layout_retries"] = 1
+            jobs.report("repair", "The level still fails verification, asking the LLM to fix "
+                                  "the region")
             numbered = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(result.check.messages()))
             retry = run.messages + [
                 {"role": "assistant", "content": run.raw},
@@ -559,7 +727,8 @@ def edit_region(
                     "listed problem (connect every seam, add Platform nodes, keep jump arcs and "
                     "headroom clear). Output ONLY the JSON object.")},
             ]
-            run2 = run_structured(provider, REGION_SYSTEM_PROMPT, retry, RegionSpec, parse, max_retries)
+            run2 = run_structured(provider, REGION_SYSTEM_PROMPT, retry, RegionSpec, parse, max_retries,
+                                  what="a corrected region")
             stats["llm_attempts"] += run2.attempts
             run, result = run2, attempt(run2.value)
     except EditLLMFailed as exc:
@@ -568,6 +737,14 @@ def edit_region(
         return failure(mode, f"LLM error: {exc}", rect, stats=stats)
 
     stats["grid_repairs"] = len(result.repairs)
+    stats["densify_added"] = len(result.fills)
+    stats["comfort_added"] = len(result.hops)
+    stats["fill_added"] = rock["n"]
+    densify_notes: List[str] = [rock["note"]] if rock["note"] else []
+    if result.fills:
+        densify_notes.append(f"densify: added {len(result.fills)} fill platform(s)"
+                             + (f", dropped {result.dropped_fills} that broke verification"
+                                if result.dropped_fills else ""))
     if not result.check.ok:
         return failure(
             mode,
@@ -576,12 +753,16 @@ def edit_region(
             rect, warnings=result.warnings + result.repairs, stats=stats,
         )
 
-    spec = _updated_spec(ctx, rect, run.value, result.nodes, removed_ids, result.placed)
+    all_nodes = dict(result.nodes)
+    all_nodes.update({n.id: n for n in result.hops})
+    all_nodes.update({n.id: n for n in result.fills})
+    spec = _updated_spec(ctx, rect, run.value, all_nodes, removed_ids, result.placed)
     return finish(
         ctx, mode=mode, label_prompt=prompt, grid=result.grid, entities=result.entities,
         spec=spec, check=result.check, rect=rect, removed=removed,
         added={str(e.metadata["iid"]) for e in result.placed},
-        warnings=run.notes + result.warnings + result.repairs, stats=stats,
+        warnings=run.notes + result.warnings + result.repairs + result.comfort_notes
+        + densify_notes, stats=stats,
     )
 
 
@@ -594,14 +775,45 @@ def section_rect(ctx: EditContext, section_id: str) -> Rect:
 
 
 def edit_section(path: str, section_id: str, prompt: str, provider: LLMProvider,
-                 *, max_retries: int = 3) -> EditOutcome:
-    """A region edit over the section's band (column or row band)."""
+                 *, max_retries: int = 3, densify: bool = True, seed: int = 0,
+                 level: Optional[str] = None, structure: Optional[str] = None,
+                 patterns: Optional[int] = None, fill: Any = None,
+                 complexity: Optional[float] = None, stamp_patterns: bool = False) -> EditOutcome:
+    """A region edit over the section's band (column or row band) of *level*.
+
+    With *structure* (or a prompt like "make this a labyrinth", v3 Part 21) the
+    section is carved again by that structure's generator instead, between the
+    seams it shares with its neighbours (no LLM call).  *complexity* (0..1, v4 Part 24)
+    sets the section's target: a carved section is carved again with the terrain params it
+    implies (no LLM call); an open one gets the targets as a line of the prompt.
+    *stamp_patterns* (v4 Part 26b) lets a carved section be stamped from an indexed pattern.
+    """
     try:
-        ctx = load_context(path)
+        ctx = load_context(path, level)
         rect = section_rect(ctx, section_id)
     except EditError as exc:
         return failure("section", str(exc))
-    return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries, ctx=ctx)
+    from .terrain import restructure_section, structure_from_prompt
+
+    structure = structure or structure_from_prompt(prompt)
+    if complexity is not None and not structure:
+        band = next((b for b in ctx.bands if b.id == section_id), None)
+        if band is not None and band.is_terrain:
+            structure = band.structure
+    if structure:
+        finder = None
+        if stamp_patterns:
+            from pipeline.stamps import StampFinder
+
+            finder = StampFinder(prompt)
+        return restructure_section(ctx, section_id, structure, prompt, seed=seed,
+                                   complexity=complexity, stamp_finder=finder)
+    if complexity is not None:
+        from pipeline.complexity import targets
+
+        prompt = f"{prompt}\n({targets(complexity).for_prompt()})"
+    return edit_region(path, rect, prompt, provider, mode="section", max_retries=max_retries,
+                       ctx=ctx, densify=densify, seed=seed, patterns=patterns, fill=fill)
 
 
 __all__ = [

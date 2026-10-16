@@ -9,6 +9,8 @@ from game import GameProfile
 from llm import FakeProvider, LLMController, SymbolicPatcher, validate_graph, validate_spec
 from spec import LevelSpec
 
+from conftest import legacy_profile  # hand-computed for the pre-Part-28 physics
+
 
 def _high_exit(minimal: Dict[str, Any], ability=None) -> Dict[str, Any]:
     """Exit 200 px above Start: above the plain apex (184 px), below the
@@ -22,7 +24,7 @@ def _high_exit(minimal: Dict[str, Any], ability=None) -> Dict[str, Any]:
 
 
 def _double_jump_profile() -> GameProfile:
-    p = GameProfile()
+    p = legacy_profile()
     p.abilities.double_jump.enabled = True
     return p
 
@@ -42,7 +44,7 @@ def test_edge_ability_round_trips_through_graph(minimal_spec_dict):
 
 def test_impossible_with_defaults_valid_with_double_jump(minimal_spec_dict):
     plain = LevelSpec.model_validate(_high_exit(minimal_spec_dict))
-    result = validate_spec(plain, GameProfile())
+    result = validate_spec(plain, legacy_profile())
     [err] = result.errors
     assert err.code == "IMPOSSIBLE_JUMP"
     assert "no abilities" in err.message
@@ -56,7 +58,7 @@ def test_impossible_with_defaults_valid_with_double_jump(minimal_spec_dict):
 
 def test_ability_not_in_profile(minimal_spec_dict):
     spec = LevelSpec.model_validate(_high_exit(minimal_spec_dict, "double_jump"))
-    result = validate_spec(spec, GameProfile())
+    result = validate_spec(spec, legacy_profile())
     [err] = result.errors
     assert err.code == "ABILITY_NOT_IN_PROFILE"
     assert "double_jump" in err.message and "without" in err.message
@@ -67,14 +69,14 @@ def test_section_gravity_scale_is_honoured(minimal_spec_dict):
     d["sections"][0]["gravity_scale"] = 0.5
     spec = LevelSpec.model_validate(d)
     assert spec.to_graph().get_edge("start", "exit").metadata["gravity_scale"] == 0.5
-    assert _codes(spec, GameProfile()) == []
+    assert _codes(spec, legacy_profile()) == []
 
 
 def test_run_speed_caps_horizontal_reach(minimal_spec_dict):
     d = json.loads(json.dumps(minimal_spec_dict))
     d["nodes"][1]["x"] = 300  # 300 px flat gap > 245 px reach at run_speed 200
     d["edges"][0]["type"] = "Jump"
-    assert _codes(LevelSpec.model_validate(d), GameProfile()) == ["IMPOSSIBLE_JUMP"]
+    assert _codes(LevelSpec.model_validate(d), legacy_profile()) == ["IMPOSSIBLE_JUMP"]
 
 
 def test_patcher_assigns_ability_without_llm_call(minimal_spec_dict):
@@ -93,7 +95,7 @@ def test_patcher_clears_missing_ability_and_falls_back(minimal_spec_dict):
     # dash is not in the profile; without it the jump needs a stepping stone.
     spec = LevelSpec.model_validate(_high_exit(minimal_spec_dict, "dash"))
     graph = spec.to_graph()
-    profile = GameProfile()
+    profile = legacy_profile()
     result = SymbolicPatcher(profile).patch(graph, validate_graph(graph, profile).errors)
     assert result.success
     assert result.applied[-1] == "SteppingStonePatch" and "AbilityAssignPatch" in result.applied

@@ -118,6 +118,8 @@ COMMON_FIELDS: Tuple[FieldSpec, ...] = (
 
 INTERNAL_FIELDS = frozenset({"spec_id", "section", "anchor", "gldtk_meta", "sprite_tile"})
 REF_FIELDS = frozenset({"linked_to", "opens"})
+# Fields GLDtk sets on whole worlds (v3 Part 17), never from a level spec.
+WORLD_FIELDS = frozenset({"leads_to", "final"})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +141,9 @@ class KindSpec:
     # False for kinds whose ValueOnly subtype label ("Coin", "Walker") already
     # names them; the kind name would only stack a second label on top.
     show_name: bool = True
+    # Fields added after COMMON_FIELDS, so the uids of the older fields never shift
+    # (v3 Part 17: the Exit's cross-level ``leads_to`` and ``final``).
+    tail_fields: Tuple[FieldSpec, ...] = ()
 
     @property
     def identifier(self) -> str:
@@ -146,7 +151,7 @@ class KindSpec:
 
     @property
     def all_fields(self) -> Tuple[FieldSpec, ...]:
-        return self.fields + COMMON_FIELDS
+        return self.fields + COMMON_FIELDS + self.tail_fields
 
     def field(self, name: str) -> Optional[FieldSpec]:
         for f in self.all_fields:
@@ -183,6 +188,12 @@ KINDS: Dict[str, KindSpec] = {
         KindSpec(
             "Exit", 11, "#ffcc00",
             fields=(FieldSpec("requires_key", F_BOOL, False),),
+            tail_fields=(
+                FieldSpec("leads_to", F_ENTITY_REF, None, display="RefLinkBetweenCenters",
+                          doc="GLDtk world: the next level's Start (a cross-level ref)."),
+                FieldSpec("final", F_BOOL, False,
+                          doc="GLDtk world: the Exit of the last level."),
+            ),
         ),
         KindSpec(
             "Enemy", 12, "#ff2244", resizable=True, show_name=False,
@@ -200,6 +211,10 @@ KINDS: Dict[str, KindSpec] = {
             fields=(
                 FieldSpec("pickup_kind", F_ENUM, "coin", enum="PickupKind", display="ValueOnly"),
                 FieldSpec("value", F_INT, 1),
+            ),
+            tail_fields=(
+                FieldSpec("grants_ability", F_STRING, None,
+                          doc="GLDtk mission: the ability this pickup gives (v4 Part 23)."),
             ),
         ),
         KindSpec(
@@ -246,6 +261,8 @@ LEVEL_FIELDS: Tuple[Tuple[FieldSpec, int], ...] = (
     (FieldSpec("gldtk_game_profile", F_STRING, None, doc="GLDtk: Game Profile path, relative to the .ldtk file."), 903),
     (FieldSpec("gldtk_version", F_STRING, None, doc="GLDtk: export format version."), 904),
     (FieldSpec("gldtk_spec", F_TEXT, None, doc="GLDtk: the full LevelSpec (JSON)."), 905),
+    (FieldSpec("gldtk_world", F_TEXT, None,
+               doc="GLDtk: the world outline (JSON), on the first level of a multi-level world."), 906),
 )
 
 GLDTK_VERSION = "2"
@@ -341,6 +358,7 @@ __all__ = [
     "F_TILE",
     "GLDTK_VERSION",
     "INTERNAL_FIELDS",
+    "WORLD_FIELDS",
     "KIND_BY_UID",
     "KINDS",
     "KindResolution",

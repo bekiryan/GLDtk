@@ -42,7 +42,7 @@ from pipeline import LevelBuildFailed, build_level  # noqa: E402
 PROMPTS_FILE = Path(__file__).resolve().parent / "prompts.json"
 
 # Failure types that are retried when a run is resumed (the cause was external).
-RETRY_ON_RESUME = ("quota", "budget")
+RETRY_ON_RESUME = ("quota", "budget", "ProviderError")  # ProviderError: 5xx, timeouts
 
 
 # ── prompts ─────────────────────────────────────────────────────────────────
@@ -96,11 +96,28 @@ def check_expectations(expect: Dict[str, Any], built: Any) -> List[str]:
     for k in expect.get("entity_kinds", []):
         if k not in kinds:
             out.append(f"no {k} entity")
+    built_as = {s.structure or "open" for s in spec.sections}
+    for st in expect.get("structures", []):  # v3 Part 21
+        if st not in built_as:
+            out.append(f"no {st} section")
     if "min_impossible" in expect:
         n = built.fidelity.counts()["impossible"] if built.fidelity else 0
         if n < expect["min_impossible"]:
             out.append(f"impossible items {n} < {expect['min_impossible']}")
     return out
+
+
+def measure_record_difficulty(built: Any, profile: GameProfile, prompt: str) -> Optional[Dict[str, Any]]:
+    """Per-section difficulty of the built level for the result record (an error dict if it fails)."""
+    try:
+        from fidelity.difficulty import measure_difficulty
+
+        ir = built.spec_layout.ir
+        report = measure_difficulty(ir.grid, ir.entities, ir.metadata.get("sections") or [], profile,
+                                    prompt=prompt)
+        return report.to_dict()
+    except Exception as exc:  # a measuring problem must not fail a prompt
+        return {"error": f"{type(exc).__name__}: {exc}", "sections": [], "overall": None}
 
 
 def run_prompt(
@@ -127,12 +144,14 @@ def run_prompt(
         "fidelity_counts": None,
         "fidelity_items": [],
         "expect_failures": [],
+        "complexity": entry.get("complexity"),  # v4 Part 24: the target 0..1, or None
     }
     slept0 = budget_slept()
     t0 = time.perf_counter()
     stats: Dict[str, Any] = {}
     try:
-        built = build_level(entry["prompt"], controller, profile, seed=seed)
+        built = build_level(entry["prompt"], controller, profile, seed=seed,
+                            complexity=entry.get("complexity"))
     except BudgetExceeded:
         raise
     except Exception as exc:  # a failed prompt is a result, not a crash
@@ -151,6 +170,8 @@ def run_prompt(
             rec["fidelity_counts"] = built.fidelity.counts()
             rec["fidelity_items"] = built.fidelity.to_dict()["items"]
         rec["expect_failures"] = check_expectations(entry.get("expect", {}), built)
+        rec["difficulty"] = measure_record_difficulty(built, profile, entry["prompt"])
+        rec["complexity_rounds"] = (built.stats.get("complexity") or {}).get("rounds")
         rec["warnings"] = len(built.warnings)
         rec["size_tiles"] = [built.spec.size.width_tiles, built.spec.size.height_tiles]
         rec["sections"] = len(built.spec.sections)
@@ -168,7 +189,8 @@ def run_prompt(
     rec["llm_attempts"] = stats.get("llm_attempts", 0)
     rec["patches"] = len(stats.get("patches_applied", []))
     rec["patches_applied"] = list(stats.get("patches_applied", []))
-    for k in ("completeness_reprompts", "entities_filled", "layout_retries", "grid_repairs"):
+    for k in ("completeness_reprompts", "entities_filled", "layout_retries", "grid_repairs",
+              "comfort_added", "densify_added"):
         rec[k] = stats.get(k, 0)
     return rec
 

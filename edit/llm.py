@@ -14,8 +14,9 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, Type, Ty
 
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 
+from api import jobs
 from llm.providers import LLMProvider
-from llm.validator import _extract_json
+from llm.validator import _extract_json, llm_call_message
 from spec.level_spec import _inline_refs, _normalise_schema
 
 T = TypeVar("T")
@@ -53,13 +54,19 @@ def run_structured(
     parse: Parser,
     max_retries: int = 3,
     schema: Optional[Dict[str, Any]] = None,
+    what: str = "an answer",
 ) -> LLMRun:
-    """Call the provider until ``parse`` accepts the answer (see the module doc)."""
+    """Call the provider until ``parse`` accepts the answer (see the module doc).
+
+    *what* names the request in the job's progress lines.
+    """
     schema = schema or strict_schema(model)
     messages = list(messages)
     errors: List[str] = []
     for attempt in range(1, max_retries + 1):
+        jobs.report("llm", llm_call_message(provider, what, attempt, max_retries))
         raw = provider.complete_json(system, messages, schema)
+        jobs.checkpoint()
         try:
             obj = model.model_validate(json.loads(_extract_json(raw)))
         except ValueError as exc:  # JSON and pydantic errors
@@ -70,6 +77,7 @@ def run_structured(
             if value is not None and not errors:
                 return LLMRun(value, raw, messages, attempt, notes)
         if attempt < max_retries:
+            jobs.report("validate", f"The answer has {len(errors)} problem(s), asking again")
             numbered = "\n".join(f"  {i + 1}. {e}" for i, e in enumerate(errors))
             messages = messages + [
                 {"role": "assistant", "content": raw},

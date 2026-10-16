@@ -57,5 +57,6 @@ changes can be compared for free. A prompt that makes more calls than were recor
 ## Prompt suite
 
 Each prompt has `id`, `tags`, `prompt` and optional `expect`: `min_sections`, `min_width_tiles`,
-`min_height_tiles`, `entity_kinds` (list), `min_impossible` (fidelity items). Unmet expectations are
+`min_height_tiles`, `entity_kinds` (list), `min_impossible` (fidelity items), `structures` (section structures that must
+exist, v3 Part 21). Unmet expectations are
 listed in `expect_failures` and the report; they do not change `verified`.

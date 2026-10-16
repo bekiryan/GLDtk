@@ -14,6 +14,33 @@ Derived limits (Y-up, g = gravity, v = jump_v, vmax = run_speed)
   wall jump envelope   Δy ≤ h + max_climb_px,  |Δx| ≤ R + push_px
 
 Heights and reaches scale with 1 / gravity_scale (g_eff = g · gravity_scale).
+
+Default physics (v4 Part 28: a short-hop Spelunky / Blasphemous / Sonic feel)
+-----------------------------------------------------------------------------
+gravity 1800, jump_v 500, run_speed 220 (16 px tiles, 12×24 px hitbox):
+
+  full jump            h ≈ 69 px (4.3 tiles), flat reach ≈ 122 px (7.6 tiles)
+  shortest hop (0.7 v) h ≈ 34 px (2.1 tiles), flat reach ≈ 86 px (5.3 tiles)
+  head room            the shortest hop needs 4 empty rows above the take-off,
+                       a full jump 6 (corridor ceilings of 5–6 rows allow jumps)
+  double jump (340)    ≈ +2 tiles of height (6.3 tiles), reach ≈ 13 tiles
+  dash (64 px)         +4 tiles of distance (≈ 11.6 tiles)
+  wall jump (460)      climb ≤ +64 px (4 tiles), push 32 px (2 tiles)
+
+(Before Part 28 the defaults were 980 / 600 / 200: an 11.5-tile jump, a
+5.6-tile shortest hop and 8 empty rows above every take-off.)  jump_v 500
+rather than 480 keeps a 4-row rise strictly below the apex.  Saved profiles
+keep their own numbers; only missing fields take these defaults.
+
+Design comfort limits (``design``, v3 Part 20)
+-----------------------------------------------
+Physics says what the player *can* do; ``design`` says what a normal move
+*should* be: a hop clears at most ``comfort_hop_tiles`` empty columns, rises
+at most ``comfort_rise_tiles`` rows, and a fall drops at most
+``comfort_drop_tiles`` rows.  The golden route prefers such moves
+(``layout/route.py``) and the comfort pass (``layout/comfort.py``) adds
+platforms until the golden path is made of them (outside parkour sections).
+A profile without ``design`` gets the defaults.
 """
 
 from __future__ import annotations
@@ -46,10 +73,10 @@ class _ProfileModel(BaseModel):
 
 
 class Physics(_ProfileModel):
-    gravity: float = Field(980.0, gt=0, description="Downward acceleration, px/s².")
-    jump_v: float = Field(600.0, gt=0, description="Jump launch speed, px/s.")
+    gravity: float = Field(1800.0, gt=0, description="Downward acceleration, px/s².")
+    jump_v: float = Field(500.0, gt=0, description="Jump launch speed, px/s.")
     run_speed: float = Field(
-        200.0, gt=0, description="Cap on |vx| for walking and air movement, px/s."
+        220.0, gt=0, description="Cap on |vx| for walking and air movement, px/s."
     )
     walk_step_px: float = Field(
         8.0, ge=0, description="Max |Δy| a Walk edge may cover, px."
@@ -58,7 +85,7 @@ class Physics(_ProfileModel):
 
 class DoubleJump(_ProfileModel):
     enabled: bool = False
-    jump_v: float = Field(500.0, gt=0, description="Second (mid-air) jump speed, px/s.")
+    jump_v: float = Field(340.0, gt=0, description="Second (mid-air) jump speed, px/s.")
 
 
 class Dash(_ProfileModel):
@@ -69,11 +96,11 @@ class Dash(_ProfileModel):
 
 class WallJump(_ProfileModel):
     enabled: bool = False
-    jump_v: float = Field(550.0, gt=0, description="Wall kick speed, px/s.")
+    jump_v: float = Field(460.0, gt=0, description="Wall kick speed, px/s.")
     max_climb_px: float = Field(
-        160.0, ge=0, description="Max extra height gained by wall jumping, px."
+        64.0, ge=0, description="Max extra height gained by wall jumping, px."
     )
-    push_px: float = Field(48.0, ge=0, description="Extra horizontal reach, px.")
+    push_px: float = Field(32.0, ge=0, description="Extra horizontal reach, px.")
 
 
 class Abilities(_ProfileModel):
@@ -96,6 +123,23 @@ class Player(_ProfileModel):
     height_px: float = Field(24.0, gt=0, description="Player hitbox height, px.")
 
 
+class Design(_ProfileModel):
+    comfort_hop_tiles: int = Field(
+        4, ge=1, le=30, description="Horizontal gap (empty columns) of a normal jump, tiles."
+    )
+    comfort_rise_tiles: int = Field(
+        3, ge=1, le=30, description="How far a normal jump goes up, tiles."
+    )
+    comfort_drop_tiles: int = Field(
+        6, ge=1, le=60, description="How far a normal fall goes down, tiles."
+    )
+
+    def is_comfortable(self, gap: float, rise: float, drop: float) -> bool:
+        """Is a move clearing *gap* columns, rising *rise* and dropping *drop* rows normal?"""
+        return (gap <= self.comfort_hop_tiles and rise <= self.comfort_rise_tiles
+                and drop <= self.comfort_drop_tiles)
+
+
 class GameProfile(_ProfileModel):
     version: int = 1
     name: str = "Untitled game"
@@ -103,6 +147,7 @@ class GameProfile(_ProfileModel):
     physics: Physics = Field(default_factory=Physics)
     abilities: Abilities = Field(default_factory=Abilities)
     player: Player = Field(default_factory=Player)
+    design: Design = Field(default_factory=Design)
 
     @field_validator("tile_size")
     @classmethod
@@ -135,8 +180,9 @@ class GameProfile(_ProfileModel):
             f'Game: "{self.name}"',
             f"Physics: gravity={g:g} px/s², jump_v={v:g} px/s, "
             f"run_speed={vmax:g} px/s (max |vx|), tile={self.tile_size} px.",
-            f"Plain jump (ability null): rise up to {h:.0f} px; "
-            f"cross up to {reach:.0f} px horizontally at equal height.",
+            f"Plain jump (ability null): rise up to {h:.0f} px "
+            f"(~{h / self.tile_size:.1f} tiles); cross up to {reach:.0f} px "
+            f"(~{reach / self.tile_size:.1f} tiles) horizontally at equal height.",
             f"Walk: |Δy| ≤ {p.walk_step_px:g} px. "
             "Fall: target strictly lower, vy = 0.",
         ]
@@ -173,6 +219,13 @@ class GameProfile(_ProfileModel):
         lines.append(
             "Limits above are for gravity_scale 1.0; heights and reaches scale "
             "with 1 / gravity_scale."
+        )
+        d = self.design
+        lines.append(
+            f"Comfortable moves (design): a normal hop clears at most {d.comfort_hop_tiles} "
+            f"empty tiles across and rises at most {d.comfort_rise_tiles} tiles; a normal fall "
+            f"drops at most {d.comfort_drop_tiles} tiles. Build the golden path from walks and "
+            "such hops between neighbouring platforms; longer jumps only in parkour sections."
         )
         if self.player.description:
             lines.append(f"Player: {self.player.description}")

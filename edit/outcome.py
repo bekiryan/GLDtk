@@ -13,6 +13,7 @@ import collections
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
+from api import jobs
 from fidelity import FidelityReport, check_level
 from layout.ir import IREntity, IRLevel
 from spec.level_spec import (
@@ -157,7 +158,11 @@ def finish(
     warnings: Iterable[str] = (),
     stats: Optional[Dict[str, Any]] = None,
 ) -> EditOutcome:
-    """Stitch and write a verified edit (see the module docstring)."""
+    """Stitch and write a verified edit (see the module docstring).
+
+    The last cancel checkpoint: once stitching starts the edit is written.
+    """
+    jobs.report("stitch", "Stitching the edit into the level and writing it")
     warnings = list(warnings) + list(check.warnings)
     ir_before = ctx.to_ir()
     before = check_level(base_spec(ctx), ir_before, ctx.profile, verified=True) \

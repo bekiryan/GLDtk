@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import ValidationError as PydanticValidationError
 
+from api import jobs
 from game.profile import GameProfile
 from spec.level_spec import TILE_SIZE, LevelSpec, parse_graph
 from symbolic.physics import ability_enabled, best_ability, max_jump_height, reachable
@@ -47,6 +48,13 @@ from .providers import (
     make_provider,
     make_provider_from_config,
 )
+from .providers.fallback import describe as describe_provider
+
+
+def llm_call_message(provider: Any, what: str, attempt: int, max_attempts: int) -> str:
+    """The progress line for an LLM call ("Asking gemini/… for the level spec")."""
+    line = f"Asking {describe_provider(provider)} for {what}"
+    return line if attempt == 1 else f"{line} (attempt {attempt}/{max_attempts})"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -615,6 +623,7 @@ class LLMController:
 
         self._schema = LevelSpec.json_schema()
         self.stats = GenerationStats()
+        self.examples: Optional[str] = None  # pattern-library reference block (Part 26a)
 
         # Import here to avoid circular imports at module load time
         from .patcher import SymbolicPatcher
@@ -653,8 +662,8 @@ class LLMController:
             If no valid spec could be produced within *max_retries* attempts.
             ``exc.stats`` / ``self.stats`` hold the run's bookkeeping.
         """
-        messages = build_generate_messages(description, constraints, self._profile)
-        return self._run(description, messages)
+        messages = build_generate_messages(description, constraints, self._profile, self.examples)
+        return self._run(description, messages, "the level spec")
 
     def repair_spec(
         self,
@@ -675,10 +684,10 @@ class LLMController:
         ------
         MaxRetriesExceeded
         """
-        messages = build_generate_messages(description, constraints, self._profile)
+        messages = build_generate_messages(description, constraints, self._profile, self.examples)
         spec_json = json.dumps(spec.model_dump(by_alias=True))
         messages = build_grid_repair_messages(description, spec_json, errors, messages)
-        return self._run(description, messages)
+        return self._run(description, messages, "a repaired level spec")
 
     def complete_spec(
         self,
@@ -698,25 +707,35 @@ class LLMController:
         ------
         MaxRetriesExceeded
         """
-        messages = build_generate_messages(description, constraints, self._profile)
+        messages = build_generate_messages(description, constraints, self._profile, self.examples)
         spec_json = json.dumps(spec.model_dump(by_alias=True))
         messages = build_completeness_messages(description, spec_json, missing, messages)
-        return self._run(description, messages)
+        return self._run(description, messages, "the missing requirements")
 
-    def _run(self, description: str, messages: List[Dict[str, Any]]) -> LevelSpec:
-        """Provider call → validate → patch → LLM repair, up to max_retries."""
+    def _run(
+        self, description: str, messages: List[Dict[str, Any]], what: str = "the level spec"
+    ) -> LevelSpec:
+        """Provider call → validate → patch → LLM repair, up to max_retries.
+
+        *what* names the request in the job's progress lines.
+        """
         self.stats = stats = GenerationStats()
         result: Optional[ValidationResult] = None
 
         for attempt in range(self._max_retries):
+            jobs.report("llm", llm_call_message(self._provider, what, attempt + 1,
+                                                self._max_retries))
             raw = self._provider.complete_json(SYSTEM_PROMPT, messages, self._schema)
+            jobs.checkpoint()
             stats.attempts += 1
             result = parse_and_validate_spec(raw, self._profile)
             stats.error_codes_per_attempt.append([e.code for e in result.errors])
 
             if result.valid:
                 stats.success = True
+                jobs.report("validate", "The spec is valid")
                 return result.spec  # type: ignore[return-value]
+            jobs.report("validate", f"The spec has {len(result.errors)} problem(s), patching")
 
             # ── Symbolic patch: try to fix without another LLM call ──
             if result.spec is not None:
@@ -726,6 +745,7 @@ class LLMController:
                     stats.patched = True
                     stats.patches_applied = applied
                     stats.success = True
+                    jobs.report("validate", f"Patched the spec ({', '.join(applied)})")
                     return spec
 
             # ── LLM repair re-prompt ──

@@ -1,0 +1,11 @@
+; Hand-written test level with a non-commercial licence: must be skipped.
+(supertux-level
+  (version 3)
+  (name (_ "NC Test"))
+  (author "Someone")
+  (license "CC-BY-NC-SA 4.0")
+  (sector
+    (name "main")
+    (tilemap (solid #t) (width 4) (height 2) (tiles -4 0 -4 1))
+  )
+)

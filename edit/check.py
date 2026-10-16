@@ -12,6 +12,10 @@ edits:
   SEAM_DEAD_END  a platform outside the region from which the Exit could be
                  reached before the edit no longer leads to the Exit
 
+and the soft-lock check (``layout.softlock``, code ``SOFTLOCK``): no place the
+player can reach may cut them off from the Exit, keys included.  A soft-lock
+the file already had outside the edited region is baseline (a warning).
+
 A problem the file already had before the edit (a hand-edited level may be
 broken) is reported as a warning, never as an error: an edit must not make
 the level worse, but it does not have to fix what it did not touch.
@@ -23,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional, Set, Tuple
 
 from layout.ir import IREntity, TileValue
+from layout.softlock import SoftlockReport, find_softlocks, items_from_entities
 from layout.verify import REQUIRED_KINDS
 
 from .context import Cell, EditContext, Rect, SpanRect, Spans
@@ -34,6 +39,7 @@ class CheckError:
     message: str
     entity_iid: Optional[str] = None
     span: Optional[str] = None  # the span the error is about (unreached target / dead end)
+    trap_spans: List[str] = field(default_factory=list)  # SOFTLOCK: the trapped spans
 
 
 @dataclass
@@ -46,6 +52,7 @@ class LevelCheck:
     coreach: Set[str]  # spans from which an Exit is reachable
     start_span: Optional[str] = None
     exit_spans: Set[str] = field(default_factory=set)
+    softlock: Optional[SoftlockReport] = None
 
     def messages(self) -> List[str]:
         return [e.message for e in self.errors]
@@ -63,6 +70,7 @@ class Baseline:
     exit_cells: List[Cell] = field(default_factory=list)  # outside spans that lead to an Exit
     failing: Set[str] = field(default_factory=set)  # level-wide codes already failing
     bad_entities: Set[str] = field(default_factory=set)  # iids already unreachable / blocked
+    softlock_cells: List[Cell] = field(default_factory=list)  # cells of soft-locks outside
 
 
 CellName = Callable[[int, int], str]
@@ -111,7 +119,10 @@ def verify_level(
     elif start_span is None:
         errors.append(CheckError(
             "START_NO_GROUND",
-            f"The Start entity at {name(start.col, start.row)} has no platform under it.",
+            f"The Start entity at {name(start.col, start.row)} "
+            + ("is inside a solid tile." if 0 <= start.row < len(grid)
+               and int(grid[start.row][start.col]) != TileValue.EMPTY
+               else "has no platform under it."),
             start.metadata.get("iid")))
     else:
         rows = range(start.row - ph + 1, start.row + 1)
@@ -157,6 +168,18 @@ def verify_level(
                 f"The Exit at {name(locked[0].col, locked[0].row)} requires a key, but "
                 + ("no Key is reachable before it." if keys else "there is no Key entity.")))
 
+    softlock: Optional[SoftlockReport] = None
+    if start_span is not None and exit_spans & reach:
+        items = items_from_entities(entities, lambda e: spans.under(
+            e, depth=1 if e.entity_type in ("Start", "Exit") else 4))
+        softlock = find_softlocks(spans.graph, start_span, exit_spans, items, name=name)
+        if softlock.too_many_items:
+            warnings.append("Too many keys and ability pickups to check every item state for "
+                            "soft-locks; only the movement graph was checked.")
+        for trap in softlock.traps:
+            errors.append(CheckError("SOFTLOCK", trap.message, span=trap.spans[0],
+                                     trap_spans=list(trap.spans)))
+
     if baseline is not None:
         for c, r in baseline.reach_cells:
             sid = spans.at(c, r)
@@ -175,8 +198,11 @@ def verify_level(
 
         kept: List[CheckError] = []
         for err in errors:
-            already = (err.entity_iid in baseline.bad_entities if err.entity_iid
-                       and err.code.startswith("ENTITY") else err.code in baseline.failing)
+            if err.code == "SOFTLOCK":
+                already = any(spans.at(c, r) in err.trap_spans for c, r in baseline.softlock_cells)
+            else:
+                already = (err.entity_iid in baseline.bad_entities if err.entity_iid
+                           and err.code.startswith("ENTITY") else err.code in baseline.failing)
             if already:
                 warnings.append(f"{err.message} (the level already had this problem before the edit)")
             else:
@@ -185,7 +211,7 @@ def verify_level(
 
     return LevelCheck(
         ok=not errors, errors=errors, warnings=warnings, spans=spans, reach=reach,
-        coreach=coreach, start_span=start_span, exit_spans=exit_spans,
+        coreach=coreach, start_span=start_span, exit_spans=exit_spans, softlock=softlock,
     )
 
 
@@ -208,6 +234,11 @@ def make_baseline(ctx: EditContext, rect: Optional[Rect], spans: Optional[Spans]
     for err in before.errors:
         if err.code.startswith("ENTITY") and err.entity_iid:
             base.bad_entities.add(err.entity_iid)
+        elif err.code == "SOFTLOCK":
+            for sid in err.trap_spans:  # soft-locks outside the region are baseline
+                cell = _outside_cell(rect, before.spans.rects[sid])
+                if cell is not None:
+                    base.softlock_cells.append(cell)
         else:
             base.failing.add(err.code)
     if rect is not None:
@@ -222,4 +253,29 @@ def make_baseline(ctx: EditContext, rect: Optional[Rect], spans: Optional[Spans]
     return base, before
 
 
-__all__ = ["Baseline", "CheckError", "LevelCheck", "make_baseline", "verify_level"]
+# Problems an edit cannot fix: they are not in the region (Start and Exit are fixed kinds).
+_START_CODES = ("NO_START", "START_NO_GROUND", "START_BLOCKED", "NO_EXIT")
+
+
+def preexisting_blocker(before: LevelCheck, ctx: EditContext, rect: Optional[Rect] = None
+                        ) -> Optional[str]:
+    """Why no edit can verify while the file is like this, or None.
+
+    A Start without ground (often moved by hand) makes every platform unreachable,
+    so each new entity would be reported as the problem.  The cells under the Start
+    can still be fixed by a region that contains them.
+    """
+    start = next((e for e in ctx.entities if e.entity_type == "Start"), None)
+    for err in before.errors:
+        if err.code not in _START_CODES:
+            continue
+        if err.code == "START_NO_GROUND" and rect is not None and start is not None \
+                and rect.contains(start.col, min(start.row + 1, ctx.height - 1)):
+            continue
+        return ("This level cannot be beaten as it is now, so no edit can be verified: "
+                f"{err.message} Fix it in LDtk (or use ↶ Undo) and try again.")
+    return None
+
+
+__all__ = ["Baseline", "CheckError", "LevelCheck", "make_baseline", "preexisting_blocker",
+           "verify_level"]

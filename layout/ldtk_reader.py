@@ -64,6 +64,8 @@ class ReadLevel:
     game_profile_relpath: Optional[str] = None
     version: Optional[str] = None  # "2" for GLDtk v2 exports, None otherwise
     warnings: List[str] = field(default_factory=list)
+    index: int = 0  # position among the project's levels
+    world: Optional[Dict[str, Any]] = None  # gldtk_world (the outline; first level of a world)
 
     def to_ir(self) -> IRLevel:
         """An :class:`IRLevel` with this grid, entities and sections."""
@@ -274,7 +276,7 @@ def _level_fields(level: Dict[str, Any]) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     for fi in level.get("fieldInstances") or []:
         name = str(fi.get("__identifier", ""))
-        is_text = name in ("gldtk_prompt", "gldtk_sections", "gldtk_spec")
+        is_text = name in ("gldtk_prompt", "gldtk_sections", "gldtk_spec", "gldtk_world")
         fs = FieldSpec(name, F_TEXT) if is_text else None
         raw = _raw_values(fi, fs)
         if name == "gldtk_requirements":
@@ -312,29 +314,65 @@ def _find_layer(layers: List[Dict[str, Any]], layer_type: str, preferred: str) -
     return typed[0] if typed else None
 
 
+def all_levels(project: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Every level dict of *project*, in file order (``levels``, then each world's)."""
+    levels = list(project.get("levels") or [])
+    for w in project.get("worlds") or []:
+        levels += list(w.get("levels") or [])
+    return levels
+
+
+def level_index(project: Dict[str, Any], level: Union[int, str, None] = None) -> int:
+    """The index (in :func:`all_levels` order) of *level*: an index, a level iid or an
+    identifier (case-insensitive when no exact match); None is the first level.
+
+    Raises ``ValueError`` (no levels), ``IndexError`` or ``KeyError`` (no such level).
+    """
+    levels = all_levels(project)
+    if not levels:
+        raise ValueError("LDtk project has no levels")
+    if level is None or level == "":
+        return 0
+    if isinstance(level, int):
+        if not -len(levels) <= level < len(levels):
+            raise IndexError(f"no level {level} (the project has {len(levels)})")
+        return level % len(levels)
+    key = str(level)
+    for i, lv in enumerate(levels):
+        if lv.get("iid") == key or lv.get("identifier") == key:
+            return i
+    for i, lv in enumerate(levels):
+        if str(lv.get("identifier") or "").lower() == key.lower():
+            return i
+    names = ", ".join(str(lv.get("identifier")) for lv in levels)
+    raise KeyError(f"no level named {key!r} (levels: {names})")
+
+
 def read_level(
     source: Union[str, Path, Dict[str, Any]],
-    level: Union[int, str] = 0,
+    level: Union[int, str, None] = 0,
     include_defaults: bool = False,
 ) -> ReadLevel:
-    """Read one level (index or identifier; default the first) of an LDtk project."""
+    """Read one level of an LDtk project: an index, an iid or an identifier (default the
+    first; see :func:`level_index`).
+
+    Entity refs to an entity of *another* level (a world Exit's ``leads_to``) are left
+    out of the metadata: the world links are rebuilt on export (``layout.world``).
+    """
     if isinstance(source, dict):
         project = source
     else:
         project = json.loads(Path(source).read_text(encoding="utf-8"))
 
-    levels = list(project.get("levels") or [])
-    for w in project.get("worlds") or []:
-        levels += list(w.get("levels") or [])
-    if not levels:
-        raise ValueError("LDtk project has no levels")
-    if isinstance(level, int):
-        lvl = levels[level]
-    else:
-        matches = [lv for lv in levels if lv.get("identifier") == level]
-        if not matches:
-            raise KeyError(f"no level named {level!r}")
-        lvl = matches[0]
+    levels = all_levels(project)
+    index = level_index(project, level)
+    lvl = levels[index]
+    other_iids = {
+        str(ei.get("iid"))
+        for j, lv in enumerate(levels) if j != index
+        for li in lv.get("layerInstances") or []
+        for ei in li.get("entityInstances") or []
+    }
 
     warnings: List[str] = []
     grid_size = int(project.get("defaultGridSize") or 16)
@@ -375,6 +413,8 @@ def read_level(
     }
     for ent, refs in zip(entities, ref_maps):
         for name, iid in refs.items():
+            if iid not in spec_id_of and iid in other_iids:
+                continue  # a cross-level ref (world link)
             if iid not in spec_id_of:
                 warnings.append(f"entity {ent.metadata.get('spec_id') or ent.entity_type}: "
                                 f"{name} points at missing entity {iid}")
@@ -382,6 +422,7 @@ def read_level(
 
     fields = _level_fields(lvl)
     sections = _loads_lenient(fields.get("gldtk_sections"))
+    world = _loads_lenient(fields.get("gldtk_world"))
     if fields.get("gldtk_sections") and not isinstance(sections, list):
         warnings.append("gldtk_sections is not a JSON list; ignored")
     return ReadLevel(
@@ -399,7 +440,9 @@ def read_level(
         game_profile_relpath=fields.get("gldtk_game_profile"),
         version=fields.get("gldtk_version"),
         warnings=warnings,
+        index=index,
+        world=world if isinstance(world, dict) else None,
     )
 
 
-__all__ = ["ReadLevel", "read_level"]
+__all__ = ["ReadLevel", "all_levels", "level_index", "read_level"]

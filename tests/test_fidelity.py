@@ -400,11 +400,11 @@ def test_check_level_counts_placed_entities(load_fixture):
 
 
 def _gap_spec(requirements, orientation=None) -> LevelSpec:
-    """Section a has a 6-tile gap between pa and pb; section b a 2-tile one."""
+    """Section a has a 4-tile gap between pa and pb; section b a 2-tile one."""
     nodes = [
         node("start", "Start", 1, 2, 3, "a"),
         node("pa", "Platform", 5, 3, 3, "a"),
-        node("pb", "Platform", 14, 3, 3, "a"),
+        node("pb", "Platform", 12, 3, 3, "a"),
         node("pc", "Platform", 19, 3, 3, "b"),
         node("exit", "Exit", 24, 3, 3, "b"),
     ]
@@ -471,7 +471,7 @@ def test_fill_adds_hazard_node_under_a_gap_and_the_level_still_builds():
     hz = [n for n in fill.spec.nodes if n.type == "Hazard"]
     assert len(hz) == 1 and hz[0].section == "a" and hz[0].id.startswith("auto_hazard_r1")
     # on the floor, inside the pa..pb gap with a tile of margin on both sides
-    assert hz[0].y == 0 and 9 * 16 <= hz[0].x and hz[0].x + hz[0].w <= 13 * 16
+    assert hz[0].y == 0 and 9 * 16 <= hz[0].x and hz[0].x + hz[0].w <= 11 * 16
     assert not any(e.from_ == hz[0].id for e in fill.spec.edges)
     assert validate_spec(fill.spec).valid
     assert _status(check_spec(fill.spec), "R1") == "satisfied"

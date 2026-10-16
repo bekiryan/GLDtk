@@ -18,6 +18,8 @@ lib/
 lib64/
 parts/
 !docs/v2/parts/
+!docs/v3/parts/
+!docs/v4/parts/
 sdist/
 var/
 wheels/
@@ -60,3 +62,8 @@ package-lock.json
 
 # example.py output
 example_out/
+
+# Mac app build outputs
+packaging/dist/
+packaging/build/
+ldtk-src/app/redist/

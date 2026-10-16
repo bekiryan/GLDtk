@@ -7,6 +7,8 @@ import pytest
 from game import GameProfile
 from symbolic import extract_graph, trajectory_clear
 
+from conftest import legacy_profile  # hand-computed for the pre-Part-28 physics
+
 H, W, TS = 15, 30, 16
 
 
@@ -28,7 +30,7 @@ def test_open_jump_passes():
     _platform(g, 12, 0, 2)
     _platform(g, 10, 8, 10)
     p1, p2 = (40.0, _surface(12)), (136.0, _surface(10))
-    assert trajectory_clear(g, p1, p2, GameProfile())
+    assert trajectory_clear(g, p1, p2, legacy_profile())
 
 
 def test_jump_under_a_low_ceiling_fails():
@@ -37,9 +39,9 @@ def test_jump_under_a_low_ceiling_fails():
     _platform(g, 12, 15, 17)
     _platform(g, 9, 0, 29)  # ceiling: only 2 empty rows above the floor
     p1, p2 = (6 * 16.0, _surface(12)), (15 * 16 + 8.0, _surface(12))
-    assert not trajectory_clear(g, p1, p2, GameProfile())
+    assert not trajectory_clear(g, p1, p2, legacy_profile())
     g[9] = [0] * W  # remove the ceiling
-    assert trajectory_clear(g, p1, p2, GameProfile())
+    assert trajectory_clear(g, p1, p2, legacy_profile())
 
 
 def test_walk_off_ledge_drop_passes():
@@ -48,7 +50,7 @@ def test_walk_off_ledge_drop_passes():
     _platform(g, 12, 5, 9)
     p1 = (5 * 16 + 6.0, _surface(6))  # just past the ledge
     p2 = (5 * 16 + 30.0, _surface(12))
-    assert trajectory_clear(g, p1, p2, GameProfile())
+    assert trajectory_clear(g, p1, p2, legacy_profile())
 
 
 def test_downward_moves_are_capped_by_run_speed():
@@ -56,18 +58,18 @@ def test_downward_moves_are_capped_by_run_speed():
     _platform(g, 4, 0, 1)
     _platform(g, 5, 27, 29)
     # 1 tile down but ~26 tiles across: beyond any arc at run_speed 200 px/s.
-    assert not trajectory_clear(g, (24.0, _surface(4)), (440.0, _surface(5)), GameProfile())
+    assert not trajectory_clear(g, (24.0, _surface(4)), (440.0, _surface(5)), legacy_profile())
 
 
 def test_dash_through_a_wall_fails():
-    prof = GameProfile()
+    prof = legacy_profile()
     prof.abilities.dash.enabled = True
     g = _grid()
     _platform(g, 12, 0, 2)
     _platform(g, 12, 18, 20)
     p1, p2 = (40.0, _surface(12)), (18 * 16 + 6.0, _surface(12))
     # 248 px: beyond a plain jump (245 px) but within reach with the dash.
-    assert not trajectory_clear(g, p1, p2, GameProfile())
+    assert not trajectory_clear(g, p1, p2, legacy_profile())
     assert trajectory_clear(g, p1, p2, prof, ability="dash")
     for r in range(0, 12):  # full-height wall between the platforms
         g[r][10] = 1
@@ -75,7 +77,7 @@ def test_dash_through_a_wall_fails():
 
 
 def test_double_jump_uses_sampled_tau():
-    prof = GameProfile()
+    prof = legacy_profile()
     prof.abilities.double_jump.enabled = True
     g = [[0] * W for _ in range(25)]
     def surf(r):
@@ -92,8 +94,8 @@ def test_extract_graph_collision_drops_blocked_edges():
     _platform(g, 12, 0, 12)
     _platform(g, 12, 15, 17)
     _platform(g, 9, 0, 29)
-    plain = extract_graph(g, profile=GameProfile())
-    coll = extract_graph(g, profile=GameProfile(), collision=True)
+    plain = extract_graph(g, profile=legacy_profile())
+    coll = extract_graph(g, profile=legacy_profile(), collision=True)
     def has(graph, c_from, c_to):
         ids = {n.metadata["col_start"]: n.id for n in graph.nodes() if n.metadata["row"] == 12}
         return graph.nx_graph.has_edge(ids[c_from], ids[c_to])
@@ -102,7 +104,7 @@ def test_extract_graph_collision_drops_blocked_edges():
 
 
 def test_profile_tile_size_and_hitbox():
-    p = GameProfile()
+    p = legacy_profile()
     assert (p.player.width_px, p.player.height_px) == (12, 24)
     assert p.player_tiles() == (1, 2)
     with pytest.raises(ValueError, match="only 16 px tiles"):

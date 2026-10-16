@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -14,6 +14,10 @@ class GenerateRequest(BaseModel):
         None, description="e.g. ['Goblin','Slime']"
     )
     difficulty: Optional[str] = Field(None, description="easy | medium | hard")
+    complexity: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Complexity target 0..1 (shown to users as 1-10); None = off (v4 Part 24)",
+    )
     platform_count: Optional[int] = Field(None, ge=2, le=30)
     width_tiles: Optional[int] = Field(
         None, ge=30, le=300, description="Level width in tiles"
@@ -36,6 +40,50 @@ class GenerateRequest(BaseModel):
         True,
         description="Fill large empty regions with extra platforms (fill_N nodes) after layout",
     )
+    fill: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Noise rock fill density 0-1 after densify (v4 Part 25a); null = off",
+    )
+    background: bool = Field(
+        False, description="Add a decorative Background layer of seeded noise (caves, strata, "
+                           "stalactites) below the gameplay layers; no gameplay effect (v4 Part 29c)")
+    job_id: Optional[str] = Field(
+        None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
+    )
+    levels: Optional[int] = Field(
+        None, ge=1, le=8,
+        description="Number of levels (v3 Part 17): 1 = one level, no outline call; 2-8 = a world "
+                    "of exactly that many levels; None = decided by the outline call when the "
+                    "prompt mentions several levels, else one level",
+    )
+    level: Optional[str] = Field(
+        None,
+        description="Regenerate only this level (iid or identifier) of the existing world at "
+                    "output_path, keeping the other levels and the links (v3 Part 17)",
+    )
+    patterns: Optional[int] = Field(
+        None, ge=1, le=5,
+        description="Pattern library (v4 Part 26a): retrieve this many reference patterns per "
+                    "query and add them to the user message; None = off",
+    )
+    stamp_patterns: bool = Field(
+        True,
+        description="v4 Part 26b: carve a terrain section from a matching indexed pattern when "
+                    "one fits (no LLM call); False = structure generators only",
+    )
+
+
+class LevelSummary(BaseModel):
+    """One level of the written file (v3 Part 17), for the sidebar's level list."""
+
+    index: int  # position in the file (= the world order)
+    id: Optional[str] = None  # outline level id ("forest"); None outside a generated world
+    identifier: str  # LDtk identifier ("Forest_1")
+    iid: Optional[str] = None  # LDtk level iid
+    title: str = ""
+    score: Optional[float] = None  # fidelity score (None when unknown, e.g. levels an edit skipped)
+    verified: Optional[bool] = None  # None when not checked by this request
+    current: bool = False  # the level this response's preview / fidelity / route are about
 
 
 class LevelStats(BaseModel):
@@ -48,6 +96,8 @@ class LevelStats(BaseModel):
     completeness_reprompts: int = 0  # LLM re-prompts for unmet requirements (0 or 1)
     entities_filled: int = 0  # entities the deterministic completeness fill added
     densify_added: int = 0  # fill platforms the densify step added
+    comfort_added: int = 0  # platforms the comfort pass added for short hops (v3 Part 20)
+    fill_added: int = 0  # noise rock tiles the fill step added (v4 Part 25a)
 
 
 class FidelityItemModel(BaseModel):
@@ -72,6 +122,81 @@ class FidelityModel(BaseModel):
     items: List[FidelityItemModel] = Field(default_factory=list)
 
 
+class RouteStepModel(BaseModel):
+    """One move of the golden route (``layout/route.py``)."""
+
+    model_config = {"populate_by_name": True}
+
+    kind: str  # walk | jump | fall | double_jump | dash | wall_jump
+    from_cell: List[int] = Field(default_factory=list, alias="from")  # [col, row]
+    to: List[int] = Field(default_factory=list)  # [col, row]
+    points: List[List[float]] = Field(default_factory=list)  # [[x, y]…] level px, y down
+    ability: Optional[str] = None
+
+
+class SpanModel(BaseModel):
+    col: int
+    row: int
+    w: int
+
+
+class RouteModel(BaseModel):
+    """The cheapest Start → Exit route on the final grid (v3 Part 13).
+
+    ``success`` is False (with ``error``) when there is no path; the reachable
+    spans and the unreachable required entities are filled in either way.
+    """
+
+    success: bool
+    error: Optional[str] = None
+    steps: List[RouteStepModel] = Field(default_factory=list)
+    length_px: float = 0.0
+    reachable_spans: List[SpanModel] = Field(default_factory=list)
+    unreachable_required: List[str] = Field(default_factory=list)  # entity iids
+    softlock_spans: List[SpanModel] = Field(default_factory=list)  # where the player gets stuck
+    level_iid: Optional[str] = None
+
+
+class RouteRequest(BaseModel):
+    """POST /route: the project as it is open in LDtk (unsaved hand edits count)."""
+
+    path: str = Field(..., description="Path of the .ldtk file the project belongs to")
+    project: Dict[str, Any] = Field(..., description="The LDtk project JSON")
+    level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
+
+
+class SectionDifficultyModel(BaseModel):
+    """One section's measured difficulty (``fidelity/difficulty.py``, v3 Part 15a)."""
+
+    id: str
+    name: str
+    label: str  # easy | medium | hard (what the section was asked to be)
+    score: float  # 0..10
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)  # non-empty = the score does not fit the label
+
+
+class DifficultyModel(BaseModel):
+    """Difficulty per section, in level order; no LLM call (GET /difficulty, and a field of
+    GenerateResponse / EditResponse / UndoResponse)."""
+
+    success: bool = True
+    error: Optional[str] = None
+    sections: List[SectionDifficultyModel] = Field(default_factory=list)
+    overall: Optional[float] = None  # mean score, weighted by section length
+    warnings: List[str] = Field(default_factory=list)  # level-wide (the curve)
+
+
+class WorldFidelityModel(FidelityModel):
+    """The world fidelity report (v3 Part 17): ``items`` are the world requirements
+    (W1 …); ``score`` is the mean of their score and every level's score;
+    ``verified`` is True when every level verified."""
+
+    title: str = ""
+    requirements_score: Optional[float] = None  # the world requirements alone
+    levels: List[LevelSummary] = Field(default_factory=list)
+
+
 class GenerateResponse(BaseModel):
     success: bool
     preview_ascii: Optional[str] = None
@@ -84,6 +209,16 @@ class GenerateResponse(BaseModel):
     verified: bool = False  # the final tile grid was proven beatable
     warnings: List[str] = Field(default_factory=list)  # layout / entity / repair notes
     fidelity: Optional[FidelityModel] = None  # per-requirement report on the final level
+    route: Optional[RouteModel] = None  # golden route of the written file (v3 Part 13)
+    cancelled: bool = False  # the job was cancelled; nothing was written (v3 Part 14)
+    difficulty: Optional[DifficultyModel] = None  # per-section difficulty (v3 Part 15a)
+    # v3 Part 17: every level of the file (one entry for a single-level file).  For a world
+    # the fields above describe the ``current`` level (the first one after a world generate).
+    levels: List[LevelSummary] = Field(default_factory=list)
+    world: Optional["WorldFidelityModel"] = None  # world report (a multi-level generate only)
+    patterns_used: List[Dict[str, str]] = Field(default_factory=list)  # [{id, title}] (Part 26a)
+    # v4 Part 23: the mission graph {nodes, edges, rules, realised, features} (None = no mission)
+    mission: Optional[Dict[str, Any]] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,7 +240,16 @@ class EditRequestBase(BaseModel):
     provider: str = Field("gemini", description="gemini | anthropic | ollama | openai | deepseek")
     model: Optional[str] = Field(None, description="None = provider default model")
     seed: int = Field(42)
+    densify: bool = Field(True, description="Region/section edits: fill the rect with extra "
+                                            "platforms; ignored by entity edits")
+    fill: Optional[float] = Field(None, ge=0.0, le=1.0, description="Region/section edits: noise "
+                                  "rock fill density inside the rect (v4 Part 25a); null = off")
     max_retries: int = Field(3, ge=1, le=10)
+    job_id: Optional[str] = Field(
+        None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
+    )
+    patterns: Optional[int] = Field(None, ge=1, le=5, description="Pattern examples per query (Part 26a); None = off")
+    level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
 
 
 class RegionEditRequest(EditRequestBase):
@@ -116,6 +260,11 @@ class RegionEditRequest(EditRequestBase):
 class SectionEditRequest(EditRequestBase):
     section_id: str
     prompt: str
+    complexity: Optional[float] = Field(None, ge=0.0, le=1.0)  # v4 Part 24: this section's target
+    # v3 Part 21: carve the section again as this structure (corridor, parkour,
+    # labyrinth, arena, shaft, hub, open); None = from the prompt, else a region edit
+    structure: Optional[str] = None
+    stamp_patterns: bool = True  # v4 Part 26b: a carved section may be stamped from a pattern
 
 
 class EntityEditRequest(EditRequestBase):
@@ -130,6 +279,10 @@ class LocateRequest(BaseModel):
     provider: str = Field("gemini")
     model: Optional[str] = None
     max_retries: int = Field(3, ge=1, le=10)
+    job_id: Optional[str] = Field(
+        None, description="Client-made id for GET /progress and POST /cancel (v3 Part 14)"
+    )
+    level: Optional[str] = Field(None, description="Level of a multi-level world: its iid or identifier; None = the first level (v3 Part 17)")
 
 
 class EditInfo(BaseModel):
@@ -147,10 +300,14 @@ class LocateResponse(BaseModel):
     rect: Optional[RectModel] = None
     explanation: str = ""
     error: Optional[str] = None
+    cancelled: bool = False
 
 
 class PathRequest(BaseModel):
     path: str
+    level: Optional[str] = Field(
+        None, description="Level whose route / difficulty the answer carries (iid or identifier; "
+                          "None = the first); the undo itself restores the whole file")
 
 
 class UndoResponse(BaseModel):
@@ -158,6 +315,9 @@ class UndoResponse(BaseModel):
     restored_from: Optional[str] = None
     remaining: int = 0
     error: Optional[str] = None
+    route: Optional[RouteModel] = None  # golden route of the restored file
+    difficulty: Optional[DifficultyModel] = None  # difficulty of the restored file
+    levels: Optional[List[LevelSummary]] = None  # the restored file's levels (v3 Part 17)
 
 
 class HistoryEntry(BaseModel):
@@ -168,3 +328,72 @@ class HistoryEntry(BaseModel):
 
 class HistoryResponse(BaseModel):
     snapshots: List[HistoryEntry] = Field(default_factory=list)  # newest first
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job progress + cancel (v3 Part 14)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ProgressEvent(BaseModel):
+    t: float  # seconds since the job started
+    stage: str
+    message: str  # short, user-facing
+
+
+class ProgressResponse(BaseModel):
+    stage: Optional[str] = None  # None for an unknown job
+    events: List[ProgressEvent] = Field(default_factory=list)  # oldest first, the last ~50
+    elapsed_s: float = 0.0
+    done: bool = True  # unknown ids are done
+    cancelled: bool = False
+
+
+class CancelRequest(BaseModel):
+    job_id: str
+
+
+class CancelResponse(BaseModel):
+    job_id: str
+    running: bool  # False: the job had finished or was not known yet
+
+
+GenerateResponse.model_rebuild()
+EditResponse.model_rebuild()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Endless chunks (v4 Part 25a)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ChunksRequest(BaseModel):
+    path: str = Field(..., description="World .ldtk file to append to (created when missing)")
+    count: int = Field(1, ge=1, le=32)
+    seed: int = Field(42)
+    start_k: Optional[int] = Field(None, description="First chunk coordinate; None = after the "
+                                                     "file's last Chunk_<k> level (0 if none)")
+    theme: Optional[str] = Field(None, description="Theme of this chunk group (default cave)")
+    orientation: str = Field("horizontal", pattern="^(horizontal|vertical)$")
+    background: bool = Field(False, description="Add the decorative Background layer (v4 Part 29c)")
+    job_id: Optional[str] = Field(None, description="Client-made id for GET /progress and POST /cancel")
+
+
+class ChunkInfo(BaseModel):
+    k: int
+    identifier: str
+    iid: str
+    verified: bool
+    fill_added: int = 0
+    densify_added: int = 0
+    entry: Dict[str, Optional[int]]  # {"row": .., "col": ..} of the entry seam
+    exit: Dict[str, Optional[int]]
+
+
+class ChunksResponse(BaseModel):
+    success: bool
+    error: Optional[str] = None
+    output_path: Optional[str] = None
+    chunks: List[ChunkInfo] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    cancelled: bool = False

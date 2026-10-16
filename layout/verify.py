@@ -7,8 +7,11 @@ platforms), and checks:
 
   NO_GRID_PATH        no Start → Exit path; names the last reachable spec node
                       and the failing next hop on the spec's golden path
+  LOW_CEILING         no Start → Exit path, and a node on the golden path is cut
+                      by a low ceiling (fewer empty tiles above the surface
+                      than the player is tall), so the walk along it is blocked
   WALL_MISSING        that failing hop needs a wall jump and there is no solid
-                      column (≥ 3 tiles) next to the arc
+                      column (at least the player's height) next to the arc
   ENTITY_UNREACHABLE  a gameplay entity's anchor is unreachable from Start
                       (Pickup, Key, Weapon, Checkpoint, Interactive other than
                       signs; Enemies, NPCs and signs only warn)
@@ -17,6 +20,14 @@ platforms), and checks:
   KEY_LOCK_ORDER      an Exit has ``requires_key`` but no Key is reachable
                       without passing through the Exit
   START_BLOCKED       the player has no headroom at the Start
+  SOFTLOCK            a place the player can reach from which no Exit is reachable
+                      any more (a pit, a one-way drop into a sealed area, a drop past
+                      the key, a key behind its own door; see ``layout.softlock``)
+
+Moves are judged with the level's :class:`~symbolic.gravity.GravityField`
+(:func:`gravity_field_of`): a jump across a section border feels both
+sections' gravity.  Surface tiles without the player's headroom are not
+standable (the extractor splits spans there).
 """
 
 from __future__ import annotations
@@ -29,11 +40,13 @@ import networkx as nx
 
 from game.profile import GameProfile
 from spec.level_spec import LevelSpec
-from symbolic.extractor import extract_graph
+from symbolic.extractor import extract_graph, low_ceiling_cells
+from symbolic.gravity import GravityField
 from symbolic.physics import best_ability, find_walls
 from symbolic.schema import AbstractLevelGraph, NodeType
 
 from .ir import IREntity, TileValue
+from .softlock import SoftlockReport, find_softlocks, items_from_entities
 from .spec_layout import Rect, SpecLayout
 
 REQUIRED_KINDS = {"Pickup", "Key", "Weapon", "Checkpoint", "Interactive", "Exit"}
@@ -46,6 +59,7 @@ class GridError:
     message: str
     node_ids: List[str] = field(default_factory=list)
     entity_ids: List[str] = field(default_factory=list)  # spec entity ids involved
+    cells: List[Tuple[int, int]] = field(default_factory=list)  # (col, row) tiles at fault
 
 
 @dataclass
@@ -60,6 +74,7 @@ class GridReport:
     graph: Optional[AbstractLevelGraph] = field(default=None, repr=False)
     start_span: Optional[str] = None  # span id (in ``graph``) the player starts on
     exit_spans: Set[str] = field(default_factory=set)  # span ids of the Exit nodes
+    softlock: Optional[SoftlockReport] = field(default=None, repr=False)
 
     def error_messages(self) -> List[str]:
         return [e.message for e in self.errors]
@@ -103,6 +118,11 @@ class SpanIndex:
             if c0 <= col <= c1:
                 return sid
         return None
+
+
+def gravity_field_of(layout: SpecLayout, profile: GameProfile) -> GravityField:
+    """The level's gravity per section (column or row bands)."""
+    return GravityField.from_sections(profile, layout.sections, layout.width, layout.height)
 
 
 def _reach(graph: AbstractLevelGraph, source: Optional[str], stop: Iterable[str] = ()) -> Set[str]:
@@ -163,8 +183,14 @@ def verify_grid(
     t0 = time.perf_counter()
     layout = spec_layout
     ir = layout.ir
+    gfield = gravity_field_of(layout, profile)
     graph = extract_graph(
-        ir.grid, profile=profile, gravity_scale_at_cell=layout.gravity_scale_at, collision=True
+        ir.grid,
+        profile=profile,
+        gravity_scale_at_cell=layout.gravity_scale_at,
+        collision=True,
+        gravity_field=gfield,
+        step_at=layout.step_at(),
     )
     index = SpanIndex(graph, layout)
     errors: List[GridError] = []
@@ -216,7 +242,10 @@ def verify_grid(
                 if not golden_path or golden_path[-1] != nid:
                     golden_path.append(nid)
     else:
-        errors.append(_no_path_error(layout, profile, spec, reachable_nodes, ir.grid))
+        errors.append(
+            _low_ceiling_error(layout, index, reach, reachable_nodes, ir.grid)
+            or _no_path_error(layout, profile, spec, reachable_nodes, ir.grid, gfield)
+        )
 
     # ── entities ──
     for ent in spec_ents:
@@ -267,6 +296,11 @@ def verify_grid(
                 )
             )
 
+    # ── SOFTLOCK ──
+    softlock: Optional[SoftlockReport] = None
+    if reached_exit:
+        softlock = _softlock_errors(graph, layout, index, start_span, exit_spans, errors, warnings)
+
     stats = {
         "spans": len(index.rects),
         "edges": len(graph.edges()),
@@ -284,7 +318,34 @@ def verify_grid(
         graph=graph,
         start_span=start_span,
         exit_spans=exit_spans,
+        softlock=softlock,
     )
+
+
+def _softlock_errors(
+    graph: AbstractLevelGraph,
+    layout: SpecLayout,
+    index: SpanIndex,
+    start_span: Optional[str],
+    exit_spans: Set[str],
+    errors: List[GridError],
+    warnings: List[str],
+) -> SoftlockReport:
+    ents = [e for e in layout.ir.entities if "spec_id" in e.metadata or e.entity_type == "Start"]
+    items = items_from_entities(ents, lambda e: _anchor_span(e, layout, index))
+    rep = find_softlocks(graph, start_span, exit_spans, items)
+    if rep.too_many_items:
+        warnings.append("Too many keys and ability pickups to check every item state for "
+                        "soft-locks; only the movement graph was checked.")
+    for trap in rep.traps:
+        nodes: List[str] = []
+        for sid in ([trap.entry[0]] if trap.entry else []) + trap.spans:
+            nodes += [n for n in index.span_nodes.get(sid, []) if n not in nodes]
+        cells = [(c, r) for sid in trap.spans for r, c0, c1 in [index.rects[sid]]
+                 for c in range(c0, c1 + 1)][:64]
+        ent_ids = [items.item_entities[i] for i in trap.missing if i in items.item_entities]
+        errors.append(GridError("SOFTLOCK", trap.message, nodes, ent_ids, cells))
+    return rep
 
 
 def failing_hop(layout: SpecLayout, reachable_nodes: Set[str]) -> Optional[Tuple[str, str]]:
@@ -297,7 +358,12 @@ def failing_hop(layout: SpecLayout, reachable_nodes: Set[str]) -> Optional[Tuple
 
 
 def _hop_needs_wall_jump(
-    layout: SpecLayout, profile: GameProfile, spec: LevelSpec, a: str, b: str
+    layout: SpecLayout,
+    profile: GameProfile,
+    spec: LevelSpec,
+    a: str,
+    b: str,
+    gfield: Optional[GravityField] = None,
 ) -> bool:
     if not profile.abilities.wall_jump.enabled:
         return False
@@ -306,7 +372,48 @@ def _hop_needs_wall_jump(
             return True
     p1, p2 = hop_points(layout, a, b)
     scale = layout.gravity_scale_of(layout.rect(a))
-    return best_ability(p1, p2, profile, scale) == "wall_jump"
+    return best_ability(p1, p2, profile, scale, gfield) == "wall_jump"
+
+
+def _low_ceiling_error(
+    layout: SpecLayout,
+    index: SpanIndex,
+    reach: Set[str],
+    reachable_nodes: Set[str],
+    grid: Any,
+) -> Optional[GridError]:
+    """LOW_CEILING when a golden-path node is cut by a low ceiling and part of
+    it (or all of it) is out of reach because of that."""
+    hop = failing_hop(layout, reachable_nodes)
+    if hop is None:
+        return None
+    a, b = hop
+    path = layout.golden_path
+    order = [a, b] + [n for n in path if n not in (a, b) and n in reachable_nodes]
+    ph = layout.player_tiles[1]
+    for nid in order:
+        if nid not in layout.node_layouts or not layout.standable(nid):
+            continue
+        row, c0, c1 = layout.rect(nid)
+        cells = low_ceiling_cells(grid, row, c0, c1, ph)
+        if not cells:
+            continue
+        spans = index.node_spans.get(nid, [])
+        if spans and all(sp in reach for sp in spans):
+            continue  # the ceiling cuts nothing the player needs
+        col, ceiling = cells[0]
+        room = row - ceiling - 1
+        return GridError(
+            "LOW_CEILING",
+            f"Low ceiling at column {col}, row {ceiling} blocks the walk along '{nid}': "
+            f"the player is {ph} tiles tall, but only {room} empty tile(s) are above the "
+            f"surface (row {row}) there. '{a}' is the last node the player can reach on the "
+            f"golden path, and the hop '{a}'→'{b}' fails. Raise or remove the ceiling over "
+            f"'{nid}', or move '{nid}' so it has {ph} empty tiles above it.",
+            [a, b],
+            cells=cells,
+        )
+    return None
 
 
 def _no_path_error(
@@ -315,6 +422,7 @@ def _no_path_error(
     spec: LevelSpec,
     reachable_nodes: Set[str],
     grid: Any,
+    gfield: Optional[GravityField] = None,
 ) -> GridError:
     hop = failing_hop(layout, reachable_nodes)
     if hop is None:
@@ -327,22 +435,28 @@ def _no_path_error(
     p1, p2 = hop_points(layout, a, b)
     dx, dy = p2[0] - p1[0], p2[1] - p1[1]
     scale = layout.gravity_scale_of(layout.rect(a))
-    if _hop_needs_wall_jump(layout, profile, spec, a, b) and not find_walls(
-        grid, p1, p2, profile, float(layout.tile_size)
-    ):
+    ph = layout.player_tiles[1]
+    needs_wall = _hop_needs_wall_jump(layout, profile, spec, a, b, gfield)
+    walls = find_walls(grid, p1, p2, profile, float(layout.tile_size)) if needs_wall else []
+    if needs_wall and not walls:
         return GridError(
             "WALL_MISSING",
             f"The hop '{a}'→'{b}' (Δx={dx:.0f} px, Δy={dy:.0f} px) needs a wall jump, but "
-            "there is no solid wall (a column of at least 3 tiles) next to the arc. "
+            f"there is no solid wall (a column of at least {ph} tiles) next to the arc. "
             f"'{a}' is the last node the player can reach. Lower '{b}' or add a Platform "
             "node between them.",
             [a, b],
         )
-    reason = (
-        "it is out of the player's reach"
-        if best_ability(p1, p2, profile, scale) is False
-        else "the jump arc is blocked by tiles (a ceiling or an obstacle in the way)"
-    )
+    if best_ability(p1, p2, profile, scale, gfield) is False:
+        reason = "it is out of the player's reach"
+    elif needs_wall:
+        cols = sorted({w[0] for w in walls})[:6]
+        reason = (
+            f"no sequence of wall kicks gets there (walls nearby at columns {cols}: each "
+            "kick must reach the target or another wall, and the arcs must be clear)"
+        )
+    else:
+        reason = "the jump arc is blocked by tiles (a ceiling or an obstacle in the way)"
     return GridError(
         "NO_GRID_PATH",
         f"No Start→Exit path on the final tile grid: '{a}' is the last reachable node on "

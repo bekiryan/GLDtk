@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 from layout.ir import IREntity, IRLevel
-from layout.ldtk_adapter import AestheticData, TilesetInfo
+from layout.ldtk_adapter import AestheticData, BackgroundData, TilesetInfo
 from layout.sugiyama import NodeLayout
 from symbolic.schema import AbstractLevelGraph
 
@@ -111,6 +111,8 @@ def build_aesthetic_layer(
     custom_enemy_types: Optional[List[str]] = None,
     place_random_entities: bool = True,
     entity_sprites: bool = True,
+    background: bool = False,
+    origin: Tuple[int, int] = (0, 0),
 ) -> AestheticBuildResult:
     """Build and optionally attach all Part 4 outputs to an IR level.
 
@@ -130,6 +132,10 @@ def build_aesthetic_layer(
                          the level holds only the entities the spec asked for.
     entity_sprites     : build the sprite atlas so entities show their library
                          sprite in LDtk (needs Pillow; skipped without it).
+
+    background         : add the decorative ``Background`` layer (v4 Part 29c; no
+                         gameplay effect); *origin* is the world cell offset of
+                         the level's (0, 0) so chunks share one noise field.
 
     Returns
     -------
@@ -168,6 +174,25 @@ def build_aesthetic_layer(
     if attach_entities:
         ir_level.entities.extend(entities)
 
+    bg_data = None
+    if background:
+        from .background import KINDS, background_tile, background_values
+        bg_themes: List[Theme] = []
+        values = background_values(ir_level, theme_for_cell, bg_themes, seed, origin)
+        tiles = {}
+        for j, th in enumerate(bg_themes):
+            for k in range(KINDS):
+                x, y = background_tile(th, k)
+                tiles[1 + k + KINDS * j] = (th.tileset_uid, x, y)
+        bg_data = BackgroundData(
+            values=values, tiles=tiles,
+            tilesets=[TilesetInfo(t.tileset_uid, t.tileset_rel_path, t.tileset_px_width,
+                                  t.tileset_px_height, _tileset_identifier(t), t.sheet_path)
+                      for t in bg_themes],
+        )
+        for t in bg_themes:  # the sheet must be copied next to the .ldtk
+            if all(t.tileset_uid != u.tileset_uid for u in themes):
+                themes.append(t)
     atlas = build_sprite_atlas() if entity_sprites else None
     aesthetic = AestheticData(
         tile_entries=tile_entries,
@@ -184,6 +209,7 @@ def build_aesthetic_layer(
             for t in themes[1:]
         ],
         entity_atlas=atlas.to_entity_atlas() if atlas else None,
+        background=bg_data,
     )
 
     return AestheticBuildResult(

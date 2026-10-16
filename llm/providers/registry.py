@@ -111,14 +111,14 @@ def make_provider_with_fallback(
     model: Optional[str] = None,
     fallback: Optional[str] = None,
 ) -> LLMProvider:
-    """Like ``make_provider``; Gemini with its default model also gets a local fallback.
+    """Like ``make_provider``; Gemini (any model) also gets a local fallback.
 
     *fallback* defaults to the ``GLDTK_LOCAL_FALLBACK`` environment variable, then to
-    ``DEFAULT_LOCAL_FALLBACK``.  An explicit model means the user wants that model, so
-    no cross-provider fallback is added.
+    ``DEFAULT_LOCAL_FALLBACK`` (``off`` disables it).  An explicit Gemini model still falls
+    back locally when Gemini cannot answer (429/503/…); the user asked for that on 2026-10-16.
     """
     primary = make_provider(name, model=model)
-    if resolve_provider_name(name) != "gemini" or model is not None:
+    if resolve_provider_name(name) != "gemini":
         return primary
     target = parse_fallback(fallback if fallback is not None else os.getenv("GLDTK_LOCAL_FALLBACK"))
     if target is None or target[0] == "gemini":

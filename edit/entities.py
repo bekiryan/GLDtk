@@ -20,16 +20,17 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from pydantic import Field, create_model
 
+from api import jobs
 from layout.ir import IREntity, TileValue
 from layout.spec_entities import FLYER_HEIGHTS, entity_metadata, spread_cols
 from llm.providers import LLMProvider
 from spec.level_spec import Requirement, SpecEntity, _SpecModel
 
-from .check import LevelCheck, make_baseline, verify_level
+from .check import LevelCheck, make_baseline, preexisting_blocker, verify_level
 from .context import Cell, EditContext, EditError, Rect, SpanRect, load_context
 from .llm import EditLLMFailed, run_structured
 from .outcome import EditOutcome, add_requirements, base_spec, failure, finish, spec_entity
-from .prompts import ENTITY_SYSTEM_PROMPT
+from .prompts import ENTITY_SYSTEM_PROMPT, with_preferences
 
 _NOT_FIELDS = {"id", "anchor", "section"}
 
@@ -154,7 +155,7 @@ def build_entity_messages(ctx: EditContext, scope: Scope, prompt: str) -> List[D
                      f"{n} free cell(s)")
     if not scope.platforms:
         lines.append("  none (entities can be modified or removed, not added)")
-    return [{"role": "user", "content": "\n".join(lines)}]
+    return [{"role": "user", "content": with_preferences("\n".join(lines))}]
 
 
 def _parser(scope: Scope):
@@ -377,10 +378,11 @@ def edit_entities(
     rect: Optional[Rect] = None,
     entity_iids: Optional[List[str]] = None,
     max_retries: int = 3,
+    level: Optional[str] = None,
 ) -> EditOutcome:
     mode = "entities"
     try:
-        ctx = load_context(path)
+        ctx = load_context(path, level)
         if rect is not None:
             clipped = rect.clipped(ctx.width, ctx.height)
             if clipped is None:
@@ -390,7 +392,10 @@ def edit_entities(
         scope = make_scope(ctx, spans, None if entity_iids else rect, entity_iids)
     except EditError as exc:
         return failure(mode, str(exc), rect)
-    baseline, _ = make_baseline(ctx, None, spans)
+    baseline, before = make_baseline(ctx, None, spans)
+    blocker = preexisting_blocker(before, ctx)
+    if blocker:
+        return failure(mode, blocker, rect)
 
     def name(col: int, row: int) -> str:
         return f"column {col}, row {row}"
@@ -399,15 +404,17 @@ def edit_entities(
     parse = _parser(scope)
     try:
         run = run_structured(provider, ENTITY_SYSTEM_PROMPT, build_entity_messages(ctx, scope, prompt),
-                             EntityEdit, parse, max_retries)
+                             EntityEdit, parse, max_retries, what="the entity changes")
         stats["llm_attempts"] += run.attempts
         applied = apply_ops(ctx, scope, run.value)
+        jobs.report("verify", "Applying the changes and verifying the level")
         check = verify_level(ctx, ctx.grid, applied.entities, baseline, name, spans=spans)
         repairs: List[str] = []
         if not check.ok:
             check, repairs = _repair(ctx, scope, applied, check, baseline, name)
         if not check.ok:
             stats["layout_retries"] = 1
+            jobs.report("repair", "The level still fails verification, asking the LLM again")
             numbered = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(check.messages()))
             retry = run.messages + [
                 {"role": "assistant", "content": run.raw},
@@ -416,7 +423,8 @@ def edit_entities(
                     f"{numbered}\n\nOutput a corrected EntityEdit that avoids these problems "
                     "(use platforms the player can reach). Output ONLY the JSON object.")},
             ]
-            run = run_structured(provider, ENTITY_SYSTEM_PROMPT, retry, EntityEdit, parse, max_retries)
+            run = run_structured(provider, ENTITY_SYSTEM_PROMPT, retry, EntityEdit, parse, max_retries,
+                                 what="corrected entity changes")
             stats["llm_attempts"] += run.attempts
             applied = apply_ops(ctx, scope, run.value)
             check = verify_level(ctx, ctx.grid, applied.entities, baseline, name, spans=spans)

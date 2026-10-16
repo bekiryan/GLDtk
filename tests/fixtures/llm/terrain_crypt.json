@@ -1,0 +1,356 @@
+{
+ "title": "The Crypt",
+ "size": {
+  "width_tiles": 180,
+  "height_tiles": 36
+ },
+ "orientation": "horizontal",
+ "sections": [
+  {
+   "id": "hall",
+   "name": "Bone Hall",
+   "theme": "crypt",
+   "difficulty": "easy",
+   "gravity_scale": 1.0,
+   "description": "A long crypt corridor full of skeletons.",
+   "order": 0,
+   "style": null,
+   "structure": "corridor",
+   "params": {
+    "ceiling_height": 5,
+    "corridor_width": null,
+    "complexity": 0.6,
+    "branches": null,
+    "pits": null,
+    "vertical": null
+   }
+  },
+  {
+   "id": "shaft",
+   "name": "Ossuary Shaft",
+   "theme": "crypt",
+   "difficulty": "medium",
+   "gravity_scale": 1.0,
+   "description": "A parkour climb up a shaft.",
+   "order": 1,
+   "style": "parkour",
+   "structure": "parkour",
+   "params": {
+    "ceiling_height": null,
+    "corridor_width": null,
+    "complexity": 0.5,
+    "branches": null,
+    "pits": null,
+    "vertical": "up"
+   }
+  },
+  {
+   "id": "maze",
+   "name": "Catacombs",
+   "theme": "crypt",
+   "difficulty": "medium",
+   "gravity_scale": 1.0,
+   "description": "A small labyrinth of catacombs with treasure.",
+   "order": 2,
+   "style": null,
+   "structure": "labyrinth",
+   "params": null
+  },
+  {
+   "id": "boss",
+   "name": "Lich Chamber",
+   "theme": "crypt",
+   "difficulty": "hard",
+   "gravity_scale": 1.0,
+   "description": "The lich waits in a closed arena.",
+   "order": 3,
+   "style": null,
+   "structure": "arena",
+   "params": null
+  }
+ ],
+ "nodes": [
+  {
+   "id": "start",
+   "type": "Start",
+   "x": 16,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "hall"
+  },
+  {
+   "id": "hall_mid",
+   "type": "Platform",
+   "x": 400,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "hall"
+  },
+  {
+   "id": "hall_pit",
+   "type": "Hazard",
+   "x": 300,
+   "y": 48,
+   "w": 32,
+   "h": 16,
+   "section": "hall"
+  },
+  {
+   "id": "shaft_a",
+   "type": "Platform",
+   "x": 800,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "shaft"
+  },
+  {
+   "id": "maze_a",
+   "type": "Platform",
+   "x": 1300,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "maze"
+  },
+  {
+   "id": "boss_floor",
+   "type": "Platform",
+   "x": 2100,
+   "y": 64,
+   "w": 96,
+   "h": 16,
+   "section": "boss"
+  },
+  {
+   "id": "exit",
+   "type": "Exit",
+   "x": 2600,
+   "y": 64,
+   "w": 48,
+   "h": 16,
+   "section": "boss"
+  }
+ ],
+ "edges": [
+  {
+   "from": "start",
+   "to": "hall_mid",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "hall_mid",
+   "to": "shaft_a",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "shaft_a",
+   "to": "maze_a",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "maze_a",
+   "to": "boss_floor",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  },
+  {
+   "from": "boss_floor",
+   "to": "exit",
+   "type": "Walk",
+   "vx": 200,
+   "vy": 0,
+   "ability": null
+  }
+ ],
+ "entities": [
+  {
+   "id": "player",
+   "kind": "Start",
+   "anchor": "start",
+   "section": "hall",
+   "description": "the player",
+   "sprite": "",
+   "facing": "right",
+   "starting_weapon": "sword"
+  },
+  {
+   "id": "skel1",
+   "kind": "Enemy",
+   "anchor": "hall_mid",
+   "section": "hall",
+   "description": "skeleton",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.3
+  },
+  {
+   "id": "skel2",
+   "kind": "Enemy",
+   "anchor": "hall_mid",
+   "section": "hall",
+   "description": "skeleton",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.6
+  },
+  {
+   "id": "skel3",
+   "kind": "Enemy",
+   "anchor": "hall_mid",
+   "section": "hall",
+   "description": "skeleton",
+   "sprite": "",
+   "archetype": "walker",
+   "place": "floor",
+   "position": 0.85
+  },
+  {
+   "id": "bat",
+   "kind": "Enemy",
+   "anchor": "shaft_a",
+   "section": "shaft",
+   "description": "bat",
+   "sprite": "",
+   "archetype": "flyer",
+   "place": "ledge"
+  },
+  {
+   "id": "gem",
+   "kind": "Pickup",
+   "anchor": "shaft_a",
+   "section": "shaft",
+   "description": "gem",
+   "sprite": "",
+   "pickup_kind": "gem",
+   "place": "ledge"
+  },
+  {
+   "id": "coin1",
+   "kind": "Pickup",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "coin",
+   "sprite": "",
+   "pickup_kind": "coin",
+   "place": "dead_end"
+  },
+  {
+   "id": "coin2",
+   "kind": "Pickup",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "coin",
+   "sprite": "",
+   "pickup_kind": "coin",
+   "place": "dead_end"
+  },
+  {
+   "id": "chest",
+   "kind": "Interactive",
+   "anchor": "maze_a",
+   "section": "maze",
+   "description": "chest",
+   "sprite": "",
+   "interactive_kind": "chest",
+   "place": "dead_end"
+  },
+  {
+   "id": "lich",
+   "kind": "Enemy",
+   "anchor": "boss_floor",
+   "section": "boss",
+   "description": "the lich boss",
+   "sprite": "",
+   "archetype": "boss",
+   "place": "arena_center"
+  },
+  {
+   "id": "door",
+   "kind": "Exit",
+   "anchor": "exit",
+   "section": "boss",
+   "description": "crypt gate",
+   "sprite": "",
+   "requires_key": false
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "text": "A crypt corridor with skeletons.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "corridor",
+    "section": "hall"
+   }
+  },
+  {
+   "id": "R2",
+   "text": "Three skeletons in the corridor.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Enemy",
+    "subkind": "walker",
+    "min_count": 3,
+    "section": "hall"
+   }
+  },
+  {
+   "id": "R3",
+   "text": "A parkour shaft.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "parkour"
+   }
+  },
+  {
+   "id": "R4",
+   "text": "A small labyrinth.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "labyrinth",
+    "min_count": 2
+   }
+  },
+  {
+   "id": "R5",
+   "text": "A boss arena.",
+   "category": "section",
+   "check": {
+    "type": "structure",
+    "structure": "arena"
+   }
+  },
+  {
+   "id": "R6",
+   "text": "A boss guards the exit.",
+   "category": "entity",
+   "check": {
+    "type": "entity_count",
+    "entity_kind": "Enemy",
+    "subkind": "boss",
+    "section": "boss"
+   }
+  }
+ ]
+}

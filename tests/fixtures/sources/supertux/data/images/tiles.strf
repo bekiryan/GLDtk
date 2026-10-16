@@ -1,0 +1,12 @@
+;; Hand-written test tileset (not from SuperTux): 1 solid, 2 hurts, 3 goal, 4 unisolid.
+(supertux-tiles
+  (tilegroup (name (_ "Test")) (tiles 1 2 3 4))
+  (tiles
+    (width 2)(height 1)
+    (ids 1 2)
+    (attributes 1 1024)
+    (images "tiles/test.png")
+  )
+  (tile (id 3) (attributes 8) (images "tiles/goal.png"))
+  (tile (id 4) (attributes 3) (images "tiles/ledge.png"))
+)
