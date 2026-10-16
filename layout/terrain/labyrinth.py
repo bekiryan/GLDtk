@@ -190,7 +190,7 @@ def _finish(res: TerrainResult, maze: Maze, sides: Dict[MazeCell, Set[str]],
 def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
     rng = ctx.rng
     res = TerrainResult()
-    cw = int(ctx.param("corridor_width", 4))
+    cw = max(5, int(ctx.param("corridor_width", 5)))
     pitch = cw + 1
     complexity = float(ctx.param("complexity", 0.5))
     lo, hi = ctx.inner_cols

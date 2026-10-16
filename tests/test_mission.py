@@ -200,10 +200,11 @@ def _gate_spec() -> Dict[str, Any]:
         "nodes": [
             {"id": "start", "type": "Start", "x": 16, "y": 32, "w": 96, "h": 16, "section": "low"},
             {"id": "p1", "type": "Platform", "x": 160, "y": 32, "w": 96, "h": 16, "section": "low"},
-            {"id": "exit", "type": "Exit", "x": 300, "y": 232, "w": 96, "h": 16, "section": "high"},
+            # 88 px up: above the plain apex (69 px), below the double jump's (102 px)
+            {"id": "exit", "type": "Exit", "x": 288, "y": 120, "w": 96, "h": 16, "section": "high"},
         ],
         "edges": [{"from": "start", "to": "p1", "type": "Walk", "vx": 200, "vy": 0},
-                  {"from": "p1", "to": "exit", "type": "Jump", "vx": 50, "vy": 600,
+                  {"from": "p1", "to": "exit", "type": "Jump", "vx": 50, "vy": 500,
                    "ability": "double_jump"}],
         "entities": [
             {"id": "player", "kind": "Start", "anchor": "start", "section": "low",

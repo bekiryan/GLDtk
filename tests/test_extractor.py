@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from game import GameProfile
 from symbolic import EdgeType, extract_graph
+
+from conftest import legacy_profile  # hand-computed for the pre-Part-28 physics
 
 # Two 3-tile platforms on the bottom row; centres 272 px apart (17 tiles).
 # Plain flat reach is 244.9 px, with a 64 px dash 308.9 px.
@@ -21,7 +22,7 @@ def _edge_between_platforms(graph):
 
 
 def test_dash_gap_produces_dash_edge_only_with_dash():
-    with_dash = GameProfile()
+    with_dash = legacy_profile()
     with_dash.abilities.dash.enabled = True
     edge = _edge_between_platforms(extract_graph(GRID, profile=with_dash))
     assert edge is not None
@@ -29,12 +30,12 @@ def test_dash_gap_produces_dash_edge_only_with_dash():
     assert edge.metadata["ability"] == "dash"
     assert edge.metadata["gravity_scale"] == 1.0
 
-    assert _edge_between_platforms(extract_graph(GRID, profile=GameProfile())) is None
+    assert _edge_between_platforms(extract_graph(GRID, profile=legacy_profile())) is None
 
 
 def test_gravity_scale_at_makes_gap_plain():
     edge = _edge_between_platforms(
-        extract_graph(GRID, profile=GameProfile(), gravity_scale_at=lambda col: 0.5)
+        extract_graph(GRID, profile=legacy_profile(), gravity_scale_at=lambda col: 0.5)
     )
     assert edge is not None and "ability" not in edge.metadata
     assert edge.metadata["gravity_scale"] == 0.5

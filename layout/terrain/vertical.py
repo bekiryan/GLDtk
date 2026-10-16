@@ -40,7 +40,14 @@ def bottom_start(ctx: TerrainContext, cv: Canvas) -> Cell:
     if p.kind == "hole":
         slab = ctx.r1
         for c in (p.col, p.col + 1):
-            cv.hole(c, slab)
+            # with a ~4-tile jump (v4 Part 28) the hole and the 2 rows above it
+            # stay open: a stair starting over the hole must not cap the jump up
+            # through it (the player hops the gap that leaves in the stair, which
+            # fits in the 4-row stairwell).  A profile whose shortest hop needs
+            # more room keeps the stair whole: its jump clears the cap anyway.
+            rows = (slab, slab - 1, slab - 2) if ctx.hop_air <= 4 else (slab,)
+            for r in rows:
+                cv.hole(c, r)
         cv.carve_rect(p.col - 2, slab - 4, p.col + 3, slab - 1)
         left_room = p.col - lo
         right_room = hi - (p.col + 1)

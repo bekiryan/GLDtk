@@ -1,4 +1,5 @@
-"""Ability-aware physics oracle: hand-computed cases (g=980, v=600, run=200)."""
+"""Ability-aware physics oracle: hand-computed cases (g=980, v=600, run=200 —
+the pre-Part-28 defaults, pinned with ``legacy_profile()``)."""
 
 from __future__ import annotations
 
@@ -17,6 +18,8 @@ from symbolic.physics import (
     reachable,
 )
 
+from conftest import legacy_profile  # hand-computed for the pre-Part-28 physics
+
 G, V, VMAX = 980.0, 600.0, 200.0
 APEX = V**2 / (2 * G)  # 183.67 px
 REACH = VMAX * 2 * V / G  # 244.90 px
@@ -24,7 +27,7 @@ O = (0.0, 0.0)
 
 
 def _profile(**enabled: bool) -> GameProfile:
-    p = GameProfile()
+    p = legacy_profile()
     for name, on in enabled.items():
         getattr(p.abilities, name).enabled = on
     return p
@@ -41,8 +44,8 @@ def test_plain_jump_max_height():
 def test_plain_jump_flat_reach():
     assert check_jump_arc(O, (REACH - 0.5, 0), G, V, VMAX)
     assert not check_jump_arc(O, (REACH + 0.5, 0), G, V, VMAX)
-    assert reachable(O, (REACH - 0.5, 0), GameProfile())
-    assert not reachable(O, (REACH + 0.5, 0), GameProfile())
+    assert reachable(O, (REACH - 0.5, 0), legacy_profile())
+    assert not reachable(O, (REACH + 0.5, 0), legacy_profile())
 
 
 # ── double jump ─────────────────────────────────────────────────────────────
@@ -106,7 +109,7 @@ def test_wall_jump_envelope():
 
 
 def test_gravity_scale_half_reaches_higher_and_farther():
-    p = GameProfile()
+    p = legacy_profile()
     assert gravity_for(p, 0.5) == pytest.approx(490.0)
     high, far = (0, APEX + 50), (REACH + 50, 0)
     assert not reachable(O, high, p, 1.0)
@@ -128,8 +131,8 @@ def test_best_ability_order_and_false():
 
 
 def test_best_ability_respects_disabled_abilities():
-    assert best_ability(O, (280, 0), GameProfile()) is False
+    assert best_ability(O, (280, 0), legacy_profile()) is False
     assert best_ability(O, (280, 0), _profile(double_jump=True)) == "double_jump"
-    assert not reachable(O, (280, 0), GameProfile(), ability="dash")  # disabled
+    assert not reachable(O, (280, 0), legacy_profile(), ability="dash")  # disabled
     with pytest.raises(ValueError):
-        reachable(O, (10, 0), GameProfile(), ability="fly")
+        reachable(O, (10, 0), legacy_profile(), ability="fly")

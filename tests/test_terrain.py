@@ -135,7 +135,7 @@ def _stair_grid():
     for c in range(1, 29):
         if c in (10, 12, 14, 16):
             row -= 1
-        for r in range(row - 4, row):  # 4 empty rows: too low for any jump
+        for r in range(row - 3, row):  # 3 empty rows: too low for any jump (a hop needs 4)
             g[r][c] = 0
     return g
 
@@ -215,6 +215,24 @@ def test_corridors_have_headroom():
                 while r - air - 1 >= 0 and g[r - air - 1][c] == TileValue.EMPTY:
                     air += 1
                 assert air >= PROFILE.player_tiles()[1] + 1, (seed, sid, c, r, air)
+
+
+def test_corridors_have_open_pits_and_ledges_to_hop():
+    """v4 Part 28: a short hop fits under a 5-row ceiling, so corridors get real jumps."""
+    spec = terrain_spec(["corridor", "corridor", "corridor"], size=(180, 30), hazards=3,
+                        params={i: {"complexity": 1.0} for i in range(3)})
+    for seed in range(4):
+        lay, report, _ = _layout_and_verify(spec, PROFILE, seed)
+        assert report.ok, (seed, report.error_messages())
+        g = lay.ir.grid
+        pits = [(r, c) for r, row in enumerate(g) for c, v in enumerate(row)
+                if v == TileValue.HAZARD and g[r - 1][c] == TileValue.EMPTY]
+        assert pits, seed  # spikes lie open at the bottom of a pit, not under the floor
+        ledges = [cell for st in lay.terrain.sections.values()
+                  for cell in st.result.anchors.get("ledge", [])]
+        assert ledges, seed
+        for c, r in ledges:  # a ledge stands 2 rows above the floor beside it
+            assert g[r][c] == TileValue.SOLID and g[r - 1][c] == TileValue.EMPTY
 
 
 def test_labyrinth_is_a_tree_with_dead_ends():

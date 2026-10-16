@@ -7,7 +7,6 @@ import random
 
 import pytest
 
-from game import GameProfile
 from layout import layout_spec, place_spec_entities, repair_grid, verify_grid
 from layout.repair import _keeps_headroom
 from layout.verify import gravity_field_of
@@ -16,6 +15,8 @@ from symbolic import extract_graph, move_between, trajectory_clear
 from symbolic.extractor import low_ceiling_cells
 from symbolic.gravity import INF, Flight, GravityField
 from symbolic.physics import check_wall_jump, reachable
+
+from conftest import legacy_profile  # hand-computed for the pre-Part-28 physics
 
 TS = 16
 
@@ -76,7 +77,7 @@ def test_flight_is_exact_piecewise_integration(axis):
 
 
 def test_field_from_sections_both_orientations():
-    prof = GameProfile()
+    prof = legacy_profile()
     horiz = [
         {"col_start": 0, "col_end": 9, "row_start": 0, "row_end": 9, "gravity_scale": 1.0,
          "orientation": "horizontal"},
@@ -129,13 +130,13 @@ def _vertical_case(scales, up_tiles):
     _platform(g, 38, 4, 6)
     _platform(g, 38 - up_tiles, 8, 10)
     rows = [scales[1]] * BORDER_ROW + [scales[0]] * (H_COL - BORDER_ROW)
-    field = GravityField.from_rows(980.0, rows, TS, GameProfile().player.height_px)
+    field = GravityField.from_rows(980.0, rows, TS, legacy_profile().player.height_px)
     return g, field, (38, 4, 6), (38 - up_tiles, 8, 10)
 
 
 def test_horizontal_low_to_normal_gravity_is_judged_by_the_real_arc():
     g, field, p1, p2 = _horizontal_case((0.5, 1.0))
-    prof = GameProfile()
+    prof = legacy_profile()
     # The start section's 0.5 gravity alone would accept the 364 px jump ...
     assert trajectory_clear(g, p1, p2, prof, 0.5)
     assert reachable(p1, p2, prof, 0.5)
@@ -149,7 +150,7 @@ def test_horizontal_low_to_normal_gravity_is_judged_by_the_real_arc():
 
 def test_horizontal_normal_to_low_gravity_is_judged_by_the_real_arc():
     g, field, p1, p2 = _horizontal_case((1.0, 0.5))
-    prof = GameProfile()
+    prof = legacy_profile()
     assert not trajectory_clear(g, p1, p2, prof, 1.0)  # start gravity: 245 px reach
     assert trajectory_clear(g, p1, p2, prof, 1.0, gravity_field=field)
     assert reachable(p1, p2, prof, 1.0, gravity_field=field)
@@ -167,7 +168,7 @@ def _scale_rows(scales):
 def test_vertical_low_to_normal_gravity_is_judged_by_the_real_arc():
     # 288 px up: inside the 0.5-gravity apex (367 px), but the top section has full gravity.
     g, field, src, dst = _vertical_case((0.5, 1.0), 18)
-    prof = GameProfile()
+    prof = legacy_profile()
     assert move_between(g, src, dst, prof, 0.5) is not None
     assert move_between(g, src, dst, prof, 0.5, field) is None
     graph = extract_graph(g, profile=prof, collision=True,
@@ -178,7 +179,7 @@ def test_vertical_low_to_normal_gravity_is_judged_by_the_real_arc():
 def test_vertical_normal_to_low_gravity_is_judged_by_the_real_arc():
     # 208 px up: beyond the plain apex (184 px), reachable once gravity halves above the border.
     g, field, src, dst = _vertical_case((1.0, 0.5), 13)
-    prof = GameProfile()
+    prof = legacy_profile()
     assert move_between(g, src, dst, prof, 1.0) is None
     assert move_between(g, src, dst, prof, 1.0, field) is not None
     graph = extract_graph(g, profile=prof, collision=True,
@@ -188,7 +189,7 @@ def test_vertical_normal_to_low_gravity_is_judged_by_the_real_arc():
 
 def test_moves_inside_one_section_use_the_closed_form():
     g, field, _p1, _p2 = _horizontal_case((0.5, 1.0))
-    prof = GameProfile()
+    prof = legacy_profile()
     # both points deep in the 0.5 section: identical to the plain scale-0.5 check
     a, b = (2 * TS + 8.0, _surface(H_ROW, 15)), (8 * TS + 8.0, _surface(H_ROW, 12))
     assert reachable(a, b, prof, 0.5, gravity_field=field) == reachable(a, b, prof, 0.5)
@@ -206,7 +207,7 @@ def test_verify_uses_section_gravity_across_the_border(scales, exit_col, ok):
     spec = make_spec(nodes, [("start", "exit", "Jump")],
                      sections=[section("a", 0, scales[0]), section("b", 1, scales[1])],
                      size=(50, 20))
-    prof = GameProfile()
+    prof = legacy_profile()
     lay = layout_spec(spec, prof)
     place_spec_entities(spec, lay)
     field = gravity_field_of(lay, prof)
@@ -234,7 +235,7 @@ def _tunnel_grid():
 
 def test_low_ceiling_splits_the_walk_for_a_two_tile_player():
     g = _tunnel_grid()
-    prof = GameProfile()  # 12×24 px → 2 tiles tall
+    prof = legacy_profile()  # 12×24 px → 2 tiles tall
     graph = extract_graph(g, profile=prof, collision=True)
     floor = sorted(
         (n.metadata["col_start"], n.metadata["col_end"])
@@ -248,7 +249,7 @@ def test_low_ceiling_splits_the_walk_for_a_two_tile_player():
 
 def test_low_ceiling_is_fine_for_a_one_tile_player():
     g = _tunnel_grid()
-    prof = GameProfile()
+    prof = legacy_profile()
     prof.player.height_px = 16.0  # 1 tile tall
     graph = extract_graph(g, profile=prof, collision=True)
     floor = [(n.metadata["col_start"], n.metadata["col_end"])
@@ -272,7 +273,7 @@ def _lower_h0(lay, spec):
 
 def test_low_ceiling_over_the_golden_path_is_reported():
     spec = _ceiling_spec()
-    prof = GameProfile()
+    prof = legacy_profile()
     lay = layout_spec(spec, prof)
     place_spec_entities(spec, lay)
     assert verify_grid(lay, prof, spec).ok  # two free tiles: the walk fits
@@ -288,7 +289,7 @@ def test_low_ceiling_over_the_golden_path_is_reported():
 
 def test_repair_raises_a_low_ceiling_without_making_new_ones():
     spec = _ceiling_spec()
-    prof = GameProfile()
+    prof = legacy_profile()
     lay = layout_spec(spec, prof)
     place_spec_entities(spec, lay)
     _lower_h0(lay, spec)
@@ -310,7 +311,7 @@ def _assert_no_low_ceilings(lay):
 def test_stepping_stones_never_create_low_ceilings():
     spec = make_spec([node("start", "Start", 0, 2), node("exit", "Exit", 22, 2)],
                      [("start", "exit", "Jump")])
-    prof = GameProfile()
+    prof = legacy_profile()
     lay = layout_spec(spec, prof)
     place_spec_entities(spec, lay)
     lay, applied = repair_grid(lay, verify_grid(lay, prof, spec), prof, spec)
@@ -321,7 +322,7 @@ def test_stepping_stones_never_create_low_ceilings():
 def test_keeps_headroom_checks_the_grid_both_ways():
     spec = make_spec([node("start", "Start", 0, 2), node("exit", "Exit", 6, 2)],
                      [("start", "exit", "Jump")])
-    lay = layout_spec(spec, GameProfile())
+    lay = layout_spec(spec, legacy_profile())
     lay.rasterise()
     srow = lay.node_layouts["start"].row
     cols = range(0, 3)
@@ -342,7 +343,7 @@ SHAFT_DST = (14, 10, 13)  # ledge 400 px up, right of the shaft
 
 
 def _wall_profile():
-    prof = GameProfile()
+    prof = legacy_profile()
     prof.abilities.wall_jump.enabled = True
     prof.abilities.wall_jump.max_climb_px = 400.0  # each kick is still capped by jump_v
     return prof
@@ -366,7 +367,7 @@ def test_wall_jump_up_a_shaft_with_two_walls():
     move = move_between(_shaft(), SHAFT_SRC, SHAFT_DST, prof)
     assert move is not None and move[0] == "wall_jump"
     # and without the ability the ledge is out of reach
-    assert move_between(_shaft(), SHAFT_SRC, SHAFT_DST, GameProfile()) is None
+    assert move_between(_shaft(), SHAFT_SRC, SHAFT_DST, legacy_profile()) is None
 
 
 @pytest.mark.parametrize(

@@ -68,8 +68,8 @@ lower one ends, or the reverse) are joined by a **Walk** edge in both
 directions when ``step_at(col, row)`` is true for the surface tiles on both
 sides of the step: the player walks up and down a staircase.  Moves in such
 levels also try a launch point one tile short of the target
-(``span_point_pairs(near_launch=True)``).  Without ``step_at`` (every
-open-air level) nothing changes.
+(``span_point_pairs(near_launch=True)``); since v4 Part 28 every upward move
+tries it too.
 """
 
 from __future__ import annotations
@@ -538,7 +538,7 @@ def span_point_pairs(
     *near_launch* (terrain levels) adds a launch point one tile short of the
     target's facing edge: the run-up to a ledge that starts right where the
     floor ends (a pillar beside a corridor) — the edge launch would rise along
-    the pillar's face.
+    the pillar's face.  Upward moves always get it (v4 Part 28: short jumps).
 
     Spans are ``(row, col_start, col_end)``.  Launch points: the edge facing
     the target (hitbox fully on the platform), the centre, and — for downward
@@ -566,7 +566,10 @@ def span_point_pairs(
         if y2 < y1:
             launches.insert(0, s_left - half)
         land_near = d_hi
-    if near_launch:
+    # v4 Part 28: with a ~4-tile jump the hitbox rises only ~16 px per tile it
+    # moves, so an upward hop launched at the edge scrapes the ledge's face and
+    # one from the centre may bump a roof: upward moves always try the run-up too.
+    if near_launch or y2 > y1:
         s_lo, s_hi = s_left + half, s_right - half
         x = d_left - tile_size - half if rightward else d_right + tile_size + half
         if s_lo <= s_hi:

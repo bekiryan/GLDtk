@@ -40,8 +40,8 @@ def test_no_grid_path_names_the_failing_hop():
 def test_wall_missing():
     prof = GameProfile()
     prof.abilities.wall_jump.enabled = True
-    # 240 px up: beyond a plain jump (184 px), inside the wall-jump envelope.
-    spec = make_spec([node("start", "Start", 0, 0), node("exit", "Exit", 6, 15)],
+    # 112 px up: beyond a plain jump (69 px), inside the wall-jump envelope (133 px).
+    spec = make_spec([node("start", "Start", 0, 0), node("exit", "Exit", 6, 7)],
                      [("start", "exit", "Jump")], size=(30, 20))
     spec.edges[0].ability = "wall_jump"
     _lay, rep, _ = _run(spec, prof)
@@ -77,7 +77,7 @@ def test_key_lock_order():
 
 def test_key_behind_the_exit_is_flagged_and_moved():
     nodes = [node("start", "Start", 0, 2), node("p", "Platform", 6, 3),
-             node("exit", "Exit", 12, 3), node("vault", "Platform", 24, 3)]
+             node("exit", "Exit", 12, 3), node("vault", "Platform", 19, 3)]  # a hop past the exit
     ents = [entity("player", "Start", "start"), entity("door", "Exit", "exit", requires_key=True),
             entity("key", "Key", "vault", opens="door")]
     spec = make_spec(nodes, [("start", "p", "Jump"), ("p", "exit", "Jump")], ents)
@@ -117,7 +117,7 @@ def test_repair_nudges_a_ceiling():
     # 'roof' (off the golden path; a hazard so it is not a platform to use
     # instead) hangs right in every jump arc start → exit.
     spec = make_spec(
-        [node("start", "Start", 0, 2), node("exit", "Exit", 8, 4), node("roof", "Hazard", 0, 8, 8)],
+        [node("start", "Start", 0, 2), node("exit", "Exit", 6, 4), node("roof", "Hazard", 0, 6, 6)],
         [("start", "exit", "Jump")])
     lay, rep, prof = _run(spec)
     assert _codes(rep) == ["NO_GRID_PATH"]

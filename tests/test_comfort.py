@@ -105,20 +105,20 @@ def test_route_takes_the_short_hops_not_one_long_jump():
     """A, B, C in a row with comfortable gaps; A → C is also one (long) plain jump."""
     grid = blank()
     platform(grid, 15, 0, 4)  # A
-    platform(grid, 15, 8, 10)  # B: 3 empty columns on each side
-    platform(grid, 15, 14, 18)  # C: A → C clears 9 columns, within physics reach
+    platform(grid, 15, 7, 8)  # B: 2 empty columns on each side
+    platform(grid, 15, 11, 15)  # C: A → C clears 6 columns, within physics reach
     from symbolic.extractor import extract_graph
 
     graph = extract_graph(grid, profile=PROFILE, collision=True)
     spans = {(n.metadata["row"], n.metadata["col_start"]): n.id for n in graph.nodes()}
-    assert graph.nx_graph.has_edge(spans[(15, 0)], spans[(15, 14)])  # the long jump exists
+    assert graph.nx_graph.has_edge(spans[(15, 0)], spans[(15, 11)])  # the long jump exists
 
-    route = level_route(grid, ents((1, 14), (16, 14)))
+    route = level_route(grid, ents((1, 14), (13, 14)))
     assert route.ok, route.error
     hops = [s for s in route.steps if s.kind != "walk"]
     assert len(hops) == 2 and all(s.kind == "jump" for s in hops)
-    assert hops[0].from_cell[0] <= 4 and 8 <= hops[0].to_cell[0] <= 10  # A → B
-    assert 8 <= hops[1].from_cell[0] <= 10 and 14 <= hops[1].to_cell[0] <= 18  # B → C
+    assert hops[0].from_cell[0] <= 4 and 7 <= hops[0].to_cell[0] <= 8  # A → B
+    assert 7 <= hops[1].from_cell[0] <= 8 and 11 <= hops[1].to_cell[0] <= 15  # B → C
 
 
 def test_cost_constants_keep_the_documented_order():
@@ -152,12 +152,13 @@ def test_mixed_sections_keep_one_long_jump_in_a_row():
 
 
 def long_jump_spec(style=None) -> LevelSpec:
-    """Start (cols 2-3) → Exit (cols 16-17) on one row: a 12-tile golden-path jump
-    (centres 14 tiles apart, within the default plain jump's reach)."""
+    """Start (cols 2-3) → Exit (cols 11-12) 4 rows lower: a 7-tile golden-path jump
+    (more than 1.5 × the 4-tile comfortable hop; the drop puts it within the
+    default plain jump's reach since v4 Part 28: centres 9 tiles apart)."""
     sec = section("s1")
     sec["style"] = style
     return make_spec(
-        [node("start", "Start", 2, 3, 2), node("exit", "Exit", 16, 3, 2)],
+        [node("start", "Start", 2, 7, 2), node("exit", "Exit", 11, 3, 2)],
         [("start", "exit", "Jump")],
         sections=[sec], size=(30, 15),
     )
@@ -176,7 +177,7 @@ def final_moves(built, profile: GameProfile = PROFILE) -> List[Move]:
 
 
 @pytest.mark.parametrize("style", [None, "mixed", "walk"])
-def test_a_12_tile_jump_gets_intermediate_platforms(style):
+def test_a_7_tile_jump_gets_intermediate_platforms(style):
     built = build(long_jump_spec(style), densify=False)
     assert built.report.ok
     hops = [n for n in built.spec.nodes if n.id.startswith(comfort.HOP_PREFIX)]
@@ -195,7 +196,7 @@ def test_a_parkour_section_keeps_the_long_jump():
     assert built.report.ok and built.stats["comfort_added"] == 0
     assert not any(n.id.startswith(comfort.HOP_PREFIX) for n in built.spec.nodes)
     moves = final_moves(built)
-    assert [m.measure for m in moves] == [(12, 0, 0)] and moves[0].style == "parkour"
+    assert [m.measure for m in moves] == [(7, 0, 4)] and moves[0].style == "parkour"
     assert not any(w.startswith("comfort") for w in built.warnings)
 
 
@@ -203,7 +204,7 @@ def test_an_impossible_fix_warns_and_never_fails(monkeypatch):
     monkeypatch.setattr(comfort, "find_stone", lambda *a, **k: None)
     built = build(long_jump_spec("walk"), densify=False)
     assert built.report.ok and built.stats["comfort_added"] == 0
-    assert any("comfort: could not shorten the jump" in w and "12 tiles across" in w
+    assert any("comfort: could not shorten the fall" in w and "7 tiles across" in w
                for w in built.warnings)
 
 

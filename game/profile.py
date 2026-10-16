@@ -15,6 +15,23 @@ Derived limits (Y-up, g = gravity, v = jump_v, vmax = run_speed)
 
 Heights and reaches scale with 1 / gravity_scale (g_eff = g · gravity_scale).
 
+Default physics (v4 Part 28: a short-hop Spelunky / Blasphemous / Sonic feel)
+-----------------------------------------------------------------------------
+gravity 1800, jump_v 500, run_speed 220 (16 px tiles, 12×24 px hitbox):
+
+  full jump            h ≈ 69 px (4.3 tiles), flat reach ≈ 122 px (7.6 tiles)
+  shortest hop (0.7 v) h ≈ 34 px (2.1 tiles), flat reach ≈ 86 px (5.3 tiles)
+  head room            the shortest hop needs 4 empty rows above the take-off,
+                       a full jump 6 (corridor ceilings of 5–6 rows allow jumps)
+  double jump (340)    ≈ +2 tiles of height (6.3 tiles), reach ≈ 13 tiles
+  dash (64 px)         +4 tiles of distance (≈ 11.6 tiles)
+  wall jump (460)      climb ≤ +64 px (4 tiles), push 32 px (2 tiles)
+
+(Before Part 28 the defaults were 980 / 600 / 200: an 11.5-tile jump, a
+5.6-tile shortest hop and 8 empty rows above every take-off.)  jump_v 500
+rather than 480 keeps a 4-row rise strictly below the apex.  Saved profiles
+keep their own numbers; only missing fields take these defaults.
+
 Design comfort limits (``design``, v3 Part 20)
 -----------------------------------------------
 Physics says what the player *can* do; ``design`` says what a normal move
@@ -56,10 +73,10 @@ class _ProfileModel(BaseModel):
 
 
 class Physics(_ProfileModel):
-    gravity: float = Field(980.0, gt=0, description="Downward acceleration, px/s².")
-    jump_v: float = Field(600.0, gt=0, description="Jump launch speed, px/s.")
+    gravity: float = Field(1800.0, gt=0, description="Downward acceleration, px/s².")
+    jump_v: float = Field(500.0, gt=0, description="Jump launch speed, px/s.")
     run_speed: float = Field(
-        200.0, gt=0, description="Cap on |vx| for walking and air movement, px/s."
+        220.0, gt=0, description="Cap on |vx| for walking and air movement, px/s."
     )
     walk_step_px: float = Field(
         8.0, ge=0, description="Max |Δy| a Walk edge may cover, px."
@@ -68,7 +85,7 @@ class Physics(_ProfileModel):
 
 class DoubleJump(_ProfileModel):
     enabled: bool = False
-    jump_v: float = Field(500.0, gt=0, description="Second (mid-air) jump speed, px/s.")
+    jump_v: float = Field(340.0, gt=0, description="Second (mid-air) jump speed, px/s.")
 
 
 class Dash(_ProfileModel):
@@ -79,11 +96,11 @@ class Dash(_ProfileModel):
 
 class WallJump(_ProfileModel):
     enabled: bool = False
-    jump_v: float = Field(550.0, gt=0, description="Wall kick speed, px/s.")
+    jump_v: float = Field(460.0, gt=0, description="Wall kick speed, px/s.")
     max_climb_px: float = Field(
-        160.0, ge=0, description="Max extra height gained by wall jumping, px."
+        64.0, ge=0, description="Max extra height gained by wall jumping, px."
     )
-    push_px: float = Field(48.0, ge=0, description="Extra horizontal reach, px.")
+    push_px: float = Field(32.0, ge=0, description="Extra horizontal reach, px.")
 
 
 class Abilities(_ProfileModel):
@@ -163,8 +180,9 @@ class GameProfile(_ProfileModel):
             f'Game: "{self.name}"',
             f"Physics: gravity={g:g} px/s², jump_v={v:g} px/s, "
             f"run_speed={vmax:g} px/s (max |vx|), tile={self.tile_size} px.",
-            f"Plain jump (ability null): rise up to {h:.0f} px; "
-            f"cross up to {reach:.0f} px horizontally at equal height.",
+            f"Plain jump (ability null): rise up to {h:.0f} px "
+            f"(~{h / self.tile_size:.1f} tiles); cross up to {reach:.0f} px "
+            f"(~{reach / self.tile_size:.1f} tiles) horizontally at equal height.",
             f"Walk: |Δy| ≤ {p.walk_step_px:g} px. "
             "Fall: target strictly lower, vy = 0.",
         ]
