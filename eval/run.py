@@ -42,7 +42,7 @@ from pipeline import LevelBuildFailed, build_level  # noqa: E402
 PROMPTS_FILE = Path(__file__).resolve().parent / "prompts.json"
 
 # Failure types that are retried when a run is resumed (the cause was external).
-RETRY_ON_RESUME = ("quota", "budget")
+RETRY_ON_RESUME = ("quota", "budget", "ProviderError")  # ProviderError: 5xx, timeouts
 
 
 # ── prompts ─────────────────────────────────────────────────────────────────

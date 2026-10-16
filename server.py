@@ -145,7 +145,7 @@ load_env_file(Path(__file__).resolve().parent / ".env")
 def default_provider_factory(req: Any) -> LLMProvider:
     """*req* is any request with ``provider`` and ``model`` (generate or edit).
 
-    Gemini with its default model falls back to a local model (``GLDTK_LOCAL_FALLBACK``).
+    Gemini falls back to a local model (``GLDTK_LOCAL_FALLBACK``) when it cannot answer.
     """
     fake = os.getenv("GLDTK_FAKE_LLM")  # tests only: a fixture file or directory of canned replies
     if fake:

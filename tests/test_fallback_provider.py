@@ -83,9 +83,10 @@ def test_registry_wraps_default_gemini_only(monkeypatch):
     primary, local = p._providers
     assert isinstance(primary, gemini.GeminiProvider)
     assert isinstance(local, ollama.OllamaProvider) and local.model == "qwen2.5:14b"
-    # an explicit model, another provider, or "off" → no wrapper
-    assert isinstance(make_provider_with_fallback("gemini", model="gemini-3.8-flash"),
-                      gemini.GeminiProvider)
+    # an explicit Gemini model still falls back locally
+    p = make_provider_with_fallback("gemini", model="gemini-3.1-flash-lite")
+    assert isinstance(p, FallbackProvider) and p._providers[0].model == "gemini-3.1-flash-lite"
+    # another provider, or "off" → no wrapper
     assert isinstance(make_provider_with_fallback("ollama"), ollama.OllamaProvider)
     monkeypatch.setenv("GLDTK_LOCAL_FALLBACK", "off")
     assert isinstance(make_provider_with_fallback("gemini"), gemini.GeminiProvider)
