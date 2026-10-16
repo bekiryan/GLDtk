@@ -139,3 +139,14 @@ showing the LLM real examples.
     a preferences file);
   - local only, never uploaded except as the short preference text in the LLM prompt;
   - a sidebar panel shows what was learned, with edit, delete and reset, and an off switch.
+
+---
+
+## Later (deferred by the user, 2026-10-16)
+- **Part 29d: vision labelling of patterns.**
+  - **What:** render each pattern to a small PNG and have a local vision model add a visual
+    description to its label. Spec: [parts/29-v4-leftovers.md](parts/29-v4-leftovers.md) §29d.
+  - **Model:** `qwen2.5vl:7b` (about 6 GB). The download was stopped at about 850 MB because it
+    was slow; `ollama pull qwen2.5vl:7b` resumes it.
+  - **When:** after Part 26d and the pattern-library rebuild, especially if retrieval quality
+    shows weak labels.
