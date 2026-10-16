@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
+from patterns.classify import fill_structure_geo
 from patterns.embed import make_embedder, sync_vectors
 from patterns.ingest import add_path, ingest_samples
 from patterns.label import label_pending
@@ -86,6 +87,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--label-budget", type=int, default=600,
                     help="most labels written in one run, richest windows first (default 600)")
     ap.add_argument("--max-levels", type=int, default=None, help="cap on converted levels per game")
+    ap.add_argument("--reclassify", action="store_true",
+                    help="Part 26f: recompute the geometry structure type of every window "
+                         "(default: only windows without one)")
     args = ap.parse_args(argv)
 
     store = PatternStore()
@@ -128,6 +132,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 store.save()
     else:
         print(f"  (open-licensed game levels: --source supertux|opensurge|frogatto|all)")
+
+    # Part 26f: the geometry structure type of every window (no LLM); --reclassify redoes all
+    n_geo = fill_structure_geo(store, only_missing=not args.reclassify)
+    print(f"classify: {n_geo} window(s) given a geometry structure type")
 
     lrep = None
     if args.provider or args.dry_run:

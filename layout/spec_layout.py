@@ -122,6 +122,7 @@ class SectionBand:
     structure: Optional[str] = None  # v3 Part 21; None / "open" = open air
     params: Optional[Dict[str, Any]] = None  # structure parameters (non-null ones)
     pattern: Optional[str] = None  # v4 Part 26b: id of the pattern stamped into the section
+    stacked: Optional[str] = None  # v4 Part 26f: id of a second pattern stacked above it
 
     @property
     def is_terrain(self) -> bool:
@@ -148,6 +149,7 @@ class SectionBand:
             # only terrain sections carry these, so open-air levels export as before
             **({"structure": self.structure, "params": self.params} if self.is_terrain else {}),
             **({"pattern": self.pattern} if self.pattern else {}),
+            **({"stacked": self.stacked} if self.stacked else {}),
         }
 
 

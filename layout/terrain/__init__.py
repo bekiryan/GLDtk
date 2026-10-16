@@ -346,6 +346,7 @@ def build_terrain(
         result = generate_section(layout, spec, sec, _rect(band), entry, exit_, seed, attempt, base,
                                   (stamps or {}).get(band.id))
         band.pattern = result.stats.get("pattern")  # type: ignore[assignment]
+        band.stacked = result.stats.get("stacked")  # type: ignore[assignment]
         terrain.sections[band.id] = SectionTerrain(band.id, sec.structure or "open", _rect(band),
                                                    entry, exit_, attempt, result)
     layout.terrain = terrain

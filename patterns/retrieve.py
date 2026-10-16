@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
+from patterns.classify import structure_matches
 from patterns.embed import cosine, make_embedder
 from patterns.store import PatternStore
 
@@ -44,8 +45,7 @@ class Filters:
 
     def matches(self, rec: Dict[str, Any]) -> bool:
         lab = rec.get("label") or {}
-        st = lab.get("structure_type") or rec["features"].get("structure")
-        if self.structure_type and st != self.structure_type:
+        if self.structure_type and not structure_matches(rec, self.structure_type):
             return False
         d = lab.get("difficulty")
         if d is not None:
@@ -65,7 +65,7 @@ class Filters:
         if self.tags:
             have = set(lab.get("tags") or [])
             b += TAG_BONUS * len({t.lower() for t in self.tags} & have) / len(self.tags)
-        if self.structure_type and (lab.get("structure_type") or rec["features"].get("structure")) == self.structure_type:
+        if self.structure_type and structure_matches(rec, self.structure_type):
             b += STRUCTURE_BONUS
         return b
 

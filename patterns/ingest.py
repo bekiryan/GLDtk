@@ -266,7 +266,11 @@ def window_features(grid: List[List[Any]], ents: List[IREntity], profile: GamePr
     widths = sorted(b - a + 1 for _, a, b in runs)
     ordered = sorted(runs, key=lambda x: x[1])
     gaps = [max(0, nxt[1] - cur[2] - 1) for cur, nxt in zip(ordered, ordered[1:])]
-    route = level_route(grid, ents, profile)
+    from patterns.classify import classify
+    from symbolic.extractor import extract_graph
+
+    graph = extract_graph(grid, profile=profile, collision=True)
+    route = level_route(grid, ents, profile, graph=graph)
     jumps = sum(1 for s in route.steps if s.kind != "walk")
     f: Dict[str, Any] = {
         "width": w, "height": h,
@@ -284,6 +288,11 @@ def window_features(grid: List[List[Any]], ents: List[IREntity], profile: GamePr
                   "softlocks": len(getattr(route, "softlock_spans", None) or [])},
     }
     f["difficulty"] = _difficulty(grid, ents, profile, route)
+    try:  # Part 26f: geometry structure type (labyrinth / arena / hub / shaft)
+        f["structure_geo"], f["geometry"] = classify(grid, ents, profile, graph, route,
+                                                     fallback=f["structure"])
+    except Exception:  # noqa: BLE001 - a classifier failure must not drop the pattern
+        pass
     return f
 
 
@@ -513,6 +522,24 @@ def ingest_grid(
     return rep
 
 
+def ascii_to_grid(ascii_text: Any) -> Optional[Tuple[List[List[TileValue]], List[IREntity]]]:
+    """``(grid, entities)`` of a window's ASCII (short lines are padded with rock); None if empty."""
+    lines = [ln for ln in str(ascii_text or "").splitlines() if ln]
+    if not lines:
+        return None
+    w = max(len(ln) for ln in lines)
+    grid, ents = [], []
+    kinds = {v: k for k, v in ENTITY_CHARS.items()}
+    for r, ln in enumerate(lines):
+        row = []
+        for c, ch in enumerate(ln.ljust(w, "#")):
+            row.append(TileValue.SOLID if ch == "#" else TileValue.HAZARD if ch == "^" else TileValue.EMPTY)
+            if ch in kinds:
+                ents.append(IREntity(kinds[ch], c, r, {}))
+        grid.append(row)
+    return grid, ents
+
+
 def recheck(store: PatternStore, profile: Optional[GameProfile] = None,
             sources: Optional[Sequence[str]] = None) -> Dict[str, int]:
     """Recompute route features, difficulty and the soft-lock status of every window (and its
@@ -523,19 +550,10 @@ def recheck(store: PatternStore, profile: Optional[GameProfile] = None,
     for rec in list(store):
         if rec.get("kind", "pattern") != "pattern" or (sources and rec.get("source") not in sources):
             continue
-        lines = [ln for ln in str(rec.get("ascii") or "").splitlines() if ln]
-        if not lines:
+        parsed = ascii_to_grid(rec.get("ascii"))
+        if parsed is None:
             continue
-        w = max(len(ln) for ln in lines)
-        grid, ents = [], []
-        kinds = {v: k for k, v in ENTITY_CHARS.items()}
-        for r, ln in enumerate(lines):
-            row = []
-            for c, ch in enumerate(ln.ljust(w, "#")):
-                row.append(TileValue.SOLID if ch == "#" else TileValue.HAZARD if ch == "^" else TileValue.EMPTY)
-                if ch in kinds:
-                    ents.append(IREntity(kinds[ch], c, r, {}))
-            grid.append(row)
+        grid, ents = parsed
         feats = window_features(grid, guess_start_exit(grid, ents), profile)
         rec["features"] = feats
         rec["accepted"] = accept_features(feats)

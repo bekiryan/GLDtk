@@ -205,6 +205,8 @@ def restructure_section(
         if check.ok:
             if result.stats.get("pattern"):
                 band.raw["pattern"] = result.stats["pattern"]
+            if result.stats.get("stacked"):
+                band.raw["stacked"] = result.stats["stacked"]
             break
         last_errors = check.messages()
     else:

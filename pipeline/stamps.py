@@ -74,13 +74,13 @@ def stamped_patterns(spec_layout: Any, stamps: Optional[Dict[str, List[Dict[str,
     out: List[Dict[str, str]] = []
     seen = set()
     for band in spec_layout.sections:
-        pid = getattr(band, "pattern", None)
-        if not pid or pid in seen:
-            continue
-        seen.add(pid)
-        rec = next((r for r in (stamps or {}).get(band.id, []) if r["id"] == pid), {})
-        out.append({"id": pid, "title": str(rec.get("title", pid)), "source": rec.get("source", ""),
-                    "license": rec.get("license", ""), "section": band.id, "use": "stamped"})
+        for pid in (getattr(band, "pattern", None), getattr(band, "stacked", None)):  # Part 26f
+            if not pid or pid in seen:
+                continue
+            seen.add(pid)
+            rec = next((r for r in (stamps or {}).get(band.id, []) if r["id"] == pid), {})
+            out.append({"id": pid, "title": str(rec.get("title", pid)), "source": rec.get("source", ""),
+                        "license": rec.get("license", ""), "section": band.id, "use": "stamped"})
     return out
 
 
