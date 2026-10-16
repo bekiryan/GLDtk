@@ -338,10 +338,20 @@ def fill_layout(
             return result
     result.added, result.blobs, result.dropped = len(res.added), len(res.blobs), res.dropped
     register_rock(layout, res.added)
-    result.notes.append(
-        f"fill: added {result.added} rock tile(s) in {result.blobs} mass(es)"
-        + (f", dropped {res.dropped} that broke verification" if res.dropped else ""))
+    result.notes.append(_fill_note(layout, res))
     return result
+
+
+def _fill_note(layout: SpecLayout, res: FillResult) -> str:
+    """The pipeline note for a fill; says why when nothing was added."""
+    if res.added or res.dropped:
+        return (f"fill: added {len(res.added)} rock tile(s) in {len(res.blobs)} mass(es)"
+                + (f", dropped {res.dropped} that broke verification" if res.dropped else ""))
+    if getattr(layout, "terrain", None) is not None:
+        return "fill: nothing to fill — the level is already carved from rock"
+    if res.candidates == 0:
+        return "fill: nothing to fill — no empty area far enough from the path"
+    return "fill: nothing to fill — no rock mass at this density"
 
 
 ROCK_PREFIX = "rock_"

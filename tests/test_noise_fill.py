@@ -193,3 +193,19 @@ def test_section_edit_fills_inside_the_band_only(level):  # noqa: F811
             if not band.contains(c, r):
                 assert after.grid[r][c] == before.grid[r][c]
     assert verify_level(after, after.grid, after.entities).ok
+
+
+def test_carved_terrain_level_says_there_is_nothing_to_fill():
+    from pipeline.chunks import _FixedController
+    from tests.test_terrain import terrain_spec
+
+    spec = terrain_spec(["corridor", "labyrinth", "arena"])
+    built = build_level("t", _FixedController(spec), PROFILE, seed=0, fill=0.6)
+    assert built.report.ok and built.stats["fill_added"] == 0
+    assert "fill: nothing to fill — the level is already carved from rock" in built.warnings
+    assert not any(w.startswith("fill: added 0") for w in built.warnings)
+    # an open-air level with densify on still fills
+    raw = json.dumps(_sparse().model_dump(by_alias=True))
+    open_air = build_level("sparse", LLMController(provider=FakeProvider([raw])), PROFILE, seed=7,
+                           fill=0.7)
+    assert open_air.report.ok and open_air.stats["fill_added"] > 0

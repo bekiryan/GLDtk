@@ -210,3 +210,24 @@ def test_embed_text_names_the_measured_structure():
     rec["label"]["structure_type"] = "open"
     rec["features"]["structure_geo"]["confidence"] = 0.4
     assert "hub" not in embed_text(rec)
+
+
+def test_stamp_typed_by_geometry_is_named_by_its_measured_structure():
+    from types import SimpleNamespace
+
+    from pipeline.stamps import StampFinder, stamped_patterns
+    from tests.test_stamp import ConstEmbedder, make_store
+    from tests.test_terrain import terrain_spec
+
+    geo = record("g", corridor_ascii(w=30, h=24), structure="corridor")
+    geo["features"]["structure_geo"] = {"type": "arena", "confidence": 0.9}
+    own = record("o", corridor_ascii(w=30, h=24), structure="corridor")
+    store = make_store(geo, own)
+    finder = StampFinder("x", store=store, embedder=ConstEmbedder())
+    stamps = finder(terrain_spec(["arena", "corridor"]))
+    assert [r["id"] for r in stamps["s0"]] == ["g"]
+    layout = SimpleNamespace(sections=[SimpleNamespace(id="s0", pattern="g", stacked=None),
+                                       SimpleNamespace(id="s1", pattern="o", stacked=None)])
+    used = {p["id"]: p for p in stamped_patterns(layout, stamps)}
+    assert used["g"]["title"] == "test arena room (30×24)"  # not its corridor title
+    assert used["o"]["title"] == next(r["title"] for r in stamps["s1"] if r["id"] == "o")

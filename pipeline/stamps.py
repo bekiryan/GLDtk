@@ -54,7 +54,9 @@ class StampFinder:
                         out.append({"id": h.id, "title": h.title, "grid": pattern_grid(rec),
                                     "source": str(rec.get("source", "")),
                                     "license": str(rec.get("license", "")),
-                                    "score": round(h.score, 3)})
+                                    "score": round(h.score, 3),
+                                    "geo_structure": structure if _geo_match(rec, structure)
+                                    else ""})
                         if len(out) == MAX_STAMPS:
                             break
             except Exception:  # noqa: BLE001 - no embedder / unreadable index: procedural only
@@ -68,6 +70,26 @@ class StampFinder:
                 for got in [self._hits(sec.structure or "", sec.description)] if got}
 
 
+def _geo_match(rec: Dict[str, Any], structure: str) -> bool:
+    """Did *rec* match *structure* only through the geometry classifier (Part 26f), i.e.
+    its label (or heuristic) names another, generic type?"""
+    lab = (rec.get("label") or {}).get("structure_type")
+    feats = rec.get("features") or {}
+    return (lab or feats.get("structure")) != structure
+
+
+def stamp_title(rec: Dict[str, Any], pid: str = "") -> str:
+    """Sidebar title of a stamped pattern: its own title, or — when it was typed by the
+    geometry classifier, so its LLM title may name another structure — ``"<source>
+    <structure> room (<w>×<h>)"``."""
+    structure = rec.get("geo_structure") or ""
+    if not structure:
+        return str(rec.get("title", pid))
+    grid = rec.get("grid") or []
+    size = f" ({len(grid[0])}×{len(grid)})" if grid and grid[0] else ""
+    return f"{rec.get('source') or 'Pattern'} {structure} room{size}"
+
+
 def stamped_patterns(spec_layout: Any, stamps: Optional[Dict[str, List[Dict[str, Any]]]]
                      ) -> List[Dict[str, str]]:
     """``patterns_used`` entries (``"use": "stamped"``) for the patterns stamped in *spec_layout*."""
@@ -79,9 +101,9 @@ def stamped_patterns(spec_layout: Any, stamps: Optional[Dict[str, List[Dict[str,
                 continue
             seen.add(pid)
             rec = next((r for r in (stamps or {}).get(band.id, []) if r["id"] == pid), {})
-            out.append({"id": pid, "title": str(rec.get("title", pid)), "source": rec.get("source", ""),
+            out.append({"id": pid, "title": stamp_title(rec, pid), "source": rec.get("source", ""),
                         "license": rec.get("license", ""), "section": band.id, "use": "stamped"})
     return out
 
 
-__all__ = ["MAX_STAMPS", "STAMP_MIN_SCORE", "StampFinder", "stamped_patterns"]
+__all__ = ["MAX_STAMPS", "STAMP_MIN_SCORE", "StampFinder", "stamp_title", "stamped_patterns"]
