@@ -161,6 +161,7 @@ class SpecLayout:
     node_sections: Dict[str, str] = field(default_factory=dict)
     golden_path: List[str] = field(default_factory=list)  # spec Start → Exit
     player_tiles: Tuple[int, int] = (1, 2)  # hitbox (width, height) in tiles
+    hop_air: int = 4  # empty rows the shortest hop needs (layout.terrain.base.hop_air_for)
     entity_anchors: Dict[str, str] = field(default_factory=dict)  # repair overrides
     entity_warnings: List[str] = field(default_factory=list)  # last placement
     added_nodes: List[str] = field(default_factory=list)  # stepping stones
@@ -541,6 +542,12 @@ def resolve_conflicts(layout: SpecLayout, protected: Iterable[str] = ()) -> None
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _hop_air(profile: GameProfile) -> int:
+    from .terrain.base import hop_air_for  # lazy: layout.terrain imports this module
+
+    return hop_air_for(profile)
+
+
 def layout_spec(
     spec: LevelSpec,
     profile: Optional[GameProfile] = None,
@@ -628,6 +635,7 @@ def layout_spec(
         node_sections={n.id: n.section for n in spec.nodes},
         golden_path=spec_golden_path(spec),
         player_tiles=player_tiles,
+        hop_air=_hop_air(profile),
     )
     resolve_conflicts(layout)
     layout.rasterise()

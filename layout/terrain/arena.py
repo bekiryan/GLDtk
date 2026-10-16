@@ -1,6 +1,6 @@
 """Arena — a closed room for a fight or a boss.
 
-A wide room with a flat floor and ``JUMP_AIR`` + 2 empty rows above it,
+A wide room with a flat floor and ``ctx.jump_air`` + 2 empty rows above it,
 closed by rock except the entry and exit doors.  A couple of floating
 platforms (``ledge`` anchors) hang 3 rows over the floor, low stub pillars
 (one tile, walkable as a step) stand on it, spike pits are cut into it when the
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import JUMP_AIR, Canvas, Cell, TerrainContext, TerrainResult, carve_path, stair_line, zigzag
+from .base import Canvas, Cell, TerrainContext, TerrainResult, carve_path, stair_line, zigzag
 from .shaft import vertical_shaft
 
 DOOR = 4
@@ -22,7 +22,7 @@ DOOR = 4
 
 def _room(ctx: TerrainContext, cv: Canvas, res: TerrainResult, x0: int, x1: int, floor: int) -> List[Cell]:
     rng = ctx.rng
-    top = max(ctx.inner_rows[0], floor - JUMP_AIR - 2)
+    top = max(ctx.inner_rows[0], floor - ctx.jump_air - 2)
     cv.carve_rect(x0, top, x1, floor - 1)
     cells = [(c, floor) for c in range(x0, x1 + 1)]
     for c, r in cells:
@@ -75,7 +75,7 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
         if chamber:  # widen the chamber floor into the arena, away from the stairwell
             cx0, cx1, floor, side = chamber
             x0, x1 = (lo, cx1) if side == "right" else (cx0, hi)
-            if floor - JUMP_AIR - 2 >= ctx.inner_rows[0]:
+            if floor - ctx.jump_air - 2 >= ctx.inner_rows[0]:
                 _room(ctx, cv, res, x0, x1, floor)
         return res
     fe, fx = ctx.entry.row, ctx.exit.row
@@ -88,7 +88,7 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
     if fx < floor - 1 and x1 - x0 > 20:  # the exit is higher: a column of ledges at the right wall
         walk = _room(ctx, cv, res, x0, x1, floor)
         zx0 = x1 - 11
-        ledges = zigzag(cv, zx0, floor, fx, "right")
+        ledges = zigzag(cv, zx0, floor, fx, "right", air=ctx.jump_air)
         leave = stair_line((x1, fx), (ctx.c1, fx), rng)
         res.add("ledge", ledges)
         exit_path = ledges + leave

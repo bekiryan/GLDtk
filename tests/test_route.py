@@ -21,6 +21,8 @@ from layout.route import MOVE_COST, Route, _edge_kind, file_route, level_route
 from llm import FakeProvider
 from symbolic.extractor import extract_graph
 
+from conftest import legacy_profile
+
 ROOT = Path(__file__).resolve().parent.parent
 TS = 16
 FIXTURES = ["valid_two_sections.json", "valid_minimal.json", "completeness_fill.json"]
@@ -156,12 +158,12 @@ def test_dash_step_when_the_gap_is_too_wide():
     grid = blank()
     platform(grid, 15, 0, 4)
     platform(grid, 15, 22, 30)
-    plain = level_route(grid, ents((1, 14), (28, 14)))
+    plain = level_route(grid, ents((1, 14), (28, 14)), legacy_profile())
     assert not plain.ok and "Exit" in plain.error
     assert plain.unreachable_required == ["exit-iid"]
     assert plain.reachable_spans == [(0, 15, 5)]
 
-    profile = GameProfile()
+    profile = legacy_profile()  # the gaps are sized for the pre-Part-28 physics
     profile.abilities.dash.enabled = True
     route = level_route(grid, ents((1, 14), (28, 14)), profile)
     assert route.ok, route.error
@@ -177,7 +179,7 @@ def test_plain_moves_are_preferred_over_abilities():
     platform(grid, 15, 0, 4)
     platform(grid, 15, 12, 16)  # stepping stone, a plain jump away
     platform(grid, 15, 26, 30)
-    profile = GameProfile()
+    profile = legacy_profile()  # the gaps are sized for the pre-Part-28 physics
     profile.abilities.dash.enabled = True
     route = level_route(grid, ents((1, 14), (28, 14)), profile)
     assert route.ok

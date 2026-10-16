@@ -67,7 +67,8 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
         if len(side_rooms) >= branches:
             break
         x, f = path[i]
-        if any(abs(x - u) < 12 for u in used) or any(abs(x - b) < 3 for b in bounds[1:-1]):
+        # a side room (columns x - 3 .. x + 8) never takes in a wall between rooms
+        if any(abs(x - u) < 12 for u in used) or any(x - 4 <= b <= x + 9 for b in bounds[1:-1]):
             continue
         if f - STOREY - 5 >= top_row:  # room above: the floor's ceiling becomes its slab
             slab = f - STOREY

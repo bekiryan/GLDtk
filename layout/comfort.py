@@ -3,7 +3,8 @@
 Physics says what the player *can* do; the Game Profile's ``design`` block says
 what a normal move *should* be (``comfort_hop_tiles`` across, ``comfort_rise_tiles``
 up, ``comfort_drop_tiles`` down).  LLM layouts keep the LLM's coordinates, so a
-verified level often crosses 10–15 tiles in one jump, over other platforms.  This
+verified level may cross the whole jump reach in one jump (about 7–8 tiles with
+the default profile since v4 Part 28; 10–15 before), over other platforms.  This
 pass runs after a layout has verified and before densify:
 
 1. **Check.**  The golden route is the cheapest Start → Exit span path by effort
@@ -15,7 +16,7 @@ pass runs after a layout has verified and before densify:
    * ``walk``    — every move must be comfortable;
    * ``mixed``   — every move must be comfortable, except one *long* jump in a
      row: a move within ``LONG_FACTOR`` × the comfort limits whose previous move
-     on the route was not long too (a 12-tile jump is always fixed);
+     on the route was not long too (a longer one is always fixed);
    * ``parkour`` — moves are kept up to the physics limit (they are verified).
 
 2. **Fix.**  For each move to fix, insert a chain of intermediate platforms

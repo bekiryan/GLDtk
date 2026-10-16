@@ -164,10 +164,10 @@ def test_profile_get_reports_broken_file(client, tmp_path):
 def test_generate_uses_profile_file(client, monkeypatch, tmp_path, minimal_spec_dict):
     from game import PROFILE_FILENAME, GameProfile, save_profile
 
-    # Exit 200 px up: impossible as a plain jump, fine with double_jump.
+    # Exit 88 px up: above the plain apex (69 px), below the double jump's (102 px).
     d = json.loads(json.dumps(minimal_spec_dict))
-    d["nodes"][1]["y"] = 232
-    d["edges"] = [{"from": "start", "to": "exit", "type": "Jump", "vx": 50, "vy": 600,
+    d["nodes"][1]["y"] = 120
+    d["edges"] = [{"from": "start", "to": "exit", "type": "Jump", "vx": 50, "vy": 500,
                    "ability": "double_jump"}]
     fake = FakeProvider([json.dumps(d)])
     monkeypatch.setattr(server, "provider_factory", lambda req: fake)

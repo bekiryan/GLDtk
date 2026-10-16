@@ -13,7 +13,6 @@ from __future__ import annotations
 from typing import List
 
 from .base import (
-    JUMP_AIR,
     STOREY,
     ZIGZAG_LEDGE,
     ZIGZAG_WIDTH,
@@ -47,11 +46,11 @@ def horizontal_shaft(ctx: TerrainContext, cv: Canvas, ledge: int = ZIGZAG_LEDGE,
     low, high = (fe, fx) if up else (fx, fe)
     if low - high < 5:  # not much of a climb: the chamber floor is the low corridor
         high = min(high, low - 6)
-        high = max(high, ctx.inner_rows[0] + JUMP_AIR + 1)
+        high = max(high, ctx.inner_rows[0] + ctx.jump_air + 1)
     high_side = "right" if up else "left"
-    ledges = zigzag(cv, x0, low, high, high_side, ledge=ledge, width=width)
+    ledges = zigzag(cv, x0, low, high, high_side, ledge=ledge, width=width, air=ctx.jump_air)
     if up:  # room to jump from the entry corridor onto a ledge by the left wall
-        cv.carve_rect(x0 - 6, low - JUMP_AIR, x0 - 1, low - 1)
+        cv.carve_rect(x0 - 6, low - ctx.jump_air, x0 - 1, low - 1)
     if up:
         enter = stair_line((ctx.c0, fe), (x0, low), ctx.rng)
         leave = stair_line((x1, high), (ctx.c1, fx), ctx.rng)
@@ -77,8 +76,8 @@ def vertical_shaft(ctx: TerrainContext, cv: Canvas, ledge: int = ZIGZAG_LEDGE,
     res = TerrainResult()
     s = bottom_start(ctx, cv)
     lo, hi = ctx.inner_cols
-    # the walk to the top runs at least JUMP_AIR + 1 rows over the top ledge
-    top_room = ctx.r0 + STOREY - 1 + JUMP_AIR + 1
+    # the walk to the top runs at least ctx.jump_air + 1 rows over the top ledge
+    top_room = ctx.r0 + STOREY - 1 + ctx.jump_air + 1
     high = s[1] - 9
     while high - 3 >= top_room:
         high -= 3
@@ -100,11 +99,11 @@ def vertical_shaft(ctx: TerrainContext, cv: Canvas, ledge: int = ZIGZAG_LEDGE,
 
         return vertical_walk(ctx, cv)
     x0, side, well = max(options, key=lambda o: o[2][1] - o[2][0])
-    ledges = zigzag(cv, x0, s[1], high, side, ledge=ledge, width=width)
+    ledges = zigzag(cv, x0, s[1], high, side, ledge=ledge, width=width, air=ctx.jump_air)
     target = min(max(s[0], x0), x0 + width - 1)
     enter = stair_line(s, (target, s[1]), ctx.rng)
     # the walk to the chamber is part of it: room to jump from anywhere on it
-    cv.carve_rect(min(s[0], target), s[1] - JUMP_AIR, max(s[0], target), s[1] - 1)
+    cv.carve_rect(min(s[0], target), s[1] - ctx.jump_air, max(s[0], target), s[1] - 1)
     carve_path(cv, enter, CORRIDOR_AIR)
     top = ledges[-1]
     edge = well[0] + 1 if side == "right" else well[1] - 1

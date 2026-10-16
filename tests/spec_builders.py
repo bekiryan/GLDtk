@@ -89,7 +89,7 @@ def chain_spec(rng: random.Random, width: int, height: int, n_platforms: int,
     for k in range(extras):
         host = chain[rng.randint(1, len(chain) - 2)] if len(chain) > 2 else chain[0]
         hc = host["x"] // 16
-        hr = host["y"] // 16 + rng.choice([-4, 4, 5])
+        hr = host["y"] // 16 + rng.choice([-3, 3, 4])  # within a ~4-tile jump (v4 Part 28)
         if not 0 <= hr <= height - 3:
             continue
         nid = f"x{k}"

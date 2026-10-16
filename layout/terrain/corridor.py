@@ -4,15 +4,19 @@ A continuous floor from the entry to the exit with 1-tile stairs where the
 height changes (and a few up-and-down slopes, more with ``complexity``), a
 ceiling ``ceiling_height`` (default 5) empty rows above the floor, columns
 hanging from the ceiling (3 rows of clearance below them), alcoves (the
-ceiling raised over a few columns: ``room`` anchors) and spike pits 2 columns
-wide under a vault (``JUMP_AIR`` empty rows, so the pit can be jumped).
+ceiling raised over a few columns: ``room`` anchors), spike pits 2–3 columns
+wide to hop over and, with ``complexity``, 2-row ledges to hop up onto
+(``ledge`` anchors).  Since v4 Part 28 a short hop fits under the default
+5-row ceiling (``ctx.hop_air``); a pit only gets a small vault (``ctx.jump_air``
+rows) so a full jump over it does not bump its head, and ledges need a ceiling
+the profile's shortest hop fits under.
 """
 
 from __future__ import annotations
 
 from typing import List, Set
 
-from .base import JUMP_AIR, Canvas, Cell, TerrainContext, TerrainResult, carve_path, stair_line
+from .base import Canvas, Cell, TerrainContext, TerrainResult, carve_path, stair_line
 from .vertical import vertical_walk
 
 
@@ -30,7 +34,7 @@ def floor_line(ctx: TerrainContext, a: Cell, b: Cell, undulations: int) -> List[
     for x in xs:
         t = (x - a[0]) / max(1, n)
         base = round(a[1] + (b[1] - a[1]) * t)
-        row = min(max(base + rng.choice((-2, -1, 1, 2)), lo + JUMP_AIR + 1), hi - 1)
+        row = min(max(base + rng.choice((-2, -1, 1, 2)), lo + ctx.jump_air + 1), hi - 1)
         pts.append((x, row))
     pts.append(b)
     cells: List[Cell] = []
@@ -73,21 +77,45 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
     pits = int(ctx.param("pits", ctx.hazards_wanted))
     pit_cols: Set[int] = set()
     for _ in range(pits):
-        spots = [(run, i) for run in flats for i in range(3, len(run) - 4)
-                 if free(range(run[i][0] - 3, run[i][0] + 5))]
+        pw = 3 if rng.random() < complexity else 2  # pit width, columns
+        spots = [(run, i) for run in flats for i in range(3, len(run) - 3 - pw)
+                 if free(range(run[i][0] - 3, run[i][0] + pw + 3))]
         if not spots:
             break
         run, i = rng.choice(spots)
         x, f = run[i]
-        if f + 1 > ctx.inner_rows[1] or f - JUMP_AIR < ctx.inner_rows[0]:
+        if f + 1 > ctx.inner_rows[1] or f - ctx.jump_air < ctx.inner_rows[0]:
             continue
-        for c in (x, x + 1):
+        for c in range(x, x + pw):
+            cv.rock.discard((c, f))  # the path laid a floor here: open it
             cv.carve(c, f)
             cv.spike(c, f + 1)
             pit_cols.add(c)
-        cv.carve_rect(x - 2, f - JUMP_AIR, x + 3, f - 1)
-        res.hazards.append((f + 1, x, x + 1))
-        used.update(range(x - 3, x + 5))
+        if air < ctx.jump_air:
+            cv.carve_rect(x - 1, f - ctx.jump_air, x + pw, f - 1)
+        res.hazards.append((f + 1, x, x + pw - 1))
+        used.update(range(x - 3, x + pw + 3))
+
+    # ledges: a 3–5 column block 2 rows above the floor, hopped onto and off
+    ledge_rows = {}
+    if air >= ctx.hop_air:
+        for _ in range(round(complexity * 2)):
+            lw = rng.randint(3, 5)
+            spots = [(run, i) for run in flats for i in range(3, len(run) - 3 - lw)
+                     if free(range(run[i][0] - 3, run[i][0] + lw + 3))]
+            if not spots:
+                break
+            run, i = rng.choice(spots)
+            x, f = run[i]
+            if f - 2 - air < ctx.inner_rows[0]:
+                continue
+            cv.carve_rect(x, f - 2 - air, x + lw - 1, f - 3)
+            for c in range(x, x + lw):
+                cv.floor(c, f - 1)
+                cv.floor(c, f - 2)
+                ledge_rows[c] = f - 2
+            res.add("ledge", [(c, f - 2) for c in range(x, x + lw)])
+            used.update(range(x - 3, x + lw + 3))
 
     # alcoves: the ceiling raised by 2–3 rows over 4–6 columns
     rooms: List[Cell] = []
@@ -117,7 +145,7 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
                     cv.floor(x, r)
                 used.update(range(x - 1, x + 2))
 
-    walk = [c for c in path if c[0] not in pit_cols]
+    walk = [(c, ledge_rows.get(c, r)) for c, r in path if c not in pit_cols]
     res.path = walk
     res.add("floor", walk)
     res.add("room", rooms)

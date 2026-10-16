@@ -3,7 +3,7 @@
 A tall chamber whose bottom is a bed of spikes; rock pillars rise out of it,
 2–3 columns wide, their tops (``ledge`` anchors) 3–5 columns apart and within
 3 rows of each other, from the entry corridor to the exit corridor.  The
-chamber keeps ``JUMP_AIR`` empty rows above the highest pillar.  Moves here may
+chamber keeps ``ctx.jump_air`` empty rows above the highest pillar.  Moves here may
 be longer than the comfort limits (Part 20's ``parkour`` style).
 """
 
@@ -11,17 +11,18 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import JUMP_AIR, Canvas, Cell, TerrainContext, TerrainResult, carve_path, stair_line
+from .base import Canvas, Cell, TerrainContext, TerrainResult, carve_path, stair_line
 from .shaft import horizontal_shaft, vertical_shaft
 
 CORRIDOR_AIR = 4
+PARKOUR_WIDTH = 11  # 3-column ledges, 5 empty columns between them (shaft: 4)
 
 
 def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
     if ctx.orientation == "vertical":
-        return vertical_shaft(ctx, cv, ledge=3)
+        return vertical_shaft(ctx, cv, ledge=3, width=PARKOUR_WIDTH)
     if ctx.param("vertical", None) in ("up", "down"):
-        return horizontal_shaft(ctx, cv, ledge=3)
+        return horizontal_shaft(ctx, cv, ledge=3, width=PARKOUR_WIDTH)
     rng = ctx.rng
     res = TerrainResult()
     complexity = float(ctx.param("complexity", 0.5))
@@ -33,7 +34,7 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
     if x1 - x0 < 8:
         x0, x1 = lo + 1, hi - 1
     pit = min(bottom_row, max(fe, fx) + 3)  # spike row
-    high_limit = top_row + JUMP_AIR + 1
+    high_limit = top_row + ctx.jump_air + 1
     enter = stair_line((ctx.c0, fe), (x0, fe), rng)
     leave = stair_line((x1, fx), (ctx.c1, fx), rng)
     carve_path(cv, enter, CORRIDOR_AIR)
@@ -68,9 +69,9 @@ def generate(ctx: TerrainContext, cv: Canvas) -> TerrainResult:
         res.add("floor", path)
         return res
     highest = min([r for _c, r in tops] + [fe, fx])
-    cv.carve_rect(x0 + 1, highest - JUMP_AIR, x1 - 1, pit)
-    cv.carve_rect(x0 - 2, highest - JUMP_AIR, x0, fe - 1)
-    cv.carve_rect(x1, highest - JUMP_AIR, x1 + 2, fx - 1)
+    cv.carve_rect(x0 + 1, highest - ctx.jump_air, x1 - 1, pit)
+    cv.carve_rect(x0 - 2, highest - ctx.jump_air, x0, fe - 1)
+    cv.carve_rect(x1, highest - ctx.jump_air, x1 + 2, fx - 1)
     for c, r in tops:
         for rr in range(r, pit + 1):
             cv.floor(c, rr)

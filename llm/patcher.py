@@ -30,19 +30,21 @@ mutated.
 
 from __future__ import annotations
 
+import hashlib
 import math
-import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from game.profile import GameProfile
 from spec.level_spec import LevelSpec, SpecEntity
 from symbolic.physics import (
+    LAUNCH_FRACTIONS,
     best_ability,
     check_jump_arc,
     fall_time,
     gravity_for,
+    max_jump_height,
     required_launch_velocity,
 )
 from symbolic.schema import (
@@ -296,21 +298,111 @@ class AbilityAssignPatch(Patch):
 
 
 class SteppingStonePatch(Patch):
-    """Split an impossible jump into two feasible jumps via a midpoint platform.
+    """Split an impossible jump into feasible jumps via evenly spaced platforms.
 
-    The new platform is placed at the midpoint of the source and target
-    surfaces.  Both sub-arcs are verified as *plain* jumps (effective gravity
+    One stone goes at the midpoint of the source and target surfaces; when that
+    is not enough (short default jumps since v4 Part 28) 2 ... ``MAX_STONES``
+    evenly spaced stones are tried.  All sub-arcs are verified as *plain* jumps (effective gravity
     of the edge's section, ``run_speed`` cap) before committing the change.
-    If either sub-arc is still impossible the patch is skipped for that edge
+    If a sub-arc is still impossible with MAX_STONES the patch is skipped for that edge
     (reported as non-patchable → LLM repair needed).
     """
 
     name = "SteppingStonePatch"
+    MAX_STONES = 6
     _PLATFORM_W = 48.0
     _PLATFORM_H = 16.0
 
     def applies_to(self, errors: List[ValidationError]) -> bool:
         return any(e.code == "IMPOSSIBLE_JUMP" for e in errors)
+
+    def _plan(
+        self, src: LevelNode, dst: LevelNode, g: float, v: float, vmax: float,
+        profile: GameProfile, others: Sequence[LevelNode] = (),
+    ) -> Optional[Tuple[List[Tuple[float, float]], List[Tuple[float, float]], List[float]]]:
+        """Stone surface points, launch velocities and stone widths from *src* to
+        *dst*, or None.
+
+        With 1, 2, ... ``MAX_STONES`` stones, each stone goes as close as possible
+        to the even split of what is left of the climb, among positions (on a
+        half-tile grid around the two platforms, 3 or 2 tiles wide) that
+
+        * do not crowd the source, the target or any other node (stones included): a stone may not
+          overlap one horizontally closer than the player's height plus a tile
+          (and half a tile of rounding margin) — the layout would push it away —
+          nor cover the lower one (all but 1.5 tiles) closer than the shortest
+          hop needs;
+        * are a plain jump from the previous point (and the last one a plain jump
+          from the target).
+
+        A steep climb between two close columns therefore zig-zags beside them.
+        """
+        ts = float(profile.tile_size)
+        hop = max_jump_height(g, v * min(LAUNCH_FRACTIONS)) + profile.player.height_px
+        stand = (math.ceil(profile.player.height_px / ts) + 1) * ts + ts / 2  # + rounding
+        clear = (math.ceil(hop / ts) + 1) * ts  # room for the shortest hop under a stone
+        p_src = (src.surface.x, src.surface.y)
+        p_dst = (dst.surface.x, dst.surface.y)
+        fixed = [(n.position.x, n.position.x + n.size.x, n.surface.y) for n in (src, dst)]
+        near = [(n.position.x, n.position.x + n.size.x, n.surface.y) for n in others
+                if n.id not in (src.id, dst.id) and n.node_type != NodeType.HAZARD]
+        x_lo = min(r[0] for r in fixed) - 4 * ts
+        x_hi = max(r[1] for r in fixed) + 4 * ts
+        xs = [x_lo + k * ts / 2 for k in range(int((x_hi - x_lo) / (ts / 2)) + 1)]
+
+        def crowded(x: float, y: float, w: float, rects) -> bool:  # type: ignore[no-untyped-def]
+            for r in rects:
+                overlap = min(x + w / 2, r[1]) - max(x - w / 2, r[0])
+                if overlap <= 0:
+                    continue
+                dy = abs(y - r[2])
+                lower_w = (r[1] - r[0]) if r[2] < y else w
+                # standing room always; hop room unless the lower one keeps
+                # 1.5 tiles uncovered to jump from
+                if dy < stand or (dy < clear and lower_w - overlap < 1.5 * ts):
+                    return True
+            return False
+
+        def arc(a, b):  # type: ignore[no-untyped-def]
+            if not check_jump_arc(a, b, g, v, vmax):
+                return None
+            return required_launch_velocity(a, b, g, v)
+
+        for n in range(1, self.MAX_STONES + 1):
+            pts = [p_src]
+            vels: List[Tuple[float, float]] = []
+            widths: List[float] = []
+            rects = fixed + near
+            for k in range(1, n + 1):
+                left = n - k + 2  # hops still to make from the previous point
+                ix = pts[-1][0] + (p_dst[0] - pts[-1][0]) / left
+                iy = pts[-1][1] + (p_dst[1] - pts[-1][1]) / left
+                best = None
+                for w in (self._PLATFORM_W, 2 * ts):
+                    for dy in (0.0, ts / 2, -ts / 2, ts, -ts):
+                        y = iy + dy
+                        for x in xs:
+                            cost = abs(x - ix) + 2 * abs(dy) + (w != self._PLATFORM_W) * ts
+                            if best is not None and cost >= best[0]:
+                                continue
+                            if crowded(x, y, w, rects):
+                                continue
+                            vel = arc(pts[-1], (x, y))
+                            if vel is None or (k == n and arc((x, y), p_dst) is None):
+                                continue
+                            best = (cost, x, y, w, vel)
+                if best is None:
+                    break
+                _c, x, y, w, vel = best
+                pts.append((x, y))
+                vels.append(vel)
+                widths.append(w)
+                rects.append((x - w / 2, x + w / 2, y))
+            else:
+                vel = arc(pts[-1], p_dst)
+                if vel is not None:
+                    return pts + [p_dst], vels + [vel], widths
+        return None
 
     def apply(
         self,
@@ -331,68 +423,58 @@ class SteppingStonePatch(Patch):
             except KeyError:
                 continue
 
-            mid_x = (src.surface.x + dst.surface.x) / 2.0
-            mid_y = (src.surface.y + dst.surface.y) / 2.0
-
-            # Platform top-left so that its surface is at (mid_x, mid_y)
-            stone_pos = Vec2(mid_x - self._PLATFORM_W / 2.0, mid_y)
-            stone = LevelNode(
-                id=f"stone_{uuid.uuid4().hex[:6]}",
-                node_type=NodeType.PLATFORM,
-                position=stone_pos,
-                size=Vec2(self._PLATFORM_W, self._PLATFORM_H),
-                metadata={"auto_patched": True},
-            )
-
             p_src = (src.surface.x, src.surface.y)
-            p_stone = (stone.surface.x, stone.surface.y)
             p_dst = (dst.surface.x, dst.surface.y)
-
             g = gravity_for(profile, edge_gravity_scale(_edge))
             v = profile.physics.jump_v
             vmax = profile.physics.run_speed
-            arc1_ok = check_jump_arc(p_src, p_stone, g, v, vmax)
-            arc2_ok = check_jump_arc(p_stone, p_dst, g, v, vmax)
 
-            if not (arc1_ok and arc2_ok):
-                # Midpoint still too far; cannot patch automatically
+            # v4 Part 28: with short jumps one midpoint is often not enough —
+            # try 1, 2, ... evenly spaced stones until every sub-arc is a plain jump.
+            plan = self._plan(src, dst, g, v, vmax, profile, graph.nodes())
+            if plan is None:
+                # still too far even with MAX_STONES stones; cannot patch automatically
                 continue
+            pts, vels, widths = plan
 
-            vel1 = required_launch_velocity(p_src, p_stone, g, v)
-            vel2 = required_launch_velocity(p_stone, p_dst, g, v)
-            if vel1 is None or vel2 is None:
-                continue
-
-            # Commit: remove original impossible edge, add stone + two edges
+            # Commit: remove the impossible edge, add the stones and their edges
             meta = {
                 k: v
                 for k, v in _edge.metadata.items()
                 if k != "ability" and v is not None
             }
             graph.remove_edge(src_id, dst_id)
-            graph.add_node(stone)
-            graph.add_edge(
-                LevelEdge(
-                    source_id=src_id,
-                    target_id=stone.id,
-                    edge_type=EdgeType.JUMP,
-                    dx=p_stone[0] - p_src[0],
-                    dy=p_stone[1] - p_src[1],
-                    v_launch=vel1,
-                    metadata=dict(meta),
+            ids = [src_id]
+            for k, ((x, y), w) in enumerate(zip(pts[1:-1], widths)):
+                # deterministic ids: the same spec patches to the same level
+                key = f"{src_id}>{dst_id}#{k}"
+                sid = f"stone_{hashlib.sha1(key.encode()).hexdigest()[:6]}"
+                while graph.nx_graph.has_node(sid):
+                    key += "'"
+                    sid = f"stone_{hashlib.sha1(key.encode()).hexdigest()[:6]}"
+                stone = LevelNode(
+                    id=sid,
+                    node_type=NodeType.PLATFORM,
+                    # top-left so that the stone's surface is at (x, y)
+                    position=Vec2(x - w / 2.0, y),
+                    size=Vec2(w, self._PLATFORM_H),
+                    metadata={"auto_patched": True},
                 )
-            )
-            graph.add_edge(
-                LevelEdge(
-                    source_id=stone.id,
-                    target_id=dst_id,
-                    edge_type=EdgeType.JUMP,
-                    dx=p_dst[0] - p_stone[0],
-                    dy=p_dst[1] - p_stone[1],
-                    v_launch=vel2,
-                    metadata=dict(meta),
+                graph.add_node(stone)
+                ids.append(stone.id)
+            ids.append(dst_id)
+            for (a_id, b_id), (a, b), vel in zip(zip(ids, ids[1:]), zip(pts, pts[1:]), vels):
+                graph.add_edge(
+                    LevelEdge(
+                        source_id=a_id,
+                        target_id=b_id,
+                        edge_type=EdgeType.JUMP,
+                        dx=b[0] - a[0],
+                        dy=b[1] - a[1],
+                        v_launch=vel,
+                        metadata=dict(meta),
+                    )
                 )
-            )
             changed = True
 
         return changed

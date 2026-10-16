@@ -16,6 +16,8 @@ from spec_builders import entity, make_spec, node, section
 from symbolic import extract_graph
 from symbolic.schema import AbstractLevelGraph
 
+from conftest import legacy_profile
+
 W, H = 30, 60
 
 
@@ -96,18 +98,20 @@ def test_vertical_out_of_order_sections_are_remapped_into_row_bands():
 
 def test_vertical_climb_builds_verified_with_row_gravity():
     spec = _climb()
-    ctrl = LLMController(provider=FakeProvider([json.dumps(spec.model_dump(by_alias=True))]))
-    built = build_level("an icy climb", ctrl, GameProfile(), densify=False)
+    profile = legacy_profile()  # the 5-6 row climbs are sized for the pre-Part-28 jump
+    ctrl = LLMController(profile=profile,
+                         provider=FakeProvider([json.dumps(spec.model_dump(by_alias=True))]))
+    built = build_level("an icy climb", ctrl, profile, densify=False)
     assert built.report.ok, built.report.error_messages()
     lay = built.spec_layout
     # the extractor sees the summit's gravity through the row: its edges carry 0.5
-    graph = extract_graph(lay.ir.grid, profile=GameProfile(),
+    graph = extract_graph(lay.ir.grid, profile=profile,
                           gravity_scale_at_cell=lay.gravity_scale_at, collision=True)
     top = lay.sections[1]
     scales = {e.metadata["gravity_scale"] for e in graph.edges()
               if top.row_start <= graph.get_node(e.source_id).metadata["row"] <= top.row_end}
     assert scales == {0.5}
-    assert verify_grid(lay, GameProfile(), built.spec).ok
+    assert verify_grid(lay, profile, built.spec).ok
 
 
 def test_vertical_section_themes_follow_rows():

@@ -42,7 +42,7 @@ from spec.level_spec import TERRAIN_STRUCTURES, LevelSpec, Section
 
 from ..ir import TileValue
 from . import arena, corridor, hub, labyrinth, open as open_, parkour, shaft
-from .base import JUMP_AIR, Canvas, Port, TerrainContext, TerrainResult
+from .base import HOP_AIR, JUMP_AIR, Canvas, Port, TerrainContext, TerrainResult
 from .place import SectionPlacer
 
 GENERATORS: Dict[str, Callable[[TerrainContext, Canvas], TerrainResult]] = {
@@ -150,9 +150,9 @@ def _resize_bands(layout, spec: LevelSpec) -> None:  # type: ignore[no-untyped-d
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _row_limits(height: int) -> Tuple[int, int]:
+def _row_limits(height: int, jump_air: int = JUMP_AIR) -> Tuple[int, int]:
     hi = height - 3
-    lo = min(1 + JUMP_AIR + 1, hi)
+    lo = min(1 + jump_air + 1, hi)
     return lo, hi
 
 
@@ -160,8 +160,9 @@ def _clamp(v: int, lo: int, hi: int) -> int:
     return min(max(v, lo), hi)
 
 
-def _next_row(sec: Section, entry: int, rng: random.Random, height: int) -> int:
-    lo, hi = _row_limits(height)
+def _next_row(sec: Section, entry: int, rng: random.Random, height: int,
+              jump_air: int = JUMP_AIR) -> int:
+    lo, hi = _row_limits(height, jump_air)
     p = sec.params.model_dump() if sec.params else {}
     complexity = p.get("complexity") if p.get("complexity") is not None else 0.5
     kind = sec.structure
@@ -203,7 +204,8 @@ def plan_ports(layout, spec: LevelSpec, seed: int) -> Dict[str, Tuple[Port, Port
     bands = layout.sections
     vertical = layout.orientation == "vertical"
     w, h = layout.width, layout.height
-    lo_r, hi_r = _row_limits(h)
+    jump_air = max(JUMP_AIR, getattr(layout, "hop_air", HOP_AIR))
+    lo_r, hi_r = _row_limits(h, jump_air)
     ports: Dict[str, List[Optional[Port]]] = {b.id: [None, None] for b in bands}
     if not vertical:
         first = secs[bands[0].id]
@@ -217,7 +219,7 @@ def plan_ports(layout, spec: LevelSpec, seed: int) -> Dict[str, Tuple[Port, Port
             entry = ports[band.id][0]
             assert entry is not None
             if k == len(bands) - 1:
-                nxt = _next_row(sec, entry.row, rng, h) if is_terrain(sec.structure) else entry.row
+                nxt = _next_row(sec, entry.row, rng, h, jump_air) if is_terrain(sec.structure) else entry.row
                 ports[band.id][1] = Port("end", w - 2, nxt)
                 break
             nb = bands[k + 1]
@@ -231,7 +233,7 @@ def plan_ports(layout, spec: LevelSpec, seed: int) -> Dict[str, Tuple[Port, Port
                 row = _clamp(got[1], lo_r, hi_r) if got else entry.row
                 kind = "open"
             else:
-                row = _next_row(sec, entry.row, rng, h)
+                row = _next_row(sec, entry.row, rng, h, jump_air)
                 kind = "door"
             port = Port(kind, nb.col_start, row)
             ports[band.id][1] = port
@@ -292,6 +294,7 @@ def generate_section(
         params=params,
         hazards_wanted=hazards,
         player_h=layout.player_tiles[1],
+        hop_air=getattr(layout, "hop_air", HOP_AIR),
     )
     cv = Canvas(ctx)
     result = GENERATORS[ctx.structure](ctx, cv)

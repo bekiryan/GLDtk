@@ -106,7 +106,7 @@ def test_route_reports_softlock_spans():
 def _drop_past_the_key(key_at: Tuple[int, int]):
     grid = blank()
     solid(grid, 10, 0, 9)  # A: the Start ledge
-    solid(grid, 5, 0, 3)  # K: a ledge above it (the key's, in the first case)
+    solid(grid, 7, 0, 3)  # K: a ledge 3 rows above it (the key's, in the first case)
     solid(grid, 26, 0, W - 1)  # B: the floor 16 rows down, with the locked Exit
     ents = [ent("Start", 1, 9), ent("Exit", 38, 25, requires_key=True),
             ent("Key", key_at[0], key_at[1], spec_id="k1")]
@@ -114,7 +114,7 @@ def _drop_past_the_key(key_at: Tuple[int, int]):
 
 
 def test_dropping_past_the_key_before_a_locked_exit_is_detected():
-    rep, spans = _drop_past_the_key((1, 4))  # on K: the player may drop to B without it
+    rep, spans = _drop_past_the_key((1, 6))  # on K: the player may drop to B without it
     assert [t.kind for t in rep.traps] == ["item"]
     trap = rep.traps[0]
     assert spans.at(20, 26) in trap.spans
@@ -131,16 +131,16 @@ def test_key_behind_its_own_door_is_detected():
     grid = blank()
     solid(grid, 25, 0, 30)  # A: the floor with the Start
     solid(grid, 25, 33, W - 1)  # E: the (unlocked) Exit's ledge
-    solid(grid, 19, 20, 22)  # D: the door ledge
-    solid(grid, 13, 24, 27)  # C: the key ledge, only reachable from D
+    solid(grid, 22, 20, 22)  # D: the door ledge, 3 rows up
+    solid(grid, 19, 24, 27)  # C: the key ledge, 3 rows above D: only reachable from D
     ents = [ent("Start", 1, 24), ent("Exit", 38, 24),
-            ent("Interactive", 21, 18, spec_id="gate", interactive_kind="door", linked_to="k1"),
-            ent("Key", 25, 12, spec_id="k1", opens="gate")]
+            ent("Interactive", 21, 21, spec_id="gate", interactive_kind="door", linked_to="k1"),
+            ent("Key", 25, 18, spec_id="k1", opens="gate")]
     rep, spans = check(grid, ents)
     kinds = [t.kind for t in rep.traps]
     assert "key_behind_door" in kinds
     trap = rep.traps[kinds.index("key_behind_door")]
-    assert trap.spans == [spans.at(25, 13)]
+    assert trap.spans == [spans.at(25, 19)]
     assert "behind its own door" in trap.message
     # Without the door the same key is fine.
     rep2, _ = check(grid, [e for e in ents if e.entity_type != "Interactive"])
@@ -204,7 +204,7 @@ KEY_SPEC = {
     **PIT_SPEC,
     "nodes": [
         {"id": "start", "type": "Start", "x": 32, "y": 400, "w": 128, "h": 16, "section": S},
-        {"id": "high", "type": "Platform", "x": 32, "y": 480, "w": 48, "h": 16, "section": S},
+        {"id": "high", "type": "Platform", "x": 32, "y": 448, "w": 48, "h": 16, "section": S},
         {"id": "exit", "type": "Exit", "x": 32, "y": 32, "w": 560, "h": 16, "section": S},
     ],
     "edges": [{"from": "start", "to": "high", "type": "Jump", "vx": 100, "vy": 300},

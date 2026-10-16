@@ -3,21 +3,30 @@
 Coordinates are grid cells ``(col, row)``, row 0 at the top.  A *floor cell* is
 the solid tile the player stands on (the player occupies the rows above it).
 
-Physics the primitives are built around (default Game Profile, checked by the
-extractor's collision-aware arcs):
+Physics the primitives are built around (default Game Profile since v4 Part 28:
+gravity 1800, jump_v 500, run 220 — a full jump rises about 4.3 tiles and
+crosses about 7.6; checked by the extractor's collision-aware arcs):
 
-* the lowest jump (70 % of jump_v) still rises about 5.6 tiles, so the hitbox
-  top goes about 7.1 tiles above the launch surface: **a jump needs 8 empty
-  rows above it**.  Under a low ceiling the player only walks;
+* the shortest hop (70 % of jump_v) rises about 2.1 tiles, so the hitbox top
+  goes about 3.6 tiles above the launch surface: **a hop needs 4 empty rows**
+  (``HOP_AIR``) and a full jump about 6 (``JUMP_AIR``).  The generators use
+  ``ctx.hop_air`` / ``ctx.jump_air``, derived from the project's profile
+  (``hop_air_for``), so a saved profile with the old physics (8 rows) still
+  gets vaults over its pits and no ledges under a low ceiling.  Corridors (5 rows by
+  default) therefore have real hops: over spike pits 2–3 columns wide and up
+  onto 2-row ledges;
 * 1-tile steps are walkable in terrain sections (``extract_graph(step_at=...)``),
   so stairs and slopes are runs of 1-row steps (2 columns per step when there
   is room);
 * a **link** climbs 4 rows through a 2-column hole in a 1-tile slab: a 1-tile
   pedestal under the hole, 3 empty rows above it, and at least 4 empty rows
-  above the slab.  It works up (jump through the hole) and down (drop
-  through it), and is how mazes and stairwells change storeys;
+  above the slab.  4 rows is just under a full jump, so the hole and the 2
+  rows above it are kept open and nothing taller than the slab may stand
+  beside the hole (a labyrinth cell is 5 columns wide so a pedestal never
+  touches the hole of the link below it).  It works up (jump through the hole)
+  and down (drop through it), and is how mazes and stairwells change storeys;
 * a **zigzag** climbs a chamber 12 columns wide with 4-column ledges on
-  alternating walls, 3 rows apart.
+  alternating walls, 3 rows apart: 4 empty columns and 3 rows per hop.
 """
 
 from __future__ import annotations
@@ -27,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from layout.ir import TileValue
+from symbolic.physics import LAUNCH_FRACTIONS, gravity_for, max_jump_height
 
 Cell = Tuple[int, int]  # (col, row)
 
@@ -34,13 +44,24 @@ AIR = TileValue.EMPTY
 ROCK = TileValue.SOLID
 SPIKE = TileValue.HAZARD
 
-JUMP_AIR = 8  # empty rows a jump needs above its launch surface
+JUMP_AIR = 6  # empty rows a full jump needs above its launch surface
+HOP_AIR = 4  # empty rows the shortest hop needs
 LINK_RISE = 4  # rows a link climbs (pedestal surface → slab)
 STOREY = 5  # floor-to-floor pitch of a link (4 empty rows + the slab)
 ZIGZAG_WIDTH = 12  # inner columns of a zigzag chamber
 ZIGZAG_LEDGE = 4
 ZIGZAG_STEP = 3
 DOOR_AIR = 4  # empty rows above a door between two sections
+
+
+def hop_air_for(profile) -> int:  # type: ignore[no-untyped-def]
+    """Empty rows the shortest hop (the lowest launch the verifier tries) needs above
+    its take-off: the hop's apex plus the hitbox height, in tiles, rounded up.
+    4 with the default profile (v4 Part 28), 8 with the old 980 / 600 one."""
+    g = gravity_for(profile, 1.0)
+    v = profile.physics.jump_v * min(LAUNCH_FRACTIONS)
+    ts = float(profile.tile_size)
+    return max(1, -int(-(max_jump_height(g, v) + profile.player.height_px) // ts))
 
 
 @dataclass
@@ -76,6 +97,12 @@ class TerrainContext:
     params: Dict[str, object] = field(default_factory=dict)
     hazards_wanted: int = 0
     player_h: int = 2
+    hop_air: int = HOP_AIR  # empty rows the profile's shortest hop needs (``hop_air_for``)
+
+    @property
+    def jump_air(self) -> int:
+        """Empty rows to keep above a take-off where jumps happen (chambers, vaults)."""
+        return max(JUMP_AIR, self.hop_air)
 
     @property
     def c0(self) -> int:
@@ -261,13 +288,14 @@ def link(cv: Canvas, slab_row: int, col: int, landing: bool = True) -> Tuple[Lis
 def zigzag(
     cv: Canvas, x0: int, low_row: int, high_row: int, high_side: str,
     ledge: int = ZIGZAG_LEDGE, step: int = ZIGZAG_STEP, width: int = ZIGZAG_WIDTH,
+    air: int = JUMP_AIR,
 ) -> List[Cell]:
     """Ledges on alternating walls of the chamber ``x0 .. x0 + width - 1`` from
     *low_row* (the chamber floor) up to *high_row* (the top ledge, on
-    *high_side*).  Carves the chamber air (``JUMP_AIR`` rows above the top
-    ledge).  Returns the ledge floor cells from the bottom up."""
+    *high_side*).  Carves the chamber air (*air* rows above the top
+    ledge, ``ctx.jump_air``).  Returns the ledge floor cells from the bottom up."""
     x1 = x0 + width - 1
-    cv.carve_rect(x0, high_row - JUMP_AIR - 1, x1, low_row - 1)
+    cv.carve_rect(x0, high_row - air - 1, x1, low_row - 1)
     rows = []
     r = high_row
     while low_row - r >= 2:

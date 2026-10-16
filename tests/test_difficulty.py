@@ -19,6 +19,8 @@ from game.profile import GameProfile
 from layout import IREntity, TileValue
 from llm import FakeProvider
 
+from conftest import legacy_profile  # the synthetic grids are sized for the pre-Part-28 jump
+
 ROOT = Path(__file__).resolve().parent.parent
 E, S, H = int(TileValue.EMPTY), int(TileValue.SOLID), int(TileValue.HAZARD)
 
@@ -54,7 +56,7 @@ def one_section(grid, label: str, **extra) -> List[Dict[str, Any]]:
 
 
 def score_of(grid, ents, label="medium", **extra) -> float:
-    rep = measure_difficulty(grid, ents, one_section(grid, label, **extra), GameProfile())
+    rep = measure_difficulty(grid, ents, one_section(grid, label, **extra), legacy_profile())
     assert rep.route_ok, "the fixture must be beatable"
     return rep.sections[0].score
 
@@ -86,7 +88,7 @@ def test_recovery_lowers_the_score():
 
 def test_metrics():
     grid, ents = side_scroller([6, 6, 6], [6, 6], hazards=True, enemies=1, health=3)
-    rep = measure_difficulty(grid, ents, one_section(grid, "easy"), GameProfile())
+    rep = measure_difficulty(grid, ents, one_section(grid, "easy"), legacy_profile())
     m = rep.sections[0].metrics
     assert m["moves"] == 2 and 5 <= m["mean_gap"] <= 7 and m["max_rise"] == 0
     assert m["hazard_tiles"] == 12 and m["hazard_per_100"] == pytest.approx(100 * 12 / len(grid[0]), abs=0.1)
@@ -97,7 +99,7 @@ def test_metrics():
 def test_boss_threat_is_capped():
     grid, ents = side_scroller([8, 8], [6])
     ents.append(IREntity("Enemy", 12, 11, {"archetype": "boss", "health": 99, "damage": 9}))
-    rep = measure_difficulty(grid, ents, one_section(grid, "hard"), GameProfile())
+    rep = measure_difficulty(grid, ents, one_section(grid, "hard"), legacy_profile())
     m = rep.sections[0].metrics
     assert m["bosses"] == 1 and m["enemy_threat"] == 12
 
@@ -112,7 +114,7 @@ def test_sections_split_the_level():
         {"id": "b", "name": "B", "difficulty": "hard", "col_start": mid, "col_end": len(grid[0]) - 1,
          "row_start": 0, "row_end": 15},
     ]
-    rep = measure_difficulty(grid, ents, secs, GameProfile())
+    rep = measure_difficulty(grid, ents, secs, legacy_profile())
     a, b = rep.sections
     assert [s.id for s in rep.sections] == ["a", "b"]
     assert b.score > a.score and not a.warnings
@@ -154,7 +156,7 @@ def vertical_tower(rise: int, hazards: bool = False, enemies: int = 0, ledge: in
 
 def test_vertical_sections_are_row_bands():
     grid, ents, secs = vertical_tower(rise=4)
-    rep = measure_difficulty(grid, ents, secs, GameProfile())
+    rep = measure_difficulty(grid, ents, secs, legacy_profile())
     assert rep.route_ok
     low, high = rep.sections
     assert low.metrics["length"] == high.metrics["length"] == len(grid) // 2
@@ -165,8 +167,8 @@ def test_vertical_sections_are_row_bands():
 def test_vertical_hard_scores_higher_than_easy():
     easy = vertical_tower(rise=5)
     hard = vertical_tower(rise=9, hazards=True, enemies=3, ledge=4, width=16)
-    se = measure_difficulty(*easy[:2], easy[2], GameProfile())
-    sh = measure_difficulty(*hard[:2], hard[2], GameProfile())
+    se = measure_difficulty(*easy[:2], easy[2], legacy_profile())
+    sh = measure_difficulty(*hard[:2], hard[2], legacy_profile())
     assert se.route_ok and sh.route_ok
     assert sh.overall > se.overall + 2, (se.overall, sh.overall)
 
@@ -177,16 +179,16 @@ def test_vertical_hard_scores_higher_than_easy():
 def test_mismatch_warnings():
     easy_grid = side_scroller([12, 12, 12], [3, 3])
     hard_grid = side_scroller([3, 3, 3, 3], [13, 13, 13], hazards=True, enemies=3, health=4)
-    ok_easy = measure_difficulty(easy_grid[0], easy_grid[1], one_section(easy_grid[0], "easy"), GameProfile())
-    ok_hard = measure_difficulty(hard_grid[0], hard_grid[1], one_section(hard_grid[0], "hard"), GameProfile())
+    ok_easy = measure_difficulty(easy_grid[0], easy_grid[1], one_section(easy_grid[0], "easy"), legacy_profile())
+    ok_hard = measure_difficulty(hard_grid[0], hard_grid[1], one_section(hard_grid[0], "hard"), legacy_profile())
     assert not ok_easy.sections[0].warnings and not ok_hard.sections[0].warnings
 
-    bad_hard = measure_difficulty(easy_grid[0], easy_grid[1], one_section(easy_grid[0], "hard"), GameProfile())
+    bad_hard = measure_difficulty(easy_grid[0], easy_grid[1], one_section(easy_grid[0], "hard"), legacy_profile())
     assert "labelled hard" in bad_hard.sections[0].warnings[0]
-    bad_easy = measure_difficulty(hard_grid[0], hard_grid[1], one_section(hard_grid[0], "easy"), GameProfile())
+    bad_easy = measure_difficulty(hard_grid[0], hard_grid[1], one_section(hard_grid[0], "easy"), legacy_profile())
     assert "labelled easy" in bad_easy.sections[0].warnings[0]
     # medium never mismatches
-    med = measure_difficulty(easy_grid[0], easy_grid[1], one_section(easy_grid[0], "medium"), GameProfile())
+    med = measure_difficulty(easy_grid[0], easy_grid[1], one_section(easy_grid[0], "medium"), legacy_profile())
     assert not med.sections[0].warnings
 
 
@@ -194,7 +196,7 @@ def test_fidelity_item_becomes_approximated():
     grid, ents = side_scroller([12, 12, 12], [3, 3])
     sec = [{"id": "boss_lair", "name": "Boss Lair", "difficulty": "hard", "col_start": 0,
             "col_end": len(grid[0]) - 1, "row_start": 0, "row_end": len(grid) - 1}]
-    rep = measure_difficulty(grid, ents, sec, GameProfile())
+    rep = measure_difficulty(grid, ents, sec, legacy_profile())
     assert rep.sections[0].mismatch
 
     fid = FidelityReport(items=[
@@ -232,16 +234,16 @@ def test_gets_harder_curve_warning():
         {"id": "b", "name": "Second", "difficulty": "easy", "col_start": n + 1,
          "col_end": len(grid[0]) - 1, "row_start": 0, "row_end": 15},
     ]
-    rep = measure_difficulty(grid, ents, secs, GameProfile(), prompt="It gets harder as you go.")
+    rep = measure_difficulty(grid, ents, secs, legacy_profile(), prompt="It gets harder as you go.")
     assert rep.sections[0].score > rep.sections[1].score + 1
     assert rep.warnings and "gets harder" in rep.warnings[0]
-    assert not measure_difficulty(grid, ents, secs, GameProfile(), prompt="A relaxing walk.").warnings
+    assert not measure_difficulty(grid, ents, secs, legacy_profile(), prompt="A relaxing walk.").warnings
     assert not rep.sections[0].warnings and not rep.sections[1].warnings  # the curve is a level warning
 
 
 def test_no_route_still_measures():
     grid, ents = side_scroller([6, 6], [30])
-    rep = measure_difficulty(grid, ents, one_section(grid, "easy"), GameProfile())
+    rep = measure_difficulty(grid, ents, one_section(grid, "easy"), legacy_profile())
     assert not rep.route_ok and rep.sections[0].metrics["moves"] == 0
 
 
