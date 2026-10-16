@@ -83,7 +83,8 @@ Open or create a `.ldtk` project in LDtk; the sidebar on the right works on that
   `.gldtk_history/` next to it, last 30 kept). Undo walks back through them.
 - **Game Profile:** physics (gravity, jump speed, run speed, step height), abilities (double jump,
   dash, wall jump) and **design comfort limits** (longest hop, tallest rise, longest drop) for the
-  whole game, saved as `gldtk.game.json` next to the project. Levels are verified against it, and a
+  whole game, saved as `gldtk.game.json` next to the project. Defaults: gravity 1800 px/s², jump
+  speed 500 px/s, run speed 220 px/s (a short hop: about 4 tiles high, 7–8 tiles across). Levels are verified against it, and a
   prompt asking for an ability the profile lacks is reported as ❌. The default numbers are listed in
   the profile panel (see the Game Profile).
 - **Provider:** choose the LLM and optionally a model.
