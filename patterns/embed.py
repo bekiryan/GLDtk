@@ -15,6 +15,8 @@ import re
 import urllib.request
 from typing import Any, Dict, List, Optional
 
+_sumprod = getattr(math, "sumprod", None)
+
 _WORD = re.compile(r"[a-z0-9_]+")
 
 
@@ -102,7 +104,11 @@ def make_embedder(name: str = "hash") -> Any:
 
 
 def cosine(a: List[float], b: List[float]) -> float:
-    return sum(x * y for x, y in zip(a, b))  # vectors are unit length
+    # vectors are unit length.  math.sumprod (3.12+) is C speed: ~2000 vectors of 768 floats take
+    # a few ms, so no numpy cache is needed (Part 26e; numpy is not a dependency of this venv).
+    if _sumprod is not None:
+        return _sumprod(a, b)
+    return sum(x * y for x, y in zip(a, b))
 
 
 def embed_text(rec: Dict[str, Any]) -> str:

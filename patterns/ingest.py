@@ -47,7 +47,14 @@ WIN_W = 32
 WIN_STRIDE = 24
 WIN_H = 20
 MIN_WIN_W = 16
-MAX_ASCII_W, MAX_ASCII_H = 40, 24
+# Window sizes (rows, columns, stride) cut from every level (Part 26e): the tall ones let
+# layout/terrain/stamp.py (which accepts +-25% of the section height) fill sections of 26-40 rows.
+WIN_SIZES = ((20, 32, 24), (32, 48, 36))
+MAX_ASCII_W, MAX_ASCII_H = 52, 36
+# Window quality (Part 26e): standable spans, solid fraction, padding rows around the content.
+MIN_SPANS = 2
+MIN_SOLID, MAX_SOLID = 0.12, 0.7
+CROP_PAD = 2
 
 ENTITY_CHARS = {"Start": "S", "Exit": "X", "Enemy": "E", "Pickup": "P"}
 _START_WORDS = ("player", "start", "spawn", "hero")
@@ -61,6 +68,7 @@ class IngestReport:
     duplicates: int = 0
     rejected: int = 0  # stored but not accepted (no Start->Exit route in the window)
     levels_added: int = 0  # whole-level entries (kind "level", Part 26c)
+    dropped: Dict[str, int] = field(default_factory=dict)  # windows not kept, by reason (Part 26e)
     skipped_files: Dict[str, str] = field(default_factory=dict)
     mapped_files: Dict[str, int] = field(default_factory=dict)  # file -> patterns added
     notes: List[str] = field(default_factory=list)
@@ -70,6 +78,8 @@ class IngestReport:
         self.duplicates += other.duplicates
         self.rejected += other.rejected
         self.levels_added += other.levels_added
+        for k, n in other.dropped.items():
+            self.dropped[k] = self.dropped.get(k, 0) + n
         self.skipped_files.update(other.skipped_files)
         self.mapped_files.update(other.mapped_files)
         self.notes += other.notes
@@ -178,9 +188,10 @@ def _surface_runs(cells: List[Tuple[int, int]]) -> List[Tuple[int, int, int]]:
     return sorted(runs, key=lambda x: (x[1], x[0]))
 
 
-def _snap_cuts(grid: Sequence[Sequence[Any]], width: int) -> List[Tuple[int, int]]:
-    """Column windows ``(c0, c1)`` (about WIN_W wide, overlapping), cut at vertical walls."""
-    if width <= WIN_W + 8:
+def _snap_cuts(grid: Sequence[Sequence[Any]], width: int, win_w: int = WIN_W,
+               stride: int = WIN_STRIDE) -> List[Tuple[int, int]]:
+    """Column windows ``(c0, c1)`` (about *win_w* wide, overlapping), cut at vertical walls."""
+    if width <= win_w + 8:
         return [(0, width)]
     h = len(grid)
     solid = [sum(1 for r in range(h) if int(grid[r][c]) == TileValue.SOLID) for c in range(width)]
@@ -191,24 +202,24 @@ def _snap_cuts(grid: Sequence[Sequence[Any]], width: int) -> List[Tuple[int, int
 
     cuts, start = [], 0
     while start < width - MIN_WIN_W:
-        end = width if start + WIN_W + 8 >= width else snap(start + WIN_W)
+        end = width if start + win_w + 8 >= width else snap(start + win_w)
         cuts.append((start, end))
         if end >= width:
             break
-        start = max(start + 1, snap(start + WIN_STRIDE))
+        start = max(start + 1, snap(start + stride))
     return cuts
 
 
-def _row_cuts(height: int) -> List[Tuple[int, int]]:
-    if height <= WIN_H + 6:
+def _row_cuts(height: int, win_h: int = WIN_H) -> List[Tuple[int, int]]:
+    if height <= win_h + 6:
         return [(0, height)]
     out, r = [], 0
     while r < height:
-        end = min(height, r + WIN_H)
-        out.append((max(0, end - WIN_H), end))
+        end = min(height, r + win_h)
+        out.append((max(0, end - win_h), end))
         if end >= height:
             break
-        r += WIN_H - 6
+        r += win_h - 6
     return out
 
 
@@ -289,13 +300,52 @@ def _difficulty(grid, ents, profile, route) -> Optional[float]:
 
 
 def accept_features(f: Dict[str, Any]) -> bool:
-    return bool(f.get("route", {}).get("ok"))
+    r = f.get("route", {})
+    return bool(r.get("ok")) and not r.get("softlocks")
 
 
 def _ascii(grid, ents) -> str:
     ir = IRLevel(identifier="p", width_tiles=len(grid[0]), height_tiles=len(grid), tile_size=TILE,
                  grid=[list(r) for r in grid], entities=list(ents))
     return ir.ascii_render(ENTITY_CHARS)
+
+
+def grid_hash(ascii_text: str) -> str:
+    """Hash of a window's geometry only (entity letters count as empty): near-duplicate windows
+    (the same level cut twice, repeated rooms) share it."""
+    norm = "\n".join("".join(ch if ch in "#^" else "." for ch in ln) for ln in ascii_text.splitlines())
+    return hashlib.sha1(norm.encode()).hexdigest()[:16]
+
+
+def _known_hashes(store: PatternStore) -> set:
+    cache = getattr(store, "_grid_hashes", None)
+    if cache is None:
+        cache = {grid_hash(r["ascii"]) for r in store
+                 if r.get("kind", "pattern") == "pattern" and r.get("ascii")}
+        store._grid_hashes = cache
+    return cache
+
+
+def crop_window(win: List[List[Any]], wents: List[IREntity], pad: int = CROP_PAD
+                ) -> Tuple[List[List[Any]], List[IREntity], int, int]:
+    """Crop *win* to its content: rows from *pad* above the first non-empty row to *pad* below the
+    last, and the empty edge columns.  Returns ``(grid, entities, drow, dcol)``: how many rows /
+    columns were cut off the top / left."""
+    h, w = len(win), len(win[0])
+    rows = [r for r in range(h) if any(int(v) for v in win[r])]
+    cols = [c for c in range(w) if any(int(win[r][c]) for r in range(h))]
+    if not rows:
+        return win, wents, 0, 0
+    full = [r for r in range(h) if all(int(v) == TileValue.SOLID for v in win[r])]
+    # rows of solid rock far from any surface are not structure: stop *pad* rows into the rock
+    top = next((r for r in rows if r not in full), rows[0] + 1)
+    bot = next((r for r in reversed(rows) if r not in full), rows[-1] - 1)
+    r0, r1 = max(0, top - 1 - pad), min(h, bot + 2 + pad)  # +-1: the surface row of the rock
+    c0, c1 = cols[0], cols[-1] + 1
+    out = [list(row[c0:c1]) for row in win[r0:r1]]
+    ents = [IREntity(e.entity_type, e.col - c0, e.row - r0, {})
+            for e in wents if c0 <= e.col < c1 and r0 <= e.row < r1]
+    return out, ents, r0, c0
 
 
 def make_id(source: str, origin: str, level: str, ascii_text: str) -> str:
@@ -390,47 +440,108 @@ def ingest_grid(
     if not grid or not grid[0]:
         return rep
     width = len(grid[0])
+    drops = rep.dropped
+
+    def drop(why: str) -> None:
+        drops[why] = drops.get(why, 0) + 1
+
     cands = []
-    for r0, r1 in _row_cuts(len(grid)):
-        for c0, c1 in _snap_cuts(grid[r0:r1], width):
-            if c1 - c0 < MIN_WIN_W:
-                continue
-            win = [[TileValue(int(v)) if int(v) in (0, 1, 2) else TileValue.SOLID for v in row[c0:c1]]
-                   for row in grid[r0:r1]]
-            filled = sum(1 for row in win for v in row if int(v))
-            if filled < 0.08 * (c1 - c0) * (r1 - r0):
-                continue
-            if max_fill is not None and filled > max_fill * (c1 - c0) * (r1 - r0):
-                continue
-            if not _surface_runs(_standable_cells(win)):
-                continue
-            cands.append((r0, r1, c0, c1, win))
+    seen_win = set()
+    for win_h, win_w, stride in WIN_SIZES:
+        for r0, r1 in _row_cuts(len(grid), win_h):
+            for c0, c1 in _snap_cuts(grid[r0:r1], width, win_w, stride):
+                if c1 - c0 < MIN_WIN_W or (r0, r1, c0, c1) in seen_win:
+                    continue
+                seen_win.add((r0, r1, c0, c1))
+                win = [[TileValue(int(v)) if int(v) in (0, 1, 2) else TileValue.SOLID for v in row[c0:c1]]
+                       for row in grid[r0:r1]]
+                wents = [IREntity(e.entity_type, e.col - c0, e.row - r0, {})
+                         for e in entities if c0 <= e.col < c1 and r0 <= e.row < r1]
+                win, wents, dr, dc = crop_window(win, wents)
+                h, w = len(win), len(win[0])
+                if w < MIN_WIN_W:
+                    drop("too narrow")
+                    continue
+                n = h * w
+                solid = sum(1 for row in win for v in row if int(v) == TileValue.SOLID) / n
+                if solid < MIN_SOLID:
+                    drop("mostly sky")
+                    continue
+                if solid > (max_fill if max_fill is not None else MAX_SOLID):
+                    drop("mostly rock")
+                    continue
+                if len(_surface_runs(_standable_cells(win))) < MIN_SPANS:
+                    drop("fewer than 2 standable spans")
+                    continue
+                cands.append((r0 + dr, c0 + dc, win, wents))
     if max_windows is not None and len(cands) > max_windows:
         step = len(cands) / float(max_windows)
         cands = [cands[int(i * step)] for i in range(max_windows)]
-    for r0, r1, c0, c1, win in cands:
-        wents = [IREntity(e.entity_type, e.col - c0, e.row - r0, {})
-                 for e in entities if c0 <= e.col < c1 and r0 <= e.row < r1]
+    known = _known_hashes(store)
+    for r0, c0, win, wents in cands:
         wents = guess_start_exit(win, wents)
-        f = window_features(win, wents, profile)
         text = _ascii(win, wents)
-        if len(text.splitlines()) > MAX_ASCII_H or max(len(x) for x in text.splitlines()) > MAX_ASCII_W:
+        lines = text.splitlines()
+        if len(lines) > MAX_ASCII_H or max(len(x) for x in lines) > MAX_ASCII_W:
+            drop("too large")
             continue
-        ok = accept_features(f)
+        rid = make_id(source, origin_path, level, text)
+        if rid in store.patterns:
+            rep.duplicates += 1
+            continue
+        gh = grid_hash(text)
+        if gh in known:
+            drop("near-duplicate")
+            continue
+        f = window_features(win, wents, profile)
+        if not accept_features(f):
+            drop("no route or soft-lock")
+            continue
         rec = {
-            "id": make_id(source, origin_path, level, text),
+            "id": rid,
             "source": source, "license": license, "origin_path": origin_path,
-            "level": level, "window": {"col": c0, "row": r0, "w": c1 - c0, "h": r1 - r0},
-            "ascii": text, "features": f, "accepted": ok, "label": None,
+            "level": level, "window": {"col": c0, "row": r0, "w": len(win[0]), "h": len(win)},
+            "ascii": text, "features": f, "accepted": True, "label": None,
         }
         if attribution:  # open-licensed game levels (Part 26d): authors, URL, licence
             rec["attribution"] = attribution
         if store.add(rec):
+            known.add(gh)
             rep.added += 1
-            rep.rejected += 0 if ok else 1
         else:
             rep.duplicates += 1
     return rep
+
+
+def recheck(store: PatternStore, profile: Optional[GameProfile] = None,
+            sources: Optional[Sequence[str]] = None) -> Dict[str, int]:
+    """Recompute route features, difficulty and the soft-lock status of every window (and its
+    ``accepted`` flag) with *profile* (default: the current ``GameProfile``), from its ASCII.
+    Whole-level records are thumbnails and are rebuilt by re-ingesting.  Returns counts."""
+    profile = profile or GameProfile()
+    n = {"checked": 0, "accepted": 0, "dropped": 0}
+    for rec in list(store):
+        if rec.get("kind", "pattern") != "pattern" or (sources and rec.get("source") not in sources):
+            continue
+        lines = [ln for ln in str(rec.get("ascii") or "").splitlines() if ln]
+        if not lines:
+            continue
+        w = max(len(ln) for ln in lines)
+        grid, ents = [], []
+        kinds = {v: k for k, v in ENTITY_CHARS.items()}
+        for r, ln in enumerate(lines):
+            row = []
+            for c, ch in enumerate(ln.ljust(w, "#")):
+                row.append(TileValue.SOLID if ch == "#" else TileValue.HAZARD if ch == "^" else TileValue.EMPTY)
+                if ch in kinds:
+                    ents.append(IREntity(kinds[ch], c, r, {}))
+            grid.append(row)
+        feats = window_features(grid, guess_start_exit(grid, ents), profile)
+        rec["features"] = feats
+        rec["accepted"] = accept_features(feats)
+        n["checked"] += 1
+        n["accepted" if rec["accepted"] else "dropped"] += 1
+    return n
 
 
 def add_path(store: PatternStore, path: Any, level: Optional[str] = None, *,
@@ -494,5 +605,5 @@ def ingest_samples(store: PatternStore, directory: Any, profile: Optional[GamePr
     return rep
 
 
-__all__ = ["IngestReport", "OPEN_CORPORA_HOOK", "SKIP_FILES", "accept_features", "add_path",
+__all__ = ["IngestReport", "crop_window", "grid_hash", "recheck", "OPEN_CORPORA_HOOK", "SKIP_FILES", "accept_features", "add_path",
            "guess_start_exit", "ingest_grid", "ingest_level", "thumbnail", "ingest_samples", "map_intgrid_values", "window_features"]

@@ -105,22 +105,23 @@ def empty_grid(w: int, h: int) -> List[List[TileValue]]:
 
 
 def fill_box(grid: List[List[TileValue]], x0: float, y0: float, w: float, h: float,
-             value: TileValue, *, overwrite_solid: bool = True) -> None:
-    """Fill the 16 px cells a pixel box covers (at least one cell)."""
+             value: TileValue, *, overwrite_solid: bool = True, tile: int = TILE) -> None:
+    """Fill the cells (*tile* px, default 16) a pixel box covers (at least one cell)."""
     gh, gw = len(grid), len(grid[0]) if grid else 0
-    c0, r0 = int(x0 // TILE), int(y0 // TILE)
-    c1 = max(c0, int((x0 + w - 1) // TILE))
-    r1 = max(r0, int((y0 + h - 1) // TILE))
+    c0, r0 = int(x0 // tile), int(y0 // tile)
+    c1 = max(c0, int((x0 + w - 1) // tile))
+    r1 = max(r0, int((y0 + h - 1) // tile))
     for r in range(max(0, r0), min(gh, r1 + 1)):
         for c in range(max(0, c0), min(gw, c1 + 1)):
             if overwrite_solid or grid[r][c] == TileValue.EMPTY:
                 grid[r][c] = value
 
 
-def entity_at(kind: str, x: float, y: float, w: int, h: int, *, feet: bool = True) -> Optional[IREntity]:
+def entity_at(kind: str, x: float, y: float, w: int, h: int, *, feet: bool = True,
+              tile: int = TILE) -> Optional[IREntity]:
     """An entity for a pixel position (top-left of a ~32 px object): the cell of its feet."""
-    col = int((x + TILE / 2) // TILE)
-    row = int((y + (TILE * 2 - 1 if feet else 0)) // TILE)
+    col = int((x + tile / 2) // tile)
+    row = int((y + (31 if feet else 0)) // tile)
     if 0 <= col < w and 0 <= row < h:
         return IREntity(kind, col, row)
     return None

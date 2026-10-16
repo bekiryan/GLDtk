@@ -71,11 +71,11 @@ def test_patterns_dir_is_the_test_tmp_dir(tmp_path):
 
 @needs_samples
 def test_ingest_platformer_sample(store):
-    rep = add_path(store, SAMPLES / "Typical_2D_platformer_example.ldtk")
+    rep = add_path(store, SAMPLES / "WorldMap_GridVania_layout.ldtk")
     assert rep.added >= 3
     rec = next(iter(store))
     assert rec["source"] == "ldtk-samples" and "MIT" in rec["license"]
-    assert rec["origin_path"].endswith("Typical_2D_platformer_example.ldtk")
+    assert rec["origin_path"].endswith("WorldMap_GridVania_layout.ldtk")
     f = rec["features"]
     for key in ("platform_widths", "max_gap", "hazards", "enemies", "route", "difficulty", "structure"):
         assert key in f
@@ -86,7 +86,7 @@ def test_ingest_platformer_sample(store):
 @needs_samples
 def test_sample_mapping_skips_unmappable_files(store):
     rep = ingest_samples(store, SAMPLES)
-    assert "Typical_2D_platformer_example.ldtk" in rep.mapped_files
+    assert "WorldMap_GridVania_layout.ldtk" in rep.mapped_files
     assert "Typical_TopDown_example.ldtk" in rep.skipped_files
     assert rep.added == len(store) > 10
 
@@ -98,16 +98,16 @@ def test_ingest_is_idempotent(store):
     assert r1.added == 1 and r2.added == 0 and r2.duplicates == 1
 
 
-def test_window_without_route_is_stored_but_not_accepted(store):
+def test_window_without_route_is_dropped(store):
     g, e = synthetic_grid("pit")
     for c in range(30):  # a ceiling and a wall from it to the floor split the level
         g[0][c] = TileValue.SOLID
     for r in range(11):
         for c in range(20, 23):
             g[r][c] = TileValue.SOLID
-    ingest_grid(store, g, e, source="t", license="CC0", origin_path="a", level="walled")
-    rec = next(iter(store))
-    assert rec["accepted"] is False and not accept(rec)
+    rep = ingest_grid(store, g, e, source="t", license="CC0", origin_path="a", level="walled")
+    assert len(store) == 0 and rep.dropped.get("no route or soft-lock") == 1
+    assert not accept({"features": {"route": {"ok": False, "softlocks": 0}}})
 
 
 def test_labelling_caches_and_respects_budget(small_store):
@@ -248,10 +248,10 @@ def test_patterns_endpoints(client, small_store):
 
 @needs_samples
 def test_patterns_add_endpoint(client):
-    r = client.post("/patterns/add", json={"path": str(SAMPLES / "Typical_2D_platformer_example.ldtk")}).json()
+    r = client.post("/patterns/add", json={"path": str(SAMPLES / "WorldMap_GridVania_layout.ldtk")}).json()
     assert r["added"] >= 3 and r["embedded"] >= 1
     assert client.get("/patterns/stats").json()["patterns"] == r["added"]
-    again = client.post("/patterns/add", json={"path": str(SAMPLES / "Typical_2D_platformer_example.ldtk")}).json()
+    again = client.post("/patterns/add", json={"path": str(SAMPLES / "WorldMap_GridVania_layout.ldtk")}).json()
     assert again["added"] == 0 and again["duplicates"] == r["added"]
 
 

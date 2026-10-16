@@ -79,9 +79,20 @@ def test_supertux_tileset_flags_map_tiles():
     assert supertux.classify(ts[3]) == TileValue.EMPTY  # goal marker
 
 
+def test_supertux_default_scale_is_one_tile_per_tile():
+    lv = list(supertux.iter_levels(FIX / "supertux", SourceReport("supertux")))[0]
+    assert len(lv.grid[0]) == 12
+    hz = cells(lv.grid, TileValue.HAZARD)
+    assert len(hz) == 2 and {c for _, c in hz} == {5, 6}
+    kinds = {e.entity_type: e for e in lv.entities}
+    for k in ("Start", "Exit"):
+        e = kinds[k]
+        assert lv.grid[e.row][e.col] == TileValue.EMPTY and lv.grid[e.row + 1][e.col] != TileValue.EMPTY
+
+
 def test_supertux_converts_a_level():
     rep = SourceReport("supertux")
-    levels = list(supertux.iter_levels(FIX / "supertux", rep))
+    levels = list(supertux.iter_levels(FIX / "supertux", rep, scale=2))
     assert [lv.level for lv in levels] == ["tiny"]
     lv = levels[0]
     assert lv.license == "CC-BY-SA-4.0" and "Test Author" in lv.attribution and "SuperTux" in lv.attribution
@@ -148,7 +159,8 @@ def test_frogatto_nc_folder_is_skipped():
 # ── ingest + attribution ────────────────────────────────────────────────────
 
 
-def test_ingest_source_records_licence_and_attribution(store, tmp_path):
+def test_ingest_source_records_licence_and_attribution(store, tmp_path, monkeypatch):
+    monkeypatch.setattr("patterns.ingest.MIN_WIN_W", 8)  # the fixture level is only 12 tiles wide
     srep, irep = ingest_source(store, "supertux", FIX / "supertux", download=False)
     assert irep.added >= 1 and irep.levels_added == 1 and srep.included == ["world1/tiny.stl"]
     recs = list(store)

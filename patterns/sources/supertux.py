@@ -24,6 +24,9 @@ GAME = "supertux"
 URL = "https://github.com/SuperTux/supertux"
 SPARSE = ["/*", "!/*/", "/data/levels/", "/data/images/*.strf"]
 SRC_TILE = 32
+# GLDtk tiles per SuperTux tile (per side).  1: Tux jumps about 3-4 of his tiles, which matches
+# the Part 28 short hop; 2 is the old 16 px conversion (jumps twice as long, now unplayable).
+SCALE = 1
 
 # tile.hpp attribute flags
 SOLID, UNISOLID, BRICK, GOAL, SLOPE = 0x1, 0x2, 0x4, 0x8, 0x10
@@ -194,9 +197,9 @@ def _xy(obj: List[Any]) -> Optional[Tuple[float, float]]:
     return None
 
 
-def convert_sector(sector: List[Any], tileset: Dict[int, int]
+def convert_sector(sector: List[Any], tileset: Dict[int, int], scale: int = SCALE
                    ) -> Optional[Tuple[List[List[TileValue]], List[IREntity]]]:
-    """One sector as a 16 px grid, or None when it has no solid tilemap."""
+    """One sector as a grid (*scale* GLDtk tiles per SuperTux tile), or None when it has no solid tilemap."""
     maps = []
     for tm in children(sector, "tilemap"):
         if value(tm, "solid") is not True or child(tm, "path") is not None:
@@ -210,7 +213,8 @@ def convert_sector(sector: List[Any], tileset: Dict[int, int]
         return None
     sw = max(w + int(xo // SRC_TILE) for w, _, _, xo, _ in maps)
     sh = max(h + int(yo // SRC_TILE) for _, h, _, _, yo in maps)
-    k = SRC_TILE // TILE
+    k = max(1, int(scale))
+    cell = SRC_TILE // k  # px per GLDtk tile
     gw, gh = sw * k, sh * k
     grid = empty_grid(gw, gh)
     ents: List[IREntity] = []
@@ -238,24 +242,24 @@ def convert_sector(sector: List[Any], tileset: Dict[int, int]
             continue
         x, y = pos
         if name in SOLID_OBJECTS:
-            fill_box(grid, x, y, SRC_TILE, SRC_TILE, TileValue.SOLID)
+            fill_box(grid, x, y, SRC_TILE, SRC_TILE, TileValue.SOLID, tile=cell)
         elif name in HAZARD_OBJECTS:
-            fill_box(grid, x, y, SRC_TILE, SRC_TILE, TileValue.HAZARD, overwrite_solid=False)
+            fill_box(grid, x, y, SRC_TILE, SRC_TILE, TileValue.HAZARD, overwrite_solid=False, tile=cell)
         elif name == "spawnpoint" and value(obj, "name", "main") == "main":
-            e = entity_at("Start", x, y, gw, gh)
+            e = entity_at("Start", x, y, gw, gh, tile=cell)
             if e:
                 ents.append(e)
         elif name == "sequencetrigger" and str(value(obj, "sequence", "")) == "endsequence":
             w = float(value(obj, "width", SRC_TILE) or SRC_TILE)
-            e = entity_at("Exit", x + w / 2 - TILE, y, gw, gh)
+            e = entity_at("Exit", x + w / 2 - SRC_TILE / 2, y, gw, gh, tile=cell)
             if e:
                 ents = [x for x in ents if x.entity_type != "Exit"] + [e]
         elif name in ENEMY_OBJECTS:
-            e = entity_at("Enemy", x, y, gw, gh)
+            e = entity_at("Enemy", x, y, gw, gh, tile=cell)
             if e:
                 ents.append(e)
         elif name in PICKUP_OBJECTS:
-            e = entity_at("Pickup", x, y, gw, gh)
+            e = entity_at("Pickup", x, y, gw, gh, tile=cell)
             if e:
                 ents.append(e)
     return trim(grid, settle(grid, ents))
@@ -270,7 +274,8 @@ def _tileset_for(level: List[Any], data_dir: Path, cache: Dict[str, Dict[int, in
 
 
 def convert_file(path: Path, data_dir: Path, report: SourceReport,
-                 cache: Optional[Dict[str, Dict[int, int]]] = None, rel: str = "") -> List[ConvertedLevel]:
+                 cache: Optional[Dict[str, Dict[int, int]]] = None, rel: str = "",
+                 scale: int = SCALE) -> List[ConvertedLevel]:
     """The levels (one per sector with collision) of one ``.stl`` file; [] when skipped."""
     cache = {} if cache is None else cache
     rel = rel or path.name
@@ -294,7 +299,7 @@ def convert_file(path: Path, data_dir: Path, report: SourceReport,
     out: List[ConvertedLevel] = []
     sectors = children(level, "sector")
     for sec in sectors:
-        conv = convert_sector(sec, tileset)
+        conv = convert_sector(sec, tileset, scale)
         if conv is None:
             continue
         grid, ents = conv
@@ -311,8 +316,8 @@ def convert_file(path: Path, data_dir: Path, report: SourceReport,
     return out
 
 
-def iter_levels(root: Path, report: SourceReport, max_levels: Optional[int] = None
-                ) -> Iterator[ConvertedLevel]:
+def iter_levels(root: Path, report: SourceReport, max_levels: Optional[int] = None,
+                scale: int = SCALE) -> Iterator[ConvertedLevel]:
     """Levels (one per sector) of a SuperTux checkout at *root*, at most *max_levels*."""
     data = root / "data"
     levels_dir = data / "levels"
@@ -332,7 +337,7 @@ def iter_levels(root: Path, report: SourceReport, max_levels: Optional[int] = No
             continue
         if max_levels is not None and n >= max_levels:
             break
-        conv = convert_file(p, data, report, cache, rel)
+        conv = convert_file(p, data, report, cache, rel, scale)
         for lv in conv:
             if max_levels is not None and n >= max_levels:
                 return

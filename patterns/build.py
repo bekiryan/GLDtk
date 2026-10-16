@@ -46,6 +46,29 @@ def demo_files() -> List[Path]:
     return sorted(p for d in ROOT.glob("demo*") if d.is_dir() for p in d.rglob("*.ldtk"))
 
 
+REINGESTED = ("ldtk-samples", "supertux", "opensurge", "frogatto")
+
+
+def rebuild_reset(store: PatternStore) -> int:
+    """Part 26e: remove the records the build re-creates (LDtk samples and the game sources, windows
+    and whole levels), recheck the other windows (GLDtk's own) with the current physics, and clear
+    every pattern label.  Design notes (and their vectors) are untouched."""
+    from patterns.ingest import recheck
+
+    drop = [pid for pid, r in store.patterns.items()
+            if r.get("kind", "pattern") != "note" and r.get("source") in REINGESTED]
+    for pid in drop:
+        store.patterns.pop(pid, None)
+        store.vectors.pop(pid, None)
+    for pid, r in store.patterns.items():
+        if r.get("kind", "pattern") == "pattern":
+            r["label"] = None
+            store.vectors.pop(pid, None)
+    recheck(store)
+    store._grid_hashes = None
+    return len(drop)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m patterns.build", description=__doc__.split("\n")[0])
     ap.add_argument("--samples", type=Path, default=None, help="folder of sample .ldtk files")
@@ -57,10 +80,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="ingest and count, no LLM call, nothing saved")
     ap.add_argument("--source", choices=["supertux", "opensurge", "frogatto", "all"], default=None,
                     help="also download (if missing), convert and ingest an open-licensed game")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="Part 26e: drop every window / level and all pattern labels (design notes "
+                         "stay), re-ingest with the current rules and re-check kept windows")
+    ap.add_argument("--label-budget", type=int, default=600,
+                    help="most labels written in one run, richest windows first (default 600)")
     ap.add_argument("--max-levels", type=int, default=None, help="cap on converted levels per game")
     args = ap.parse_args(argv)
 
     store = PatternStore()
+    if args.rebuild:
+        n_old = rebuild_reset(store)
+        print(f"rebuild: dropped {n_old} window / level record(s) and all pattern labels; notes kept")
     samples = args.samples or default_samples_dir()
     if samples:
         rep = ingest_samples(store, samples)
@@ -73,6 +104,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         rep.merge(add_path(store, p, source="gldtk", license="project-owned (GLDtk)"))
     print(f"ingest: {rep.added} new, {rep.duplicates} already indexed, {rep.rejected} rejected "
           f"(no Start->Exit route)")
+    for why, n in sorted(rep.dropped.items()):
+        print(f"    dropped {n}: {why}")
     for name, n in sorted(rep.mapped_files.items()):
         print(f"  mapped   {name}: {n}")
     for name, why in sorted(rep.skipped_files.items()):
@@ -82,6 +115,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         for game in (GAMES if args.source == "all" else [args.source]):
             srep, irep = ingest_source(store, game, max_levels=args.max_levels)
+            for why, n in sorted(irep.dropped.items()):
+                print(f"    dropped {n}: {why}")
             print(f"source {game}: {len(srep.included)} level file(s) included {srep.licenses}, "
                   f"{irep.added} new pattern(s) ({irep.rejected} rejected: no route), "
                   f"{irep.duplicates} already indexed, {irep.levels_added} whole level(s)")
@@ -101,7 +136,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             from llm.providers import make_provider
 
             provider = make_provider(args.provider, model=args.model)
-        lrep = label_pending(store, provider, max_calls=args.max_calls, dry_run=args.dry_run)
+        lrep = label_pending(store, provider, max_calls=args.max_calls, dry_run=args.dry_run,
+                             budget=args.label_budget)
         print(f"label: {lrep.labelled} new, {lrep.cached} cached, {lrep.pending} pending, "
               f"{lrep.calls} call(s)" + (" [dry run]" if args.dry_run else "")
               + (" [budget reached]" if lrep.stopped else ""))

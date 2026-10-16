@@ -27,8 +27,24 @@ and measured features. Output ONE JSON object and nothing else:
   "structure_type": corridor | parkour | labyrinth | arena | shaft | hub | open,
   "difficulty": integer 1 (trivial) .. 10 (very hard),
   "tags": 2-6 lowercase words for retrieval.
-Describe only what is in the fragment.\
+Describe only what is in the fragment. Style of a good title (never reuse these examples):
+"Spike pit stairs", "Twin ledge climb".\
 """
+
+# Titles the prompt shows as examples; a label that repeats one is rejected and asked again once.
+EXAMPLE_TITLES = ("spike pit stairs", "twin ledge climb")
+
+
+def is_example_title(title: str) -> bool:
+    return title.strip().strip('."\'').lower() in EXAMPLE_TITLES
+
+
+def richness(rec: dict) -> float:
+    """How much structure a window has (more is a better labelling candidate)."""
+    f = rec.get("features") or {}
+    r = f.get("route") or {}
+    return (f.get("platforms", 0) + 2 * r.get("jumps", 0) + 2 * f.get("hazards", 0) ** 0.5
+            + f.get("enemies", 0) + len(set(f.get("platform_widths") or [])) + (f.get("max_gap", 0) > 0))
 
 
 class PatternLabel(BaseModel):
@@ -86,6 +102,20 @@ def spread(recs: List[dict]) -> List[dict]:
     return out
 
 
+def rich_order(recs: List[dict]) -> List[dict]:
+    """Richest first within each source, then round-robin over the sources."""
+    by_src: dict = {}
+    for r in recs:
+        by_src.setdefault(r.get("source", ""), []).append(r)
+    queues = [sorted(q, key=lambda r: (-richness(r), r["id"])) for q in by_src.values()]
+    out = []
+    while any(queues):
+        for q in queues:
+            if q:
+                out.append(q.pop(0))
+    return out
+
+
 def label_pending(
     store: PatternStore,
     provider: Any,
@@ -93,20 +123,27 @@ def label_pending(
     max_calls: Optional[int] = None,
     dry_run: bool = False,
     max_retries: int = 2,
+    budget: Optional[int] = None,
 ) -> LabelReport:
-    """Label every accepted, unlabelled pattern (saves the store after each label)."""
+    """Label accepted, unlabelled patterns, structurally richest first and rotating across
+    sources (saves the store after each label).  *budget* caps the number of labels written,
+    *max_calls* the provider calls."""
     from edit.llm import EditLLMFailed, run_structured
     from eval.providers import BudgetExceeded, CallBudget, CountingProvider
 
-    todo = spread([r for r in store if r.get("accepted") and not r.get("label")
-                   and r.get("kind", "pattern") == "pattern"])
+    todo = rich_order([r for r in store if r.get("accepted") and not r.get("label")
+                       and r.get("kind", "pattern") == "pattern"])
     rep = LabelReport(cached=sum(1 for r in store if r.get("label")), dry_run=dry_run)
     if dry_run:
         rep.pending = len(todo)
         return rep
+    budget_labels = budget
     budget = CallBudget(max_calls)
     counted = CountingProvider(provider, budget)
     for rec in todo:
+        if budget_labels is not None and rep.labelled >= budget_labels:
+            rep.stopped = True
+            break
         if budget.exhausted:
             rep.stopped = True
             break
@@ -120,6 +157,24 @@ def label_pending(
         except EditLLMFailed as exc:
             rep.errors.append(f"{rec['id']}: {exc}")
             continue
+        if is_example_title(run.value.title):  # copied the prompt's example: ask once more
+            msgs = label_messages(rec) + [{"role": "user", "content": (
+                f'"{run.value.title}" is only an example. Give a title that names what is distinctive '
+                "in THIS fragment.")}]
+            try:
+                again = run_structured(counted, LABEL_SYSTEM_PROMPT, msgs, PatternLabel,
+                                       lambda obj: (obj, [], []), max_retries=1,
+                                       what=f"the label of {rec['id']} (retitle)")
+            except BudgetExceeded:
+                rep.stopped = True
+                break
+            except EditLLMFailed as exc:
+                rep.errors.append(f"{rec['id']}: {exc}")
+                continue
+            if is_example_title(again.value.title):
+                rep.errors.append(f"{rec['id']}: title still an example, skipped")
+                continue
+            run = again
         rec["label"] = run.value.model_dump()
         rep.labelled += 1
         store.save()
@@ -128,4 +183,4 @@ def label_pending(
     return rep
 
 
-__all__ = ["LABEL_SYSTEM_PROMPT", "LabelReport", "PatternLabel", "label_pending", "label_messages"]
+__all__ = ["LABEL_SYSTEM_PROMPT", "EXAMPLE_TITLES", "LabelReport", "PatternLabel", "rich_order", "richness", "is_example_title", "label_pending", "label_messages"]
