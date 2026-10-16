@@ -443,6 +443,56 @@
      "arena"
     ]
    }
+  },
+  {
+   "id": "v4-mission-metroidvania",
+   "tags": [
+    "multi",
+    "horizontal",
+    "v4",
+    "mission",
+    "key",
+    "structure"
+   ],
+   "prompt": "A small metroidvania ruin: a central hub room, a locked door to the east whose key lies in a western cave labyrinth, a double-jump boots pickup in a shaft that opens a high ledge back in the hub, and a shortcut loop back to the start after the boss arena.",
+   "expect": {
+    "min_sections": 3,
+    "structures": [
+     "hub",
+     "labyrinth"
+    ],
+    "entity_kinds": [
+     "Key"
+    ]
+   }
+  },
+  {
+   "id": "v4-complexity-low",
+   "tags": [
+    "multi",
+    "horizontal",
+    "v4",
+    "complexity"
+   ],
+   "complexity": 0.3,
+   "prompt": "A castle level in three sections: a courtyard with guards, a parkour section over the moat, and a throne room with a knight boss.",
+   "expect": {
+    "min_sections": 3
+   }
+  },
+  {
+   "id": "v4-complexity-high",
+   "tags": [
+    "multi",
+    "horizontal",
+    "v4",
+    "complexity"
+   ],
+   "complexity": 0.8,
+   "prompt": "A castle level in three sections: a courtyard with guards, a parkour section over the moat, and a throne room with a knight boss.",
+   "expect": {
+    "min_sections": 3
+   }
   }
  ]
 }
