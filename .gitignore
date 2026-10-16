@@ -68,3 +68,4 @@ packaging/dist/
 packaging/build/
 ldtk-src/app/redist/
 demo/out/
+demo/out_full/

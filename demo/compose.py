@@ -148,6 +148,17 @@ def badge(ass: Ass, a: float, b: float, x_right: int, y: int, txt: str, color="&
 
 # ── main ───────────────────────────────────────────────────────────────────
 
+def manual_check_text(check, short: bool = False) -> str:
+    """The manual side's playability: checked afterwards with GLDtk's verifier (demo/verify.py)."""
+    if not check:
+        return "not verified" if short else "no — not checked by hand"
+    if check.get("playable"):
+        return "playable (checked after)" if short else "yes — checked afterwards with GLDtk's verifier"
+    why = ("Start cannot reach the Exit" if not check.get("start_reaches_exit")
+           else f"{check.get('softlock_spots', 0)} soft-lock spot(s)")
+    return f"not playable: {why}" if short else f"no — {why} (GLDtk's verifier)"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "out"))
@@ -165,10 +176,13 @@ def main() -> None:
     model = ai.res["answered_by"]
     hm = man.res["human"]
     cmp_ = man.res.get("compare", {})
+    # demo/verify.py result for the finished manual file (offline, after the build; not timed)
+    vf = out / "manual" / "verify.json"
+    man_check = json.loads(vf.read_text(encoding="utf-8")) if vf.is_file() else None
 
     stats = {
         "manual": {"real_time_s": round(man.total, 1), "steps": man.res["steps"], **man.res["counts"],
-                   "verified": False, "tiles_included": man.res.get("tiles", True),
+                   "verified": bool(man_check and man_check.get("playable")), "check": man_check, "tiles_included": man.res.get("tiles", True),
                    "stopped_at_budget": man.res.get("stopped", False), "progress": man.res.get("progress"),
                    "estimate_full": man.res.get("estimate"),
                    "matches_target": cmp_, "human_timing_s": hm},
@@ -229,7 +243,7 @@ def main() -> None:
                  f"Stopped at {mmss(man.total)} · {man.res['progress']['pct']:.0f}% done · full build ≈ {mmss(est['full_real_s'])} (est.)",
                  size=30, bold=True, an=2, box="&H303030&", layer=3)
     elif man.total / speed < main_len:
-        ass.text(man.total / speed, main_len, 480, PANEL_Y + PANEL_H - 16, f"Done in {mmss(man.total)} · not verified",
+        ass.text(man.total / speed, main_len, 480, PANEL_Y + PANEL_H - 16, f"Done in {mmss(man.total)} · {manual_check_text(man_check, short=True)}",
                  size=32, bold=True, an=2, box="&H303030&", layer=3)
     tiles_note = "" if man.res.get("tiles", True) else "  ·  tiles not included — would add more time"
     ass.text(0, main_len, 960, H - 18,
@@ -276,7 +290,7 @@ def end_card(ass: Ass, a: float, b: float, stats: dict, hm: dict) -> None:
         ("Steps", manual_steps, f"{g['steps']:,}"),
         ("   clicks · drags · keys", f"{m['click']:,} · {m['drag']:,} · {m['key']:,}",
          f"{g['click']} · {g['drag']} · {g['key']}  ({g['prompt_words']}-word prompt)"),
-        ("Verified playable", "no — not checked by hand", "yes — beatable, soft-lock-free" if g["verified"] else "no"),
+        ("Verified playable", manual_check_text(m.get("check")), "yes — beatable, soft-lock-free" if g["verified"] else "no"),
         ("Edit turnaround", "redo by hand", f"{g['edit_s']:.1f} s  (+ undo {g['undo_s']:.1f} s)"),
     ]
     y = 220

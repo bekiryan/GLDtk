@@ -27,6 +27,15 @@ node demo/record_manual.js demo/out/ai/target.ldtk       # 5:00 at human pace, n
 .venv/bin/python demo/compose.py                         # --speed N to force the manual speed-up
 ```
 
+Full manual build overnight, offline (no LLM, server or internet; reuses the recorded AI run,
+keeps the Mac awake, retries if LDtk dies, then checks playability with `demo/verify.py` and composes
+the video into `demo/out_full/`):
+
+```bash
+nohup demo/run_full_offline.sh >/dev/null 2>&1 &
+tail -f demo/out_full/run.log
+```
+
 Dry runs of the manual script, without recording, on a few columns:
 
 ```bash
