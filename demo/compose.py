@@ -131,6 +131,8 @@ def panel_overlay(ass: Ass, run: Run, x0: int, speed: float, until: float, info_
         if st["caption"]:
             ass.text(t, b, x0 + 40, info_y + 140, st["caption"], size=40, color=YELLOW)
         if "pct" in st:
+            if not run.res.get("stopped"):  # a finished build: share of the steps it really took
+                st = {**st, "pct": 100 * st["count"] / max(run.res["steps"], 1)}
             ass.text(t, b, x0 + 40, info_y + 200, progress_line(st), size=30, color=WHITE)
         t = b
     ass.text(0, until, x0 + 40, info_y + 108, "real time", size=26, color=GREY)
@@ -305,12 +307,12 @@ def end_card(ass: Ass, a: float, b: float, stats: dict, hm: dict) -> None:
         ass.text(a, b, 1260, y, r, size=size, color=col if i == 0 else GREEN, bold=i == 0, layer=6)
         y += 78 if not k.startswith("   ") else 62
     notes = [
-        f"AI: real run, model {g['answered_by']}; the manual side rebuilds the AI's level "
-        f"(collisions {cm.get('collision_cells', ['?', '?'])[0]}/{cm.get('collision_cells', ['?', '?'])[1]} cells, "
+        f"AI: real run, model {g['answered_by']}; the manual side rebuilds the AI's level.",
+        f"Match with the AI's level: collisions {cm.get('collision_cells', ['?', '?'])[0]}/{cm.get('collision_cells', ['?', '?'])[1]} cells, "
         + (f"tiles simplified: {m['tile_fills']} fills — rock fill + top surfaces, no edge tiles, "
            if m.get("tiles_mode") == "simple" else
            f"tiles {cm.get('tile_cells', ['?', '?'])[0]}/{cm.get('tile_cells', ['?', '?'])[1]}, ")
-        + f"entities {cm.get('entities', ['?', '?'])[0]}/{cm.get('entities', ['?', '?'])[1]} match).",
+        + f"entities {cm.get('entities', ['?', '?'])[0]}/{cm.get('entities', ['?', '?'])[1]}.",
         f"Manual: scripted in LDtk's own editor at human pace — click {hm['click']} s, tool/layer {hm['choose']} s, "
         f"typing {hm['perChar']} s/char + {hm['think']} s, drag {hm['drag']} s, look {hm['look']} s per section.",
         "Steps = every click, drag and keystroke. Manual video sped up; timers show real time.",

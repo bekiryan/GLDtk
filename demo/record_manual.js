@@ -164,7 +164,9 @@ async function main() {
       log.phase(entityCaption(e, ents));
       await look(e.cx);
       await me.click(`li.entity[data-defUid="${e.defUid}"]`, { kind: 'choose' });
-      await me.click(await cellToPage(win, e.cx, e.cy), { note: e.id });
+      const at = await cellToPage(win, e.cx, e.cy);
+      await uncover(win, me, at);
+      await me.click(at, { note: e.id });
       await L.sleep(400);
       for (const f of await fieldsToSet(win, e)) {
         try { await setField(win, me, f); }
@@ -323,6 +325,20 @@ function entityCaption(e, ents) {
   return same > 1 ? `Placing ${same} ${(k || e.id).toLowerCase()}s…` : `Placing the ${(k || e.id).toLowerCase()}…`;
 }
 const kindOf = e => { const f = e.fields.find(f => f.type.startsWith('LocalEnum.') && f.id !== 'facing'); return f && f.value; };
+
+/**
+ * Escape until nothing covers the level at `p`: after typing a field value the first
+ * Escape only leaves the text box, and the instance panel stays over the right side.
+ */
+async function uncover(win, me, p) {
+  for (let i = 0; i < 3; i++) {
+    const free = await win.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); return !!el && el.id === 'webgl'; }, p);
+    if (free) return;
+    await me.press('Escape');
+    await L.sleep(250);
+  }
+  throw new Error('the level is covered at ' + p.map(Math.round));
+}
 
 /** Page coordinates of a level cell's centre, from LDtk's camera. */
 async function cellToPage(win, cx, cy) {
