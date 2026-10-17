@@ -155,7 +155,7 @@ def manual_check_text(check, short: bool = False) -> str:
     if not check:
         return "not verified" if short else "no — not checked by hand"
     if check.get("playable"):
-        return "playable (checked after)" if short else "yes — checked afterwards with GLDtk's verifier"
+        return "playable (checked after)" if short else "yes — checked after the build"
     why = ("Start cannot reach the Exit" if not check.get("start_reaches_exit")
            else f"{check.get('softlock_spots', 0)} soft-lock spot(s)")
     return f"not playable: {why}" if short else f"no — {why} (GLDtk's verifier)"

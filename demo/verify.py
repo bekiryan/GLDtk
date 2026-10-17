@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -17,11 +18,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from layout.route import file_route  # noqa: E402
 
 
-def check(path: str) -> dict:
+def with_rules_from(path: str, target: str) -> str:
+    """A temp copy of *path* carrying *target*'s GLDtk level fields."""
+    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    tdoc = json.loads(Path(target).read_text(encoding="utf-8"))
+    keep = [f for f in doc["levels"][0]["fieldInstances"] if not f["__identifier"].startswith("gldtk_")]
+    doc["levels"][0]["fieldInstances"] = keep + [
+        f for f in tdoc["levels"][0]["fieldInstances"] if f["__identifier"].startswith("gldtk_")]
+    fd, tmp = tempfile.mkstemp(suffix=".ldtk", dir=str(Path(path).parent))
+    with open(fd, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    return tmp
+
+
+def check(path: str, rules_from: str | None = None) -> dict:
+    src = with_rules_from(path, rules_from) if rules_from else path
     try:
-        r = file_route(path)
+        r = file_route(src)
     except Exception as exc:  # an unreadable or half-built file is simply not playable
         return {"file": path, "playable": False, "error": str(exc)}
+    finally:
+        if src != path:
+            Path(src).unlink(missing_ok=True)
     d = r.as_dict()
     return {
         "file": path,
@@ -30,11 +48,13 @@ def check(path: str) -> dict:
         "softlock_spots": len(d.get("softlock_spans") or []),
         "unreachable_required": len(d.get("unreachable_required") or []),
         "route_moves": len(d.get("steps") or []),
+        "rules_from": rules_from,
     }
 
 
 def main(argv: list) -> int:
-    res = check(argv[0])
+    rules = argv[argv.index("--rules-from") + 1] if "--rules-from" in argv else None
+    res = check(argv[0], rules)
     print(json.dumps(res, indent=1))
     if "--json" in argv:
         Path(argv[argv.index("--json") + 1]).write_text(json.dumps(res, indent=1), encoding="utf-8")

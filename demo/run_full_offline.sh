@@ -26,6 +26,6 @@ done
 echo "compare with the target" >> $LOG
 .venv/bin/python demo/compare.py $TARGET $OUT/manual/crypt.ldtk >> $LOG 2>&1
 echo "playability check" >> $LOG
-.venv/bin/python demo/verify.py $OUT/manual/crypt.ldtk --json $OUT/manual/verify.json >> $LOG 2>&1
+.venv/bin/python demo/verify.py $OUT/manual/crypt.ldtk --rules-from $TARGET --json $OUT/manual/verify.json >> $LOG 2>&1
 echo "compose" >> $LOG
 .venv/bin/python demo/compose.py --out $OUT >> $LOG 2>&1 && echo "DONE $(date): $OUT/comparison.mp4" >> $LOG
