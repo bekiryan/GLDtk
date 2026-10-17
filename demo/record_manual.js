@@ -1,7 +1,7 @@
 // Manual side of the demo: rebuild the AI target level in LDtk's own editor
 // (no GLDtk sidebar) with real mouse and keyboard events at human pace.
 //
-//   node demo/record_manual.js TARGET.ldtk [outDir] [--budget=300] [--region=x0,x1] [--no-tiles] [--no-record]
+//   node demo/record_manual.js TARGET.ldtk [outDir] [--budget=300] [--tiles=simple|exact|none] [--region=x0,x1] [--no-record] [--estimate]
 //
 // Stops after --budget seconds of real time (default 300, 0 = build it all) and
 // estimates the full build from every planned action. The plan (greedy rectangles per IntGrid value and per tile, entity list) comes
@@ -35,7 +35,9 @@ async function main() {
   const target = path.resolve(targetArg);
   const out = path.resolve(outArg || path.join(__dirname, 'out/manual'));
   const region = flag('region') ? flag('region').split('=')[1].split(',').map(Number) : null;
-  const doTiles = !flag('no-tiles');
+  // --tiles=simple (default: quick fills, see simple_tiles in make_projects.py) | exact | none
+  const tilesMode = flag('no-tiles') ? 'none' : flag('tiles') ? flag('tiles').split('=')[1] : 'simple';
+  const doTiles = tilesMode !== 'none';
   const record = !flag('no-record');
   const budget = flag('budget') ? Number(flag('budget').split('=')[1]) : 300;  // seconds; 0 = no limit
   fs.mkdirSync(out, { recursive: true });
@@ -50,7 +52,8 @@ async function main() {
   const defs = JSON.parse(fs.readFileSync(target)).defs;
   const inRegion = r => !region || (r.x <= region[1] && r.x + (r.w || 1) - 1 >= region[0]);
   const sections = sectionBounds(plan);
-  const full = estimateFull(plan, defs, sections, doTiles);
+  const full = estimateFull(plan, defs, sections, tilesMode);
+  if (flag('estimate')) { console.log(JSON.stringify(full)); return; }  // modeled time only, no LDtk
 
   const { app, win, cdp } = await L.launch();
   await L.openProject(app, win, file);
@@ -69,7 +72,8 @@ async function main() {
   // Progress on every log line: target cells painted, entities placed, share of the modeled work.
   const done = { coll: 0, tiles: 0, ents: 0 };
   const total = { coll: plan.collisions.reduce((n, r) => n + r.w * r.h, 0),
-    tiles: plan.tiles.reduce((n, l) => n + l.rects.reduce((m, r) => m + r.w * r.h, 0), 0), ents: plan.entities.length };
+    tiles: tilesMode === 'simple' ? plan.simple_tiles.reduce((n, l) => n + l.fill_rects.length + l.top_runs.length, 0)
+      : plan.tiles.reduce((n, l) => n + l.rects.reduce((m, r) => m + r.w * r.h, 0), 0), ents: plan.entities.length };
   log.extra = () => ({ coll: [done.coll, total.coll], tiles: [done.tiles, total.tiles], ents: [done.ents, total.ents],
     pct: +(100 * me.modeled / full.modeled_s).toFixed(1) });
   if (rec) await rec.start();
@@ -111,7 +115,28 @@ async function main() {
     }
 
     // 3. Tiles
-    if (doTiles) for (const layer of plan.tiles) {
+    if (tilesMode === 'simple') for (const layer of plan.simple_tiles) {
+      // A quick person: the fill variants in random mode over each rock mass, then the top surfaces.
+      seen.clear();
+      log.phase('Tiles: filling the rock…');
+      await me.click(layerSel(layer.layer), { kind: 'choose' });
+      if (!(await win.isVisible('button.toggle.on:has(.icon.fit)'))) await me.click('button.toggle:has(.icon.fit)');
+      await me.drag(await tilePoint(win, layer.fill[0]), await tilePoint(win, layer.fill[layer.fill.length - 1]));
+      await setRandom(win, me, true);
+      for (const r of collisionOrder(layer.fill_rects.filter(inRegion))) {
+        await look(r.x);
+        await paintRect(win, me, r);
+        done.tiles++;
+      }
+      log.phase('Tiles: top surfaces…');
+      await pickTile(win, me, layer.top);
+      await setRandom(win, me, false);
+      for (const r of layer.top_runs.filter(inRegion)) {
+        await paintRect(win, me, r);
+        done.tiles++;
+      }
+    }
+    if (tilesMode === 'exact') for (const layer of plan.tiles) {
       log.phase('Painting tiles…');
       seen.clear();
       await me.click(layerSel(layer.layer), { kind: 'choose' });
@@ -173,7 +198,9 @@ async function main() {
   // real/modeled ratio of the part that was done (mouse travel, LDtk redraws).
   const factor = elapsed / Math.max(me.modeled, 1);
   const res = { epoch: log.t0 / 1000, total_s: elapsed, counts: log.counts, steps: log.steps(), human: HUMAN,
-    tiles: doTiles, region, budget_s: budget, stopped, progress: log.extra(),
+    tiles: doTiles, tiles_mode: tilesMode,
+    tile_fills: tilesMode === 'simple' ? plan.simple_tiles.reduce((n, l) => n + l.fill_rects.length + l.top_runs.length, 0) : null,
+    region, budget_s: budget, stopped, progress: log.extra(),
     estimate: { ...full, real_per_modeled: +factor.toFixed(3), full_real_s: Math.round(full.modeled_s * factor) },
     compare: compare(target, file, region) };
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify(res, null, 1));
@@ -218,7 +245,7 @@ function fieldDefault(fd) {
  * Every action of the whole manual build with the same order and timing as
  * main(): counts per kind and the modeled seconds (before the real/modeled ratio).
  */
-function estimateFull(plan, defs, sections, doTiles) {
+function estimateFull(plan, defs, sections, tilesMode) {
   const H = HUMAN, n = { click: 0, drag: 0, key: 0 };
   let t = 0;
   const click = (k = 'click') => { n.click++; t += k === 'choose' ? H.choose : H.click; };
@@ -240,7 +267,15 @@ function estimateFull(plan, defs, sections, doTiles) {
     new Set(plan.collisions.map(r => r.key)).forEach(() => click('choose'));
     plan.collisions.forEach(rect); looks();
   });
-  if (doTiles) mark('tiles', () => {
+  if (tilesMode === 'simple') mark('tiles', () => {
+    for (const layer of plan.simple_tiles) {
+      click('choose'); click(); drag(); click();       // layer, fit, picker drag, random on
+      layer.fill_rects.forEach(rect); looks();
+      click('choose'); click();                        // top tile, random off
+      layer.top_runs.forEach(rect);
+    }
+  });
+  if (tilesMode === 'exact') mark('tiles', () => {
     for (const layer of plan.tiles) {
       click('choose'); click();
       let flips = 0;
@@ -265,6 +300,7 @@ function estimateFull(plan, defs, sections, doTiles) {
         if (!fd || SKIP_FIELDS.has(f.id) || f.value === null || typeof f.value === 'object') continue;
         if (String(f.value) === String(fieldDefault(fd))) continue;
         if (f.type.startsWith('LocalEnum.')) { click(); click(); }
+        else if (f.type === 'Bool') click();
         else { click(); press(); type(String(f.value)); press(); }
       }
       press();
@@ -328,9 +364,20 @@ async function fitLevel(win, me) {
   }
 }
 
-/** Clicks a tile in the Tiles palette picker (page = wrapper + (local - scroll) * zoom). */
+/** Clicks a tile in the Tiles palette picker. */
 async function pickTile(win, me, tileId) {
-  const p = await win.evaluate(id => {
+  await me.click(await tilePoint(win, tileId), { kind: 'choose' });
+}
+
+/** Turns the tile palette's random mode on or off with its button. */
+async function setRandom(win, me, on) {
+  const isOn = await win.isVisible('button.toggle.on:has(.icon.random)');
+  if (isOn !== on) await me.click('button.toggle:has(.icon.random)');
+}
+
+/** Page point of a tile in the picker (page = wrapper + (local - scroll) * zoom). */
+async function tilePoint(win, tileId) {
+  return win.evaluate(id => {
     const E = __hx['page.Editor'].ME;
     const td = E.project.defs.getTilesetDef(E.get_curLayerDef().tilesetDefUid);
     const step = td.tileGridSize + td.spacing, cWid = Math.floor((td.pxWid - td.padding * 2 + td.spacing) / step);
@@ -341,7 +388,6 @@ async function pickTile(win, me, tileId) {
     const sx = -parseFloat(cs.marginLeft) || 0, sy = -parseFloat(cs.marginTop) || 0;
     return [r.left + (lx - sx) * z, r.top + (ly - sy) * z];
   }, tileId);
-  await me.click(p, { kind: 'choose' });
 }
 
 /**
@@ -357,7 +403,7 @@ function tagFields(win) {
       if (!dd || dd.tagName !== 'DD') continue;
       dd.setAttribute('data-demo-field', id);
       const opt = dd.querySelector('.advancedSelect .option.selected'), inp = dd.querySelector('input, textarea');
-      const v = opt ? opt.textContent : inp ? inp.value : null;
+      const v = opt ? opt.textContent : !inp ? null : inp.type === 'checkbox' ? String(inp.checked) : inp.value;
       if (v !== null) out[id] = v.replace(/ \(default\)$/, '');
     }
     return out;
@@ -383,10 +429,15 @@ async function setField(win, me, f) {
       if (el) el.setAttribute('data-demo-pick', '1');
     }, String(f.value));
     await me.click('.selectPicker .value[data-demo-pick]');
+  } else if (await win.locator(`${dd} input[type=checkbox]`).count()) {
+    await me.click(`${dd} input[type=checkbox]`);  // a Bool: one click
   } else {
     // A field at its default shows a placeholder: clicking its row opens the input.
     await me.click(dd);
     await win.waitForSelector(`${dd} input:visible, ${dd} textarea:visible`, { timeout: 3000 }).catch(() => {});
+    // Only type into a focused text box: elsewhere letters are LDtk shortcuts (e = entity panel).
+    if (!(await win.evaluate(() => /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName))))
+      throw new Error(`no text box focused for field ${f.id}`);
     await me.press('Meta+A');
     await me.type(String(f.value));
     await me.press('Enter');

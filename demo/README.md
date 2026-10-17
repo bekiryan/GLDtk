@@ -6,7 +6,7 @@ LDtk's own editor (left) and with the GLDtk sidebar (right).
 | File | What it does |
 |---|---|
 | `record_ai.js` | Real run. Opens an empty project, types the prompt in the sidebar, presses Generate (real LLM), then "Make this section a arena" on the labyrinth section and undoes it. Saves the generated file as `out/ai/target.ldtk`. |
-| `record_manual.js` | Scripted run at human pace, capped at 5:00 of real time (`--budget`). Rebuilds `target.ldtk` in plain LDtk (sidebar hidden): resizes the level, paints collisions (big rock rectangles with Shift-drag, then details, then hazards), paints tiles (tile picker, then rectangles per tile), then places the entities (start, enemies, boss, items, exit) and sets their fields in the instance panel, saves. When the budget runs out it stops and estimates the full build. The timing constants (`HUMAN`) are at the top. |
+| `record_manual.js` | Scripted run at human pace, capped at 5:00 of real time (`--budget`). Rebuilds `target.ldtk` in plain LDtk (sidebar hidden): resizes the level, paints collisions (big rock rectangles with Shift-drag, then details, then hazards), paints tiles the quick way (`--tiles=simple`: the fill variants in random mode, one rectangle per rock mass, then the main top tile as one-row drags along each top surface; `--tiles=exact` paints every tile of the target), then places the entities (start, enemies, boss, items, exit) and sets their fields in the instance panel, saves. When the budget runs out it stops and estimates the full build. The timing constants (`HUMAN`) are at the top. |
 | `compose.py` | ffmpeg composition: `comparison.mp4`, `manual_full.mp4`, `ai_full.mp4`, `stats.json`, `poster.png`. |
 | `make_projects.py` | Start projects (`empty`, `blank`) and the manual plan (`plan`: greedy rectangles per IntGrid value and per tile, entity list). |
 | `compare.py` | How closely the manual file matches the target (collision cells, tile cells, entities with their hand-set fields). |
@@ -23,7 +23,7 @@ cd ldtk-src && HAXE_STD_PATH="/opt/homebrew/lib/haxe/std" /opt/homebrew/bin/haxe
 GLDTK_MEMORY_DIR=$(mktemp -d) .venv/bin/python server.py &    # own design memory, so the demo does not learn into yours
 
 node demo/record_ai.js                                   # ~90 s, one LLM generate (gemini-3.1-flash-lite; DEMO_MODEL overrides)
-node demo/record_manual.js demo/out/ai/target.ldtk       # 5:00 at human pace, no LLM (--budget=0: build it all, ~20 min)
+node demo/record_manual.js demo/out/ai/target.ldtk       # 5:00 at human pace, no LLM (--budget=0: build it all, ~6 min; demo/run_full_offline.sh)
 .venv/bin/python demo/compose.py                         # --speed N to force the manual speed-up
 ```
 
@@ -71,6 +71,10 @@ Everything is written to `demo/out/` (git-ignored). Stop the server afterwards.
   real/modeled ratio of the recorded 5:00. The video and `stats.json` label it as an estimate.
   After the stop the file is saved outside the recording (not counted) so `compare.py` can
   measure what was built.
+- **Simplified tiles.** By default the tiles are painted as a quick person would, so collisions and
+  entities match the target exactly but tiles do not (no side or corner tiles, random fill
+  variants); the video says "tiles simplified (N fills)". `--estimate` prints the modeled
+  full-build time without starting LDtk.
 - `compare.py` checks the result: the manual file should match the target cell for cell.
 
 ## Reaching LDtk's internals

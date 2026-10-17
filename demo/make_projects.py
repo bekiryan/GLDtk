@@ -70,6 +70,50 @@ def greedy_rects(cells: dict[tuple[int, int], object]) -> list[dict]:
     return rects
 
 
+def simple_tiles(d: dict, lvl: dict, collisions: list[dict]) -> list[dict]:
+    """Tiles the way a quick person paints them, per Tiles layer: the fill variants
+    (one picker drag, random mode) over each solid rock rectangle, then the most used
+    top-surface tile as one-row drags along every top surface.  No sides or corners."""
+    from collections import Counter
+
+    col = next(li for li in lvl["layerInstances"] if li["__identifier"] == "Collisions")
+    w, h, g = col["__cWid"], col["__cHei"], col["intGridCsv"]
+    solid = lambda x, y: g[y * w + x] == 1 if 0 <= x < w and 0 <= y < h else True
+    out = []
+    for li in lvl["layerInstances"]:
+        if li["__type"] != "Tiles" or not li["gridTiles"]:
+            continue
+        td = next(t for t in d["defs"]["tilesets"] if t["uid"] == li["__tilesetDefUid"])
+        cwid = (td["pxWid"] - 2 * td["padding"] + td["spacing"]) // (td["tileGridSize"] + td["spacing"])
+        gs = li["__gridSize"]
+        tiles = {(t["px"][0] // gs, t["px"][1] // gs): t["t"] for t in li["gridTiles"]}
+        inner = Counter(tiles.get((x, y)) for y in range(h) for x in range(w)
+                        if solid(x, y) and solid(x, y - 1) and (x, y) in tiles)
+        top = Counter(tiles.get((x, y)) for y in range(h) for x in range(w)
+                      if solid(x, y) and not solid(x, y - 1) and (x, y) in tiles)
+        # fill variants: the most used inner tiles that sit in one picker row, as a contiguous run
+        rows = Counter()
+        for t, n in inner.items():
+            rows[t // cwid] += n
+        row = rows.most_common(1)[0][0]
+        ids = sorted(t for t in inner if t // cwid == row)
+        fill = list(range(ids[0], ids[-1] + 1))
+        runs = []
+        for y in range(h):
+            x = 0
+            while x < w:
+                if solid(x, y) and not solid(x, y - 1):
+                    x0 = x
+                    while x < w and solid(x, y) and not solid(x, y - 1):
+                        x += 1
+                    runs.append({"x": x0, "y": y, "w": x - x0, "h": 1})
+                else:
+                    x += 1
+        out.append({"layer": li["__identifier"], "fill": fill, "top": top.most_common(1)[0][0],
+                    "fill_rects": [r for r in collisions if r["key"] == 1], "top_runs": runs})
+    return out
+
+
 def make_plan(target: Path, out: Path) -> None:
     d = json.loads(target.read_text())
     lvl = d["levels"][0]
@@ -97,6 +141,7 @@ def make_plan(target: Path, out: Path) -> None:
                              "cy": e["__grid"][1], "w": e["width"], "h": e["height"], "fields": fields})
 
     plan = {
+        "simple_tiles": simple_tiles(d, lvl, collisions),
         "level": {"pxWid": lvl["pxWid"], "pxHei": lvl["pxHei"], "cWid": cw, "cHei": ch},
         "intGridValues": {str(v["value"]): v["identifier"] for v in
                           next(l for l in d["defs"]["layers"] if l["identifier"] == "Collisions")["intGridValues"]},

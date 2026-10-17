@@ -6,8 +6,8 @@
 #   nohup demo/run_full_offline.sh >/dev/null 2>&1 &      # then: tail -f demo/out_full/run.log
 set -u
 cd "$(dirname "$0")/.."
-OUT=demo/out_full
-TARGET=demo/out/ai/target.ldtk
+OUT=$PWD/demo/out_full
+TARGET=$PWD/demo/out/ai/target.ldtk
 mkdir -p $OUT
 ln -sfn ../out/ai $OUT/ai
 LOG=$OUT/run.log

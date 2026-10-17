@@ -164,7 +164,7 @@ def main() -> None:
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "out"))
     ap.add_argument("--speed", type=float, default=None)
     args = ap.parse_args()
-    out = Path(args.out)
+    out = Path(args.out).resolve()
     man, ai = Run(out / "manual"), Run(out / "ai")
     tmp = out / "tmp"
     tmp.mkdir(exist_ok=True)
@@ -183,6 +183,7 @@ def main() -> None:
     stats = {
         "manual": {"real_time_s": round(man.total, 1), "steps": man.res["steps"], **man.res["counts"],
                    "verified": bool(man_check and man_check.get("playable")), "check": man_check, "tiles_included": man.res.get("tiles", True),
+                   "tiles_mode": man.res.get("tiles_mode", "exact"), "tile_fills": man.res.get("tile_fills"),
                    "stopped_at_budget": man.res.get("stopped", False), "progress": man.res.get("progress"),
                    "estimate_full": man.res.get("estimate"),
                    "matches_target": cmp_, "human_timing_s": hm},
@@ -245,7 +246,9 @@ def main() -> None:
     elif man.total / speed < main_len:
         ass.text(man.total / speed, main_len, 480, PANEL_Y + PANEL_H - 16, f"Done in {mmss(man.total)} · {manual_check_text(man_check, short=True)}",
                  size=32, bold=True, an=2, box="&H303030&", layer=3)
-    tiles_note = "" if man.res.get("tiles", True) else "  ·  tiles not included — would add more time"
+    tiles_note = ("" if man.res.get("tiles", True) else "  ·  tiles not included — would add more time")
+    if man.res.get("tiles_mode") == "simple":
+        tiles_note = f"  ·  tiles simplified ({man.res['tile_fills']} fills)"
     ass.text(0, main_len, 960, H - 18,
              f"Manual side scripted at human pace: click {hm['click']} s · tool/layer/panel {hm['choose']} s · "
              f"typing {hm['perChar']} s/char + {hm['think']} s · drag {hm['drag']} s · look {hm['look']} s/section"
@@ -304,8 +307,10 @@ def end_card(ass: Ass, a: float, b: float, stats: dict, hm: dict) -> None:
     notes = [
         f"AI: real run, model {g['answered_by']}; the manual side rebuilds the AI's level "
         f"(collisions {cm.get('collision_cells', ['?', '?'])[0]}/{cm.get('collision_cells', ['?', '?'])[1]} cells, "
-        f"tiles {cm.get('tile_cells', ['?', '?'])[0]}/{cm.get('tile_cells', ['?', '?'])[1]}, "
-        f"entities {cm.get('entities', ['?', '?'])[0]}/{cm.get('entities', ['?', '?'])[1]} match).",
+        + (f"tiles simplified: {m['tile_fills']} fills — rock fill + top surfaces, no edge tiles, "
+           if m.get("tiles_mode") == "simple" else
+           f"tiles {cm.get('tile_cells', ['?', '?'])[0]}/{cm.get('tile_cells', ['?', '?'])[1]}, ")
+        + f"entities {cm.get('entities', ['?', '?'])[0]}/{cm.get('entities', ['?', '?'])[1]} match).",
         f"Manual: scripted in LDtk's own editor at human pace — click {hm['click']} s, tool/layer {hm['choose']} s, "
         f"typing {hm['perChar']} s/char + {hm['think']} s, drag {hm['drag']} s, look {hm['look']} s per section.",
         "Steps = every click, drag and keystroke. Manual video sped up; timers show real time.",
