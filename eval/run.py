@@ -2,7 +2,7 @@
 
     python -m eval.run --provider gemini [--model M] [--tags t1,t2] [--limit N] [--seed S]
         [--profile path] [--out eval/results/<timestamp>] [--max-calls N] [--sleep SEC]
-        [--replay DIR | --record DIR] [--export]
+        [--replay DIR | --record DIR] [--export] [--fallback] [--backoff 20,60,120]
     python -m eval.run --compare RESULTS_A RESULTS_B
 
 See ``eval/README.md``.
@@ -17,7 +17,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -25,6 +25,8 @@ if str(ROOT) not in sys.path:
 
 from eval.metrics import compare_folders, load_records, render_report, summarize  # noqa: E402
 from eval.providers import (  # noqa: E402
+    DEFAULT_BACKOFF,
+    BackoffProvider,
     BudgetExceeded,
     CallBudget,
     CountingProvider,
@@ -213,9 +215,13 @@ def run_suite(
     record_dir: Optional[Path] = None,
     export: bool = False,
     keep_going: bool = False,
+    backoff: Optional[BackoffProvider] = None,
     log: Callable[[str], None] = print,
 ) -> List[Dict[str, Any]]:
     """Run *prompts*, appending one line per prompt to ``out_dir/results.jsonl``.
+
+    *backoff* (the 503 retry wrapper inside the shared provider, if any) gives each
+    record ``provider_retries``; its waits are left out of ``wall_time_s``.
 
     Resumes: prompts that already have a result there (other than a ``quota``
     or ``budget`` failure) are skipped.  Stops early when ``max_calls`` is
@@ -246,6 +252,8 @@ def run_suite(
         if record_dir:
             inner = RecordingProvider(inner, record_dir, entry["id"])
         counted = CountingProvider(inner, budget)
+        retries0 = backoff.retries if backoff else 0
+        slept = (lambda: budget.slept + backoff.slept) if backoff else (lambda: budget.slept)
         try:
             rec = run_prompt(
                 entry,
@@ -253,7 +261,7 @@ def run_suite(
                 profile,
                 seed=seed,
                 max_retries=max_retries,
-                budget_slept=lambda: budget.slept,
+                budget_slept=slept,
                 export_dir=(out_dir / "ldtk") if export else None,
             )
         except BudgetExceeded:
@@ -264,10 +272,13 @@ def run_suite(
         rec["provider"] = provider_name
         # the requested model, else the one(s) that answered (Gemini falls back on 429/503)
         rec["model"] = model or ",".join(counted.models_used) or None
+        rec["answered_by"] = list(counted.answered_by)  # provider/model labels (fallback shows here)
+        rec["provider_retries"] = (backoff.retries - retries0) if backoff else 0
         with results.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec) + "\n")
         state = "ok" if rec["verified"] else (rec["failure"] or {}).get("type", "failed")
-        log(f"{state:<18} {entry['id']}  fidelity={rec['fidelity_score']}  calls={rec['llm_calls']}")
+        log(f"{state:<18} {entry['id']}  fidelity={rec['fidelity_score']}  calls={rec['llm_calls']}"
+            f"  by={','.join(rec['answered_by']) or '-'}")
         if (rec.get("failure") or {}).get("type") == "quota" and not keep_going:
             log("stop  quota exhausted (use --keep-going to continue); resume later with the same --out")
             break
@@ -297,6 +308,45 @@ def _load_dotenv() -> None:
             os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 
+def parse_backoff(text: Optional[str]) -> List[float]:
+    """``"20,60,120"`` -> [20, 60, 120]; empty or ``0`` -> [] (no retry)."""
+    delays = [float(x) for x in (text or "").split(",") if x.strip()]
+    return [] if delays == [0.0] else delays
+
+
+def build_live_provider(
+    name: str,
+    model: Optional[str],
+    *,
+    fallback: bool = False,
+    delays: Sequence[float] = DEFAULT_BACKOFF,
+    make: Optional[Callable[..., Any]] = None,
+    make_with_fallback: Optional[Callable[..., Any]] = None,
+    sleep: Callable[[float], None] = time.sleep,
+    log: Callable[[str], None] = print,
+) -> Tuple[Any, Optional[BackoffProvider]]:
+    """The shared provider of a live run and its 503 backoff wrapper (None if no delays).
+
+    With *fallback* the provider comes from ``make_provider_with_fallback`` and the
+    backoff wraps the primary (Gemini) only: it is retried first, then the local
+    model answers.
+    """
+    from llm.providers import make_provider, make_provider_with_fallback
+    from llm.providers.fallback import FallbackProvider
+
+    make = make or make_provider
+    make_with_fallback = make_with_fallback or make_provider_with_fallback
+    provider = make_with_fallback(name, model=model) if fallback else make(name, model=model)
+    if not delays:
+        return provider, None
+    if isinstance(provider, FallbackProvider):
+        first, *rest = provider.providers
+        wrapped = BackoffProvider(first, delays, sleep=sleep, log=log)
+        return FallbackProvider([wrapped, *rest]), wrapped
+    wrapped = BackoffProvider(provider, delays, sleep=sleep, log=log)
+    return wrapped, wrapped
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="python -m eval.run", description=__doc__.split("\n")[0])
     ap.add_argument("--provider", help="gemini | anthropic | ollama | openai | deepseek")
@@ -312,6 +362,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--prompts", help="alternative prompt-suite JSON file")
     ap.add_argument("--export", action="store_true", help="also write <out>/ldtk/<id>.ldtk")
     ap.add_argument("--keep-going", action="store_true", help="do not stop at the first 429")
+    ap.add_argument("--fallback", action="store_true",
+                    help="Gemini falls back to the local model (GLDTK_LOCAL_FALLBACK) when it cannot answer")
+    ap.add_argument("--backoff", default=",".join(f"{d:g}" for d in DEFAULT_BACKOFF),
+                    help="seconds to wait before each retry after a 503/UNAVAILABLE ('' or 0 = no retry)")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--record", metavar="DIR", help="save every raw LLM response under DIR")
     g.add_argument("--replay", metavar="DIR", help="answer from responses recorded under DIR (no LLM)")
@@ -326,6 +380,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     provider_name, model = args.provider, args.model
+    backoff: Optional[BackoffProvider] = None
     if args.replay:
         meta = read_meta(Path(args.replay))
         provider_name = provider_name or meta.get("provider") or "replay"
@@ -335,10 +390,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not provider_name:
             print("error: --provider is required (or use --replay / --compare)", file=sys.stderr)
             return 2
-        from llm.providers import make_provider
-
         _load_dotenv()
-        shared = make_provider(provider_name, model=model)
+        shared, backoff = build_live_provider(provider_name, model, fallback=args.fallback,
+                                              delays=parse_backoff(args.backoff))
         base = lambda pid: shared  # noqa: E731
 
     out = Path(args.out) if args.out else ROOT / "eval" / "results" / datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -363,6 +417,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         record_dir=Path(args.record) if args.record else None,
         export=args.export,
         keep_going=args.keep_going,
+        backoff=backoff,
     )
     print(f"{len(records)} result(s); report: {out / 'report.md'}")
     return 0
