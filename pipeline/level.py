@@ -303,7 +303,7 @@ def build_level(
         finally:
             absorb_llm_stats()
 
-    done = ensure_complete(spec, profile, reprompt if complete_spec else None)
+    done = ensure_complete(spec, profile, reprompt if complete_spec else None, prompt=description)
     spec = resize(done.spec)
     if cx.active(spec):
         spec = cx.apply_targets(spec)

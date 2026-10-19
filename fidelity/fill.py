@@ -230,9 +230,33 @@ STRUCTURE_WORDS = {
 }
 
 
+def _asked_structures(spec: LevelSpec) -> List[str]:
+    """The structure types the spec's ``structure`` requirements ask for, in order."""
+    out: List[str] = []
+    for req in spec.requirements:
+        chk = req.check
+        if chk is not None and chk.type == "structure" and chk.structure and chk.structure not in out:
+            out.append(chk.structure)
+    return out
+
+
+def _retypable(sections: List, asked: List[str], pinned: Set[str]) -> List:  # type: ignore[type-arg]
+    """Sections whose structure can change without losing an asked-for one: not
+    pinned by a section-specific requirement, and either built as a type nobody
+    asks for or not the only section built as its type."""
+    built = Counter(s.structure or "open" for s in sections)
+    return [s for s in sections if s.id not in pinned and (
+        (s.structure or "open") not in asked or built[s.structure or "open"] > 1)]
+
+
 def _fill_structure(spec: LevelSpec, req: Requirement, sections: List) -> bool:  # type: ignore[type-arg]
-    """Build a section as the requirement's structure (v3 Part 21): the named section,
-    else the first section whose name or description mentions it."""
+    """Build a section as the requirement's structure (v3 Part 21).
+
+    The named section; else, among the sections that can change (see
+    :func:`_retypable`), the first whose name or description mentions the
+    structure, else the one whose position matches the structure's place among
+    the asked-for structures (the 2nd of 4 asked → the section a third of the
+    way along).  Never adds a section."""
     check = req.check
     want = check.structure if check else None
     if not want:
@@ -241,10 +265,21 @@ def _fill_structure(spec: LevelSpec, req: Requirement, sections: List) -> bool: 
     if any((s.structure or "open") == want for s in pool):
         return False
     target = pool[0] if check.section and pool else None
-    if target is None:
+    if target is None and not check.section:
+        asked = _asked_structures(spec)
+        pinned = {r.check.section for r in spec.requirements
+                  if r.check is not None and r.check.type == "structure" and r.check.section
+                  and r.check.structure != want}
+        free = _retypable(sections, asked, pinned)
         words = STRUCTURE_WORDS.get(want, (want,))
-        target = next((s for s in pool if any(
-            w in f"{s.name} {s.description}".lower() for w in words)), None)
+        target = next((s for s in sorted(free, key=lambda s: s.order) if any(
+            w in f"{s.id} {s.name} {s.description}".lower() for w in words)), None)
+        if target is None and free:
+            ordered = sorted(sections, key=lambda s: s.order)
+            rank = {s.id: i for i, s in enumerate(ordered)}
+            i = asked.index(want) if want in asked else len(asked) - 1
+            goal = i * (len(ordered) - 1) / max(len(asked) - 1, 1)
+            target = min(free, key=lambda s: (abs(rank[s.id] - goal), rank[s.id]))
     if target is None:
         return False
     i = sections.index(target)
