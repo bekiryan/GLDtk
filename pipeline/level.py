@@ -303,8 +303,11 @@ def build_level(
         finally:
             absorb_llm_stats()
 
+    before = {sec.id: sec.structure for sec in spec.sections}
     done = ensure_complete(spec, profile, reprompt if complete_spec else None, prompt=description)
     spec = resize(done.spec)
+    retyped = [sec.id for sec in spec.sections
+               if sec.id in before and sec.structure != before[sec.id]]
     if cx.active(spec):
         spec = cx.apply_targets(spec)
     stats["completeness_reprompts"] = done.reprompts
@@ -339,7 +342,15 @@ def build_level(
     repairs: List[str] = []
     report: Optional[GridReport] = None
     mission = mission_of(spec)  # v4 Part 23 (None for specs without one)
-    for attempt in range(max_layout_retries + 1):
+    # Sections the completeness step rebuilt as another structure: if that layout
+    # fails, try once with their old structures before asking the LLM.
+    undo: Optional[LevelSpec] = None
+    if retyped:
+        undo = spec.model_copy(update={"sections": [
+            sec.model_copy(update={"structure": before[sec.id]}) if sec.id in retyped else sec
+            for sec in spec.sections]})
+    attempt = 0
+    while attempt <= max_layout_retries:
         jobs.report("layout", "Laying out the level" + (f" (round {attempt + 1})" if attempt else ""))
         lvl_spec, outcome = spec, None
         if mission is None:
@@ -402,8 +413,15 @@ def build_level(
                 mission=mission_info,
                 patterns_stamped=stamped_patterns(spec_layout, getattr(spec_layout, "stamps", None)),
             )
+        if undo is not None:
+            notes.append("completeness: the level failed verification with section(s) "
+                         f"{retyped} rebuilt as the prompt asks; kept their old structure")
+            spec, undo = undo, None
+            mission = mission_of(spec)
+            continue
         if attempt == max_layout_retries:
             break
+        attempt += 1
         stats["layout_retries"] += 1
         jobs.report("repair", f"The grid still fails verification, asking the LLM to repair it "
                               f"(round {attempt + 1})")

@@ -92,3 +92,31 @@ def test_positional_fallback_keeps_asked_structures():
     out = ensure_complete(small, prompt="an arena, a corridor and a labyrinth")
     assert len(out.spec.sections) == 2 and _built(out.spec)[0] == "arena"
     assert [i.id for i in out.report.missing] == ["P_labyrinth"]  # left for the re-prompt
+
+
+def test_failed_retype_falls_back_to_the_old_structure_before_the_llm(monkeypatch):
+    """A section rebuilt for the prompt that breaks verification is laid out again
+    with its old structure; no LLM repair is spent on it."""
+    import dataclasses
+
+    import pipeline.level as pl
+    from game import GameProfile
+    from pipeline.chunks import _FixedController
+
+    real = pl._layout_and_verify
+
+    def no_parkour(spec, *a, **kw):
+        sl, rep, applied = real(spec, *a, **kw)
+        if any(s.structure == "parkour" for s in spec.sections):
+            rep = dataclasses.replace(rep, ok=False)
+        return sl, rep, applied
+
+    monkeypatch.setattr(pl, "_layout_and_verify", no_parkour)
+    spec = _spec(["open", "arena"], ["Hall", "Pit"])
+    ctrl = _FixedController(spec)
+    repairs = []
+    ctrl.repair_spec = lambda *a, **kw: repairs.append(1) or spec  # type: ignore[method-assign]
+    built = pl.build_level("a parkour run, then an arena", ctrl, GameProfile(), densify=False)
+    assert built.report.ok and repairs == []
+    assert _built(built.spec) == ["open", "arena"]
+    assert any("kept their old structure" in w for w in built.warnings)
