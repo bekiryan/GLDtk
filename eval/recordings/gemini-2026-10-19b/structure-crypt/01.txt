@@ -1,0 +1,552 @@
+{
+  "title": "A Crypt",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 64
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "corridor",
+      "name": "Crypt Corridor",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A long corridor with three skeletons.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": null
+    },
+    {
+      "id": "parkour_shaft",
+      "name": "Parkour Shaft",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A parkour shaft climbing up.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "shaft",
+      "params": null
+    ,
+    "complexity": null
+    },
+    {
+      "id": "labyrinth",
+      "name": "Catacombs Labyrinth",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A small labyrinth of catacombs with two treasure chests in its dead ends.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": null
+    },
+    {
+      "id": "boss_arena",
+      "name": "Boss Arena",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A boss arena where the lich waits by the exit.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "arena",
+      "params": null
+    ,
+    "complexity": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "platform_1",
+      "type": "Platform",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "skeleton_1",
+      "type": "Hazard",
+      "x": 192,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "platform_2",
+      "type": "Platform",
+      "x": 288,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "skeleton_2",
+      "type": "Hazard",
+      "x": 384,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "platform_3",
+      "type": "Platform",
+      "x": 480,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "skeleton_3",
+      "type": "Hazard",
+      "x": 576,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "shaft_start",
+      "type": "Platform",
+      "x": 672,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "parkour_shaft"
+    },
+    {
+      "id": "shaft_end",
+      "type": "Platform",
+      "x": 960,
+      "y": 192,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "dead_end_1",
+      "type": "Hazard",
+      "x": 768,
+      "y": 352,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "chest_1",
+      "type": "Platform",
+      "x": 800,
+      "y": 384,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "dead_end_2",
+      "type": "Hazard",
+      "x": 960,
+      "y": 352,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "chest_2",
+      "type": "Platform",
+      "x": 1008,
+      "y": 384,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "boss_platform",
+      "type": "Platform",
+      "x": 960,
+      "y": 512,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    },
+    {
+      "id": "exit",
+      "type": "Exit",
+      "x": 1056,
+      "y": 576,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "platform_1",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 480
+    ,
+    "ability": null
+    },
+    {
+      "from": "platform_1",
+      "to": "skeleton_1",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "skeleton_1",
+      "to": "platform_2",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 480
+    ,
+    "ability": null
+    },
+    {
+      "from": "platform_2",
+      "to": "skeleton_2",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "skeleton_2",
+      "to": "platform_3",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 480
+    ,
+    "ability": null
+    },
+    {
+      "from": "platform_3",
+      "to": "shaft_start",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_start",
+      "to": "shaft_end",
+      "type": "Jump",
+      "vx": 352,
+      "vy": 640
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_end",
+      "to": "dead_end_1",
+      "type": "Jump",
+      "vx": 256,
+      "vy": 640
+    ,
+    "ability": null
+    },
+    {
+      "from": "dead_end_1",
+      "to": "chest_1",
+      "type": "Jump",
+      "vx": 32,
+      "vy": 640
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_end",
+      "to": "dead_end_2",
+      "type": "Jump",
+      "vx": 352,
+      "vy": 640
+    ,
+    "ability": null
+    },
+    {
+      "from": "dead_end_2",
+      "to": "chest_2",
+      "type": "Jump",
+      "vx": 32,
+      "vy": 640
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_end",
+      "to": "boss_platform",
+      "type": "Jump",
+      "vx": 512,
+      "vy": 800
+    ,
+    "ability": null
+    },
+    {
+      "from": "boss_platform",
+      "to": "exit",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "skeleton_1_entity",
+      "kind": "Enemy",
+      "anchor": "platform_1",
+      "section": "corridor"
+    ,
+    "description": "A skeleton enemy patrolling the corridor."
+    ,
+    "sprite": "skeleton",
+    "place": null
+    ,
+    "position": null,
+    "facing": null,
+    "starting_items": [],
+    "starting_weapon": null,
+    "requires_key": false,
+    "archetype": null,
+    "health": 100,
+    "damage": 25
+    ,
+    "patrol_range": 48,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "skeleton_2_entity",
+      "kind": "Enemy",
+      "anchor": "platform_2",
+      "section": "corridor"
+    ,
+    "description": "A skeleton enemy patrolling the corridor."
+    ,
+    "sprite": "skeleton",
+    "place": null
+    ,
+    "position": null,
+    "facing": null,
+    "starting_items": [],
+    "starting_weapon": null,
+    "requires_key": false,
+    "archetype": null,
+    "health": 100,
+    "damage": 25
+    ,
+    "patrol_range": 48,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "skeleton_3_entity",
+      "kind": "Enemy",
+      "anchor": "platform_3",
+      "section": "corridor"
+    ,
+    "description": "A skeleton enemy patrolling the corridor."
+    ,
+    "sprite": "skeleton",
+    "place": null
+    ,
+    "position": null,
+    "facing": null,
+    "starting_items": [],
+    "starting_weapon": null,
+    "requires_key": false,
+    "archetype": null,
+    "health": 100,
+    "damage": 25
+    ,
+    "patrol_range": 48,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "chest_1_entity",
+      "kind": "Checkpoint",
+      "anchor": "chest_1",
+      "section": "labyrinth"
+    ,
+    "description": "A treasure chest containing a key."
+    ,
+    "sprite": "treasure_chest",
+    "place": null
+    ,
+    "position": null,
+    "facing": null,
+    "starting_items": [],
+    "starting_weapon": null,
+    "requires_key": false,
+    "archetype": null,
+    "health": 100,
+    "damage": 25
+    ,
+    "patrol_range": 48,
+    "attack": null,
+    "pickup_kind": "coin",
+    "value": 10,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": "key",
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "chest_2_entity",
+      "kind": "Checkpoint",
+      "anchor": "chest_2",
+      "section": "labyrinth"
+    ,
+    "description": "A treasure chest containing a key."
+    ,
+    "sprite": "treasure_chest",
+    "place": null
+    ,
+    "position": null,
+    "facing": null,
+    "starting_items": [],
+    "starting_weapon": null,
+    "requires_key": false,
+    "archetype": null,
+    "health": 100,
+    "damage": 25
+    ,
+    "patrol_range": 48,
+    "attack": null,
+    "pickup_kind": "coin",
+    "value": 10,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": "key",
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "boss_entity",
+      "kind": "Enemy",
+      "anchor": "boss_platform",
+      "section": "boss_arena"
+    ,
+    "description": "A powerful lich boss guarding the exit."
+    ,
+    "sprite": "lich",
+    "place": null
+    ,
+    "position": null,
+    "facing": null,
+    "starting_items": [],
+    "starting_weapon": null,
+    "requires_key": false,
+    "archetype": null,
+    "health": 500,
+    "damage": 50
+    ,
+    "patrol_range": 48,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "key_requirement",
+      "text": "You need a key to open the treasure chests.",
+      "category": "ability"
+    ,
+    "check": null
+    },
+    {
+      "id": "boss_key_requirement",
+      "text": "The lich boss requires a special key to be defeated.",
+      "category": "ability"
+    ,
+    "check": null
+    }
+  ],
+  "complexity": null,
+  "mission": null
+}

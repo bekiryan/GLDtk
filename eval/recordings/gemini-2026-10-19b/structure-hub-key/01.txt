@@ -1,0 +1,384 @@
+{
+  "title": "Abandoned Mansion",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 80
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "entrance",
+      "name": "Entrance Hall",
+      "theme": "mansion",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "A large, empty room with a single door leading to the next area.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "main_hall",
+      "name": "Main Hall",
+      "theme": "mansion",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A grand hall with multiple doors leading to various rooms.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "hidden_room",
+      "name": "Hidden Room",
+      "theme": "mansion",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A small, hidden room with a key to the locked exit door.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "entrance"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "main_hall"
+    },
+    {
+      "id": "hidden_door",
+      "type": "Hazard",
+      "x": 256,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "main_hall"
+    },
+    {
+      "id": "key_room",
+      "type": "Platform",
+      "x": 352,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "hidden_room"
+    },
+    {
+      "id": "exit_door",
+      "type": "Exit",
+      "x": 448,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "main_hall"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "hidden_door",
+      "type": "Fall",
+      "vx": 600,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "hidden_door",
+      "to": "key_room",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    },
+    {
+      "from": "key_room",
+      "to": "exit_door",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "entrance",
+      "description": "the player, starting with no items",
+      "sprite": "knight",
+      "place": null,
+      "position": null
+    ,
+    "facing": "right",
+    "starting_items": [],
+    "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null
+    ,
+    "pickup_kind": null,
+    "value": null
+    ,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null
+    ,
+    "name": null,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "key",
+      "kind": "Pickup",
+      "anchor": "key_room",
+      "section": "hidden_room",
+      "description": "a key to the locked exit door",
+      "sprite": "key",
+      "place": "floor",
+      "position": 0.5,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null
+    ,
+    "pickup_kind": "coin",
+    "value": 1
+    ,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null
+    ,
+    "name": null,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "locked_exit",
+      "kind": "Exit",
+      "anchor": "exit_door",
+      "section": "main_hall",
+      "description": "a locked exit door",
+      "sprite": "door",
+      "place": null,
+      "position": null
+    ,
+    "facing": "right",
+    "starting_items": [],
+    "starting_weapon": null
+    ,
+    "requires_key": true
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null
+    ,
+    "pickup_kind": null,
+    "value": null
+    ,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null
+    ,
+    "name": null,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "There is an entrance hall section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "entrance"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "There is a main hall section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "main_hall"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "There is a hidden room section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "hidden_room"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "The hidden room contains a key.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "key",
+        "min_count": 1,
+        "section": "hidden_room"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R5",
+      "text": "The exit door is locked.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": "locked_exit",
+        "min_count": 1,
+        "section": "main_hall"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R6",
+      "text": "The exit door can be opened with the key.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": "locked_exit",
+        "min_count": 1,
+        "section": "main_hall"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    }
+  ]
+,
+  "complexity": 1
+,
+  "mission": null
+}

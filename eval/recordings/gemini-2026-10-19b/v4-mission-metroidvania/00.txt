@@ -1,0 +1,382 @@
+{
+  "title": "Metroidvania Ruins",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 80
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "hub",
+      "name": "Central Hub Room",
+      "theme": "ruin",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "A central hub room with a locked door to the east and a shortcut loop back to the start.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 3
+    },
+    {
+      "id": "western_cave",
+      "name": "Western Cave Labyrinth",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A labyrinthine cave with a key to unlock the eastern door.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": 5
+    },
+    {
+      "id": "shaft",
+      "name": "Shaft with Double-Jump Boots",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A vertical shaft containing a double-jump boots pickup.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 7
+    },
+    {
+      "id": "boss_arena",
+      "name": "Boss Arena",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A challenging boss arena with a shortcut loop back to the start.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 9
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_hub",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "locked_door_east",
+      "type": "Exit",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "key_pickup_western_cave",
+      "type": "Hazard",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "western_cave"
+    },
+    {
+      "id": "double_jump_boots_shaft",
+      "type": "Platform",
+      "x": 0,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "shaft"
+    },
+    {
+      "id": "highledge_hub",
+      "type": "Exit",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "boss_arena_start",
+      "type": "Platform",
+      "x": 0,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_hub",
+      "to": "locked_door_east",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "locked_door_east",
+      "to": "key_pickup_western_cave",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "key_pickup_western_cave",
+      "to": "double_jump_boots_shaft",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 600
+    ,
+    "ability": null
+    },
+    {
+      "from": "double_jump_boots_shaft",
+      "to": "highledge_hub",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "boss_arena_start",
+      "to": "start_hub",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 600
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start_hub",
+      "section": "hub",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "key_pickup",
+      "kind": "Pickup",
+      "anchor": "key_pickup_western_cave",
+      "section": "western_cave",
+      "description": "a key to unlock the eastern door",
+      "sprite": "key",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": "coin",
+      "value": 1
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "double_jump_boots",
+      "kind": "Pickup",
+      "anchor": "double_jump_boots_shaft",
+      "section": "shaft",
+      "description": "double-jump boots pickup",
+      "sprite": "boots",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": "coin",
+      "value": 1
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": "double_jump"
+    },
+    {
+      "id": "boss",
+      "kind": "Enemy",
+      "anchor": "boss_arena_start",
+      "section": "boss_arena",
+      "description": "a challenging boss enemy",
+      "sprite": "boss",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 10,
+    "damage": 2,
+    "patrol_range": 5,
+    "attack": "melee"
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "key_pickup",
+      "text": "Collect the key in the Western Cave Labyrinth to unlock the eastern door.",
+      "category": "ability"
+    ,
+    "check": null
+    },
+    {
+      "id": "double_jump_boots",
+      "text": "Obtain double-jump boots from the Shaft to access high ledges.",
+      "category": "ability"
+    ,
+    "check": null
+    }
+  ],
+  "complexity": 3,
+  "mission": {
+    "rules": [
+      "ability_gate",
+      "boss_before_exit"
+    ]
+  ,
+    "keys": null
+  ,
+    "ability": "double_jump"
+  ,
+    "locks": []
+  }
+}

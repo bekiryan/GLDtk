@@ -1,0 +1,498 @@
+{
+  "title": "A Small Metroidvania Ruin",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 80
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "hub",
+      "name": "Central Hub Room",
+      "theme": "ruins",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "A central hub room with a locked door to the east.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "cave_labyrinth",
+      "name": "Western Cave Labyrinth",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A cave labyrinth with a key to unlock the eastern door.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "shaft",
+      "name": "Shaft with Double-Jump Boots",
+      "theme": "industrial",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A shaft containing double-jump boots that open a high ledge back in the hub.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "boss_arena",
+      "name": "Boss Arena",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A boss arena with a shortcut loop back to the start.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_hub",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "locked_door_east",
+      "type": "Exit",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "key_cave_labyrinth",
+      "type": "Hazard",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "cave_labyrinth"
+    },
+    {
+      "id": "double_jump_boots_shaft",
+      "type": "Platform",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "shaft"
+    },
+    {
+      "id": "high_ledge_hub",
+      "type": "Exit",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "boss_door",
+      "type": "Platform",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_hub",
+      "to": "locked_door_east",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    },
+    {
+      "from": "key_cave_labyrinth",
+      "to": "double_jump_boots_shaft",
+      "type": "Fall",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    },
+    {
+      "from": "double_jump_boots_shaft",
+      "to": "high_ledge_hub",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": "double_jump"
+    },
+    {
+      "from": "boss_door",
+      "to": "start_hub",
+      "type": "Fall",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player_start",
+      "kind": "Start",
+      "anchor": "start_hub",
+      "section": "hub",
+      "description": "the player starts in the central hub room",
+      "sprite": "knight",
+      "place": null,
+      "position": null
+    ,
+    "facing": "right",
+    "starting_items": [],
+    "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "There is a central hub room.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "hub"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "A locked door to the east in the hub room.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "hub"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "A key in the western cave labyrinth.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "key",
+        "min_count": 1,
+        "section": "cave_labyrinth"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "A double-jump boots pickup in the shaft.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "double_jump_boots",
+        "min_count": 1,
+        "section": "shaft"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R5",
+      "text": "A high ledge in the hub room that can be reached with double-jump boots.",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "hub"
+      ,
+      "ability": "double_jump"
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R6",
+      "text": "A shortcut loop back to the start after the boss arena.",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "boss_arena"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R7",
+      "text": "The hub room is a central corridor.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "hub"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": "corridor",
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R8",
+      "text": "The cave labyrinth is a maze.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "cave_labyrinth"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": "labyrinth",
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R9",
+      "text": "The shaft is a corridor.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "shaft"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": "corridor",
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R10",
+      "text": "The boss arena is a corridor.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "boss_arena"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": "corridor",
+      "target_difficulty": null,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R11",
+      "text": "The hub room is easy.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "hub"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": 1,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R12",
+      "text": "The cave labyrinth is medium difficulty.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "cave_labyrinth"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": 2,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R13",
+      "text": "The shaft is hard difficulty.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "shaft"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": 3,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R14",
+      "text": "The boss arena is hard difficulty.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "boss_arena"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null,
+      "gravity_scale": null,
+      "structure": null,
+      "target_difficulty": 3,
+      "target_section": null
+      }
+    }
+  ]
+, "complexity": 1
+, "mission": null
+}
