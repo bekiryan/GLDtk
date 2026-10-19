@@ -738,20 +738,31 @@ class LLMController:
             jobs.report("validate", f"The spec has {len(result.errors)} problem(s), patching")
 
             # ── Symbolic patch: try to fix without another LLM call ──
+            previous = raw
             if result.spec is not None:
                 patched = self._patch_spec(result)
                 if patched is not None:
-                    spec, applied = patched
-                    stats.patched = True
-                    stats.patches_applied = applied
-                    stats.success = True
-                    jobs.report("validate", f"Patched the spec ({', '.join(applied)})")
-                    return spec
+                    spec, applied, after = patched
+                    if after.valid:
+                        stats.patched = True
+                        stats.patches_applied = applied
+                        stats.success = True
+                        jobs.report("validate", f"Patched the spec ({', '.join(applied)})")
+                        return spec
+                    # Partial fix: re-prompt from the patched spec with only the
+                    # errors the patches could not fix.
+                    jobs.report(
+                        "validate",
+                        f"Patched part of the spec ({', '.join(applied)}); "
+                        f"{len(after.errors)} problem(s) left",
+                    )
+                    previous = json.dumps(spec.model_dump(by_alias=True))
+                    result = after
 
             # ── LLM repair re-prompt ──
             if attempt < self._max_retries - 1:
                 error_msgs = [e.message for e in result.errors]
-                messages = build_repair_messages(description, raw, error_msgs, messages)
+                messages = build_repair_messages(description, previous, error_msgs, messages)
 
         stats.final_error_codes = [e.code for e in result.errors] if result else []
         raise MaxRetriesExceeded(
@@ -774,32 +785,49 @@ class LLMController:
 
     def _patch_spec(
         self, result: ValidationResult
-    ) -> Optional[Tuple[LevelSpec, List[str]]]:
-        """Deterministic repair. Returns ``(spec, patch names)`` or None."""
-        from .patcher import TerminalEntityPatch
+    ) -> Optional[Tuple[LevelSpec, List[str], ValidationResult]]:
+        """Deterministic repair, keeping every patch that helps.
+
+        Returns ``(spec, patch names, validation of spec)`` — the result may
+        still have errors (the controller then re-prompts with only those) —
+        or None when no patch changed anything.
+        """
+        from .patcher import SpecNormalizePatch, TerminalEntityPatch
 
         spec = result.spec
         assert spec is not None
         applied: List[str] = []
+        current = result
 
-        # 1. Graph-level patches (physics / structure) on the platform graph.
-        if result.graph is not None:
-            graph_errors = validate_graph(result.graph, self._profile).errors
+        # 1. Spec-level normalisation: out-of-bounds nodes, dangling entity
+        #    references, entities on hazards (positions first: physics uses them).
+        normalize = SpecNormalizePatch()
+        if normalize.applies_to(current.errors):
+            spec, fixes = normalize.apply_to_spec(spec)
+            if fixes:
+                applied.append(normalize.name)
+                current = validate_spec(spec, self._profile)
+
+        # 2. Graph-level patches (physics / structure) on the platform graph.
+        #    A partial fix is kept when it leaves no more errors than before.
+        if current.graph is not None:
+            graph_errors = validate_graph(current.graph, self._profile).errors
             if graph_errors:
-                patch = self._patcher.patch(result.graph, graph_errors)
-                if not patch.success:
-                    return None
-                spec = spec.with_graph(patch.graph)
-                applied += patch.applied
+                patch = self._patcher.patch(current.graph, graph_errors)
+                if patch.applied:
+                    candidate = spec.with_graph(patch.graph)
+                    checked = validate_spec(candidate, self._profile)
+                    if patch.success or len(checked.errors) <= len(current.errors):
+                        spec, current = candidate, checked
+                        applied += patch.applied
 
-        # 2. Spec-level patch: missing / mis-anchored Start and Exit entities.
-        errors = validate_spec(spec, self._profile).errors
+        # 3. Spec-level patch: missing / mis-anchored Start and Exit entities.
         entity_patch = TerminalEntityPatch()
-        if entity_patch.applies_to(errors):
+        if entity_patch.applies_to(current.errors):
             spec = entity_patch.apply_to_spec(spec)
             applied.append(entity_patch.name)
+            current = validate_spec(spec, self._profile)
 
-        final = validate_spec(spec, self._profile)
-        if not final.valid or not applied:
+        if not applied:
             return None
-        return spec, applied
+        return spec, applied, current

@@ -1,0 +1,315 @@
+{
+  "title": "Hedge Maze Labyrinth",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 80
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "maze",
+      "name": "Hedge Maze",
+      "theme": "forest",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A hedge maze labyrinth with several dead ends; coins hidden at the dead ends and the exit gate on the far side.",
+      "order": 0,
+      "style": "walk",
+      "structure": "labyrinth",
+      "params": null
+    ,
+      "complexity": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 64,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "dead_end_1",
+      "type": "Hazard",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "coin_dead_end_1",
+      "type": "Platform",
+      "x": 128,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "exit_gate",
+      "type": "Exit",
+      "x": 1024,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "dead_end_1",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+      "ability": null
+    },
+    {
+      "from": "dead_end_1",
+      "to": "coin_dead_end_1",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+      "ability": null
+    },
+    {
+      "from": "coin_dead_end_1",
+      "to": "exit_gate",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 600
+    ,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "maze",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+      "requires_key": false
+    ,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null
+    ,
+      "contents": null
+    ,
+      "name": null
+    ,
+      "dialogue": null
+    ,
+      "opens": null
+    ,
+      "grants_ability": null
+    },
+    {
+      "id": "coin_dead_end",
+      "kind": "Pickup",
+      "anchor": "coin_dead_end_1",
+      "section": "maze",
+      "description": "coin",
+      "sprite": "gold coin",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+      "requires_key": false
+    ,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null
+    ,
+      "contents": null
+    ,
+      "name": null
+    ,
+      "dialogue": null
+    ,
+      "opens": null
+    ,
+      "grants_ability": null
+    },
+    {
+      "id": "exit_gate_entity",
+      "kind": "Exit",
+      "anchor": "exit_gate",
+      "section": "maze",
+      "description": "exit gate",
+      "sprite": "door",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+      "requires_key": true
+    ,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null
+    ,
+      "contents": null
+    ,
+      "name": null
+    ,
+      "dialogue": null
+    ,
+      "opens": null
+    ,
+      "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "There is a hedge maze labyrinth section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": "maze"
+      ,
+        "ability": null
+      ,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "Coins are hidden at the dead ends.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "coin",
+        "min_count": 1,
+        "section": "maze"
+      ,
+        "ability": null
+      ,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "The exit gate is on the far side.",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "maze"
+      ,
+        "ability": null
+      ,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "The player starts with a sword.",
+      "category": "entity",
+      "check": {
+        "type": "start_item",
+        "entity_kind": null,
+        "subkind": "sword",
+        "min_count": null,
+        "section": null
+      ,
+        "ability": null
+      ,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R5",
+      "text": "The player can double jump.",
+      "category": "ability",
+      "check": {
+        "type": "ability",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": null
+      ,
+        "ability": "double_jump"
+      ,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    }
+  ]
+,
+  "complexity": 1
+,
+  "mission": null
+}

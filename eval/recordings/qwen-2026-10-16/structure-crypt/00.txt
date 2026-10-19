@@ -1,0 +1,568 @@
+{
+  "title": "Crypt Adventure",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 40
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "corridor",
+      "name": "Long Corridor",
+      "theme": "crypt",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A long corridor with three skeletons.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": null
+    },
+    {
+      "id": "parkour_shaft",
+      "name": "Parkour Shaft",
+      "theme": "crypt",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A parkour shaft climbing up.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": null
+    },
+    {
+      "id": "labyrinth",
+      "name": "Catacombs Labyrinth",
+      "theme": "crypt",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A small labyrinth of catacombs with two treasure chests in its dead ends.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": null
+    },
+    {
+      "id": "boss_arena",
+      "name": "Boss Arena",
+      "theme": "crypt",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A boss arena where the lich waits by the exit.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "arena",
+      "params": null
+    ,
+    "complexity": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 192,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "p3",
+      "type": "Platform",
+      "x": 288,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "corridor"
+    },
+    {
+      "id": "shaft_start",
+      "type": "Platform",
+      "x": 352,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "parkour_shaft"
+    },
+    {
+      "id": "shaft_end",
+      "type": "Platform",
+      "x": 704,
+      "y": 256,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "dead_end_1",
+      "type": "Platform",
+      "x": 960,
+      "y": 320,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "chest_1",
+      "type": "Hazard",
+      "x": 960,
+      "y": 352,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "dead_end_2",
+      "type": "Platform",
+      "x": 1056,
+      "y": 320,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "chest_2",
+      "type": "Hazard",
+      "x": 1056,
+      "y": 352,
+      "w": 48,
+      "h": 16,
+      "section": "labyrinth"
+    },
+    {
+      "id": "boss_platform",
+      "type": "Platform",
+      "x": 1152,
+      "y": 384,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    },
+    {
+      "id": "exit",
+      "type": "Exit",
+      "x": 1248,
+      "y": 416,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 500
+    ,
+    "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "p3",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "p3",
+      "to": "shaft_start",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 500
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_start",
+      "to": "shaft_end",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_end",
+      "to": "dead_end_1",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 500
+    ,
+    "ability": null
+    },
+    {
+      "from": "dead_end_1",
+      "to": "chest_1",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_end",
+      "to": "dead_end_2",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 500
+    ,
+    "ability": null
+    },
+    {
+      "from": "dead_end_2",
+      "to": "chest_2",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "shaft_end",
+      "to": "boss_platform",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 500
+    ,
+    "ability": null
+    },
+    {
+      "from": "boss_platform",
+      "to": "exit",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "corridor",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "skeleton1",
+      "kind": "Enemy",
+      "anchor": "p1",
+      "section": "corridor",
+      "description": "A skeleton enemy.",
+      "sprite": "skeleton",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 100,
+    "damage": 25,
+    "patrol_range": 32,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "skeleton2",
+      "kind": "Enemy",
+      "anchor": "p2",
+      "section": "corridor",
+      "description": "A skeleton enemy.",
+      "sprite": "skeleton",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 100,
+    "damage": 25,
+    "patrol_range": 32,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "skeleton3",
+      "kind": "Enemy",
+      "anchor": "p3",
+      "section": "corridor",
+      "description": "A skeleton enemy.",
+      "sprite": "skeleton",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 100,
+    "damage": 25,
+    "patrol_range": 32,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "chest1",
+      "kind": "Interactive",
+      "anchor": "dead_end_1",
+      "section": "labyrinth",
+      "description": "A treasure chest containing a key.",
+      "sprite": "treasure_chest",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null,
+    "pickup_kind": null,
+    "value": 100,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": "chest",
+    "linked_to": "key1",
+    "contents": "key",
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "chest2",
+      "kind": "Interactive",
+      "anchor": "dead_end_2",
+      "section": "labyrinth",
+      "description": "A treasure chest containing a key.",
+      "sprite": "treasure_chest",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null,
+    "pickup_kind": null,
+    "value": 100,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": "chest",
+    "linked_to": "key2",
+    "contents": "key",
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "lich",
+      "kind": "Enemy",
+      "anchor": "boss_platform",
+      "section": "boss_arena",
+      "description": "The lich boss.",
+      "sprite": "lich",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": "boss",
+    "health": 500,
+    "damage": 50,
+    "patrol_range": null,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "exit_door",
+      "kind": "Interactive",
+      "anchor": "exit",
+      "section": "boss_arena",
+      "description": "The exit door.",
+      "sprite": "door",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": true
+    ,
+    "archetype": null,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": "door",
+    "linked_to": "key1, key2",
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": "exit",
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "key1",
+      "text": "Find the key in chest 1.",
+      "category": "layout"
+    ,
+    "check": null
+    },
+    {
+      "id": "key2",
+      "text": "Find the key in chest 2.",
+      "category": "layout"
+    ,
+    "check": null
+    }
+  ],
+  "complexity": null,
+  "mission": null
+}

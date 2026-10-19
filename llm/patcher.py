@@ -18,10 +18,15 @@ Every check uses the Game Profile: effective gravity
 ``edge.metadata``) and ``run_speed`` as the |vx| cap.  Patches that replace an
 edge keep its metadata (ability, gravity_scale).
 
-Spec-level patch (applied by the controller after the graph patches)
----------------------------------------------------------------------
-TerminalEntityPatch — add / re-anchor the Start and Exit *entities* so they
-                      stand on the Start / Exit nodes.
+Spec-level patches (applied by the controller around the graph patches)
+------------------------------------------------------------------------
+SpecNormalizePatch  — before: clamp out-of-bounds nodes, resolve / drop
+                      dangling entity references, move entities off hazards.
+TerminalEntityPatch — after: add / re-anchor the Start and Exit *entities* so
+                      they stand on the Start / Exit nodes.
+
+The controller keeps every patch that leaves no more errors than before, even
+when some errors remain; it then re-prompts with only those.
 
 The patcher stops and returns success as soon as the graph passes validation.
 If any patch is applied the result is a *copy* — the original graph is never
@@ -189,10 +194,12 @@ class EdgeReclassifyPatch(Patch):
 
     • Jump edge going DOWN  → reclassify as Fall (and zero vy)
     • Fall edge going UP    → reclassify as Jump (and set vy = jump_v)
+    • Walk edge with a step higher than ``walk_step_px`` → Jump when it
+      climbs, Fall when it drops
     """
 
     name = "EdgeReclassifyPatch"
-    _TARGET_CODES = {"JUMP_GOES_DOWN", "FALL_GOES_UP"}
+    _TARGET_CODES = {"JUMP_GOES_DOWN", "FALL_GOES_UP", "WALK_HEIGHT_MISMATCH"}
 
     def applies_to(self, errors: List[ValidationError]) -> bool:
         return any(e.code in self._TARGET_CODES for e in errors)
@@ -213,7 +220,9 @@ class EdgeReclassifyPatch(Patch):
             except KeyError:
                 continue
 
-            if err.code == "JUMP_GOES_DOWN":
+            if err.code == "JUMP_GOES_DOWN" or (
+                err.code == "WALK_HEIGHT_MISMATCH" and edge.dy < 0
+            ):
                 new_type = EdgeType.FALL
                 new_vy = 0.0
             else:
@@ -608,6 +617,78 @@ class TerminalEntityPatch:
                     )
 
         return spec.model_copy(update={"entities": entities})
+
+
+class SpecNormalizePatch:
+    """Deterministic spec-level fixes run before the graph patches.
+
+    • NODE_OUT_OF_BOUNDS   → clamp the node inside the level (x so the whole
+      platform fits; y below the top with ``_TOP_MARGIN_TILES`` of headroom).
+    • UNKNOWN_ENTITY_REF   → resolve "a, b" lists to the first known entity id,
+      else drop the reference (null).
+    • ANCHOR_ON_HAZARD     → re-anchor the entity on the nearest non-Hazard
+      node, preferring its own section.
+
+    ``apply_to_spec`` returns the spec and the names of the fixes it made (an
+    empty list when nothing needed fixing; the spec is then returned as is).
+    """
+
+    name = "SpecNormalizePatch"
+    _TOP_MARGIN_TILES = 3
+    _TARGET_CODES = {"NODE_OUT_OF_BOUNDS", "UNKNOWN_ENTITY_REF", "ANCHOR_ON_HAZARD"}
+
+    def applies_to(self, errors: List[ValidationError]) -> bool:
+        return any(e.code in self._TARGET_CODES for e in errors)
+
+    def apply_to_spec(self, spec: LevelSpec) -> Tuple[LevelSpec, List[str]]:
+        from spec.level_spec import TILE_SIZE
+
+        fixes: List[str] = []
+        max_x = float(spec.size.width_tiles * TILE_SIZE)
+        max_y = float(spec.size.height_tiles * TILE_SIZE)
+        top = max(0.0, max_y - self._TOP_MARGIN_TILES * TILE_SIZE)
+
+        nodes = []
+        for n in spec.nodes:
+            if 0 <= n.x <= max_x and 0 <= n.y <= max_y:
+                nodes.append(n)
+                continue
+            x = min(max(n.x, 0.0), max(0.0, max_x - n.w))
+            y = min(max(n.y, 0.0), top)
+            nodes.append(n.model_copy(update={"x": x, "y": y}))
+            fixes.append(f"clamped node '{n.id}'")
+
+        by_id = {n.id: n for n in nodes}
+        entity_ids = {e.id for e in spec.entities}
+        entities = []
+        for ent in spec.entities:
+            update: Dict[str, Any] = {}
+            for ref_field in ("linked_to", "opens"):
+                ref = getattr(ent, ref_field)
+                if not ref or ref in entity_ids:
+                    continue
+                parts = [p for p in ref.replace(";", ",").replace(" ", ",").split(",") if p]
+                update[ref_field] = next((p for p in parts if p in entity_ids), None)
+                fixes.append(f"{ref_field} of '{ent.id}'")
+            anchor = by_id.get(ent.anchor)
+            if anchor is not None and anchor.type == "Hazard":
+                safe = [n for n in nodes if n.type != "Hazard"]
+                if safe:
+                    best = min(
+                        safe,
+                        key=lambda n: (
+                            n.section != ent.section,
+                            (n.x - anchor.x) ** 2 + (n.y - anchor.y) ** 2,
+                            n.id,
+                        ),
+                    )
+                    update.update(anchor=best.id, section=best.section)
+                    fixes.append(f"moved '{ent.id}' off a hazard")
+            entities.append(ent.model_copy(update=update) if update else ent)
+
+        if not fixes:
+            return spec, []
+        return spec.model_copy(update={"nodes": nodes, "entities": entities}), fixes
 
 
 # ─────────────────────────────────────────────────────────────────────────────

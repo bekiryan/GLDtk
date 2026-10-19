@@ -1,0 +1,450 @@
+{
+  "title": "Metroidvania Ruin",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 80
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "hub",
+      "name": "Central Hub Room",
+      "theme": "ruins",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "A central hub room with a locked door to the east.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor"
+    ,
+    "params": null
+    , "complexity": 3
+    },
+    {
+      "id": "western_cave",
+      "name": "Western Cave Labyrinth",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A labyrinthine cave with a key to unlock the eastern door.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "labyrinth"
+    ,
+    "params": null
+    , "complexity": 4
+    },
+    {
+      "id": "shaft",
+      "name": "Shaft with Double-Jump Boots Pickup",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A vertical shaft containing double-jump boots.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "corridor"
+    ,
+    "params": null
+    , "complexity": 4
+    },
+    {
+      "id": "boss_arena",
+      "name": "Boss Arena",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A challenging arena with a powerful boss.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "corridor"
+    ,
+    "params": null
+    , "complexity": 7
+    },
+    {
+      "id": "high_ledge_hub",
+      "name": "High Ledge Hub Room",
+      "theme": "ruins",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A high ledge hub room with a shortcut back to the start.",
+      "order": 4,
+      "style": "walk",
+      "structure": "corridor"
+    ,
+    "params": null
+    , "complexity": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_hub",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "locked_door_east",
+      "type": "Exit",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    },
+    {
+      "id": "key_cave",
+      "type": "Platform",
+      "x": 0,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "western_cave"
+    },
+    {
+      "id": "double_jump_boots_shaft",
+      "type": "Platform",
+      "x": 256,
+      "y": 320,
+      "w": 48,
+      "h": 16,
+      "section": "shaft"
+    },
+    {
+      "id": "boss_arena_platform",
+      "type": "Platform",
+      "x": 96,
+      "y": 576,
+      "w": 48,
+      "h": 16,
+      "section": "boss_arena"
+    },
+    {
+      "id": "high_ledge_hub_platform",
+      "type": "Platform",
+      "x": 320,
+      "y": 576,
+      "w": 48,
+      "h": 16,
+      "section": "high_ledge_hub"
+    },
+    {
+      "id": "shortcut_hub",
+      "type": "Exit",
+      "x": 96,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hub"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_hub",
+      "to": "locked_door_east",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "locked_door_east",
+      "to": "key_cave",
+      "type": "Fall",
+      "vx": -160,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "key_cave",
+      "to": "double_jump_boots_shaft",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 600
+    ,
+    "ability": null
+    },
+    {
+      "from": "double_jump_boots_shaft",
+      "to": "boss_arena_platform",
+      "type": "Fall",
+      "vx": -160,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "boss_arena_platform",
+      "to": "high_ledge_hub_platform",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 600
+    ,
+    "ability": null
+    },
+    {
+      "from": "high_ledge_hub_platform",
+      "to": "shortcut_hub",
+      "type": "Fall",
+      "vx": -160,
+      "vy": 0
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start_hub",
+      "section": "hub",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": null
+    , "value": null
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": null
+    },
+    {
+      "id": "locked_door_east",
+      "kind": "Exit",
+      "anchor": "locked_door_east",
+      "section": "hub",
+      "description": "a locked door to the east whose key lies in a western cave labyrinth",
+      "sprite": "door",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": true
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": null
+    , "value": null
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": null
+    },
+    {
+      "id": "key_cave",
+      "kind": "Pickup",
+      "anchor": "key_cave",
+      "section": "western_cave",
+      "description": "a key to unlock the eastern door",
+      "sprite": "key",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": "coin",
+    "value": 1
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": null
+    },
+    {
+      "id": "double_jump_boots_shaft",
+      "kind": "Pickup",
+      "anchor": "double_jump_boots_shaft",
+      "section": "shaft",
+      "description": "a double-jump boots pickup",
+      "sprite": "boots",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": "coin",
+    "value": 1
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": "double_jump"
+    },
+    {
+      "id": "boss_arena_platform",
+      "kind": "Pickup",
+      "anchor": "boss_arena_platform",
+      "section": "boss_arena",
+      "description": "a platform in the boss arena",
+      "sprite": "platform",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": "coin",
+    "value": 1
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": null
+    },
+    {
+      "id": "high_ledge_hub_platform",
+      "kind": "Pickup",
+      "anchor": "high_ledge_hub_platform",
+      "section": "high_ledge_hub",
+      "description": "a platform in the high ledge hub room",
+      "sprite": "platform",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": "coin",
+    "value": 1
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": null
+    },
+    {
+      "id": "shortcut_hub",
+      "kind": "Exit",
+      "anchor": "shortcut_hub",
+      "section": "hub",
+      "description": "a shortcut back to the start",
+      "sprite": "door",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    , "archetype": null
+    , "health": 10
+    , "damage": 2
+    , "patrol_range": 3
+    , "attack": "melee"
+    , "pickup_kind": null
+    , "value": null
+    , "weapon_kind": null
+    , "range": null
+    , "interactive_kind": null
+    , "linked_to": null
+    , "contents": null
+    , "name": null
+    , "dialogue": null
+    , "opens": null
+    , "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "key_cave",
+      "text": "Find the key in the western cave to unlock the eastern door.",
+      "category": "ability"
+    ,
+    "check": null
+    },
+    {
+      "id": "double_jump_boots_shaft",
+      "text": "Collect double-jump boots from the shaft to reach high ledge hub room.",
+      "category": "ability"
+    ,
+    "check": null
+    }
+  ],
+  "complexity": 5,
+  "mission": {
+    "rules": [
+      "ability_gate",
+      "ability_gate",
+      "ability_gate",
+      "ability_gate",
+      "ability_gate"
+    ]
+  ,
+    "keys": null
+  , "ability": "double_jump"
+  , "locks": []
+  }
+}
