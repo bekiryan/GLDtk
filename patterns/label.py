@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, List, Literal, Optional
+from typing import Any, Collection, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -76,6 +76,9 @@ def label_messages(rec: dict) -> List[dict]:
                                "enemies", "pickups", "structure") if k in f}
     feats["route"] = f.get("route")
     feats["difficulty_estimate"] = f.get("difficulty")
+    geo = f.get("structure_geo") or {}
+    if geo.get("type") and float(geo.get("confidence") or 0) >= 0.6:  # Part 29g: classifier hint
+        feats["geometry_type"] = geo["type"]
     return [{"role": "user", "content": f"FRAGMENT:\n{rec['ascii']}\n\nFEATURES: {json.dumps(feats)}"}]
 
 
@@ -124,15 +127,17 @@ def label_pending(
     dry_run: bool = False,
     max_retries: int = 2,
     budget: Optional[int] = None,
+    only: Optional[Collection[str]] = None,
 ) -> LabelReport:
     """Label accepted, unlabelled patterns, structurally richest first and rotating across
     sources (saves the store after each label).  *budget* caps the number of labels written,
-    *max_calls* the provider calls."""
+    *max_calls* the provider calls; *only* (Part 29g) limits the run to those pattern ids."""
     from edit.llm import EditLLMFailed, run_structured
     from eval.providers import BudgetExceeded, CallBudget, CountingProvider
 
     todo = rich_order([r for r in store if r.get("accepted") and not r.get("label")
-                       and r.get("kind", "pattern") == "pattern"])
+                       and r.get("kind", "pattern") == "pattern"
+                       and (only is None or r["id"] in only)])
     rep = LabelReport(cached=sum(1 for r in store if r.get("label")), dry_run=dry_run)
     if dry_run:
         rep.pending = len(todo)

@@ -11,11 +11,12 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from layout.terrain import is_terrain
-from layout.terrain.stamp import pattern_grid
+from layout.terrain.stamp import MAX_RESIZE, PAD_MAX, PAD_TYPES, pattern_grid
 from spec.level_spec import LevelSpec
 
 STAMP_MIN_SCORE = 0.6  # retrieval score a pattern needs to be stamped
-MAX_STAMPS = 2  # patterns tried per section before the generator
+MAX_STAMPS = 3  # patterns tried per section before the generator (Part 29g: was 2)
+POOL = 8  # Part 29g: hits retrieved per stamp, so ones that fit the section's height go first
 
 
 class StampFinder:
@@ -28,8 +29,10 @@ class StampFinder:
         self._cache: Dict[tuple, List[Dict[str, Any]]] = {}
         self._disabled = False
 
-    def _hits(self, structure: str, text: str) -> List[Dict[str, Any]]:
-        key = (structure, text)
+    def _hits(self, structure: str, text: str, rows: Optional[int] = None) -> List[Dict[str, Any]]:
+        """The best stamp candidates; with *rows* (the section's inner height) the ones whose
+        height fits it without stacking come first (Part 29g; score order otherwise)."""
+        key = (structure, text, rows)
         if key in self._cache:
             return self._cache[key]
         out: List[Dict[str, Any]] = []
@@ -43,7 +46,7 @@ class StampFinder:
                 if not self.store.vectors:
                     self._disabled = True
                 else:
-                    hits = retrieve(f"{self.description}\n{text}".strip(), MAX_STAMPS * 2,
+                    hits = retrieve(f"{self.description}\n{text}".strip(), MAX_STAMPS * POOL,
                                     Filters(structure_type=structure), store=self.store,
                                     embedder=self.embedder)
                     for h in hits:
@@ -57,8 +60,9 @@ class StampFinder:
                                     "score": round(h.score, 3),
                                     "geo_structure": structure if _geo_match(rec, structure)
                                     else ""})
-                        if len(out) == MAX_STAMPS:
-                            break
+                    if rows:
+                        out.sort(key=lambda c: not _fits_height(len(c["grid"]), rows, structure))
+                    out = out[:MAX_STAMPS]
             except Exception:  # noqa: BLE001 - no embedder / unreadable index: procedural only
                 self._disabled = True
                 out = []
@@ -66,8 +70,15 @@ class StampFinder:
         return out
 
     def __call__(self, spec: LevelSpec) -> Dict[str, List[Dict[str, Any]]]:
+        rows = None if spec.layout_orientation == "vertical" else spec.size.height_tiles - 2
         return {sec.id: got for sec in spec.sections if is_terrain(sec.structure)
-                for got in [self._hits(sec.structure or "", sec.description)] if got}
+                for got in [self._hits(sec.structure or "", sec.description, rows)] if got}
+
+
+def _fits_height(h: int, rows: int, structure: str) -> bool:
+    """Does a window *h* rows high fit *rows* alone (``layout/terrain/stamp.py`` rules)?"""
+    pad = PAD_MAX if structure in PAD_TYPES else MAX_RESIZE
+    return h - rows <= MAX_RESIZE * rows and rows - h <= max(pad, MAX_RESIZE) * rows
 
 
 def _geo_match(rec: Dict[str, Any], structure: str) -> bool:

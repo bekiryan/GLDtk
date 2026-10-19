@@ -349,10 +349,12 @@ def classify(grid: Sequence[Sequence[Any]], entities: Sequence[Any], profile: An
 def structure_matches(rec: Dict[str, Any], structure: str) -> bool:
     """Is *rec* a window of type *structure*?  Its label says so; or it has no label and the
     heuristic says so; or its label is missing or generic (corridor, open) and the geometry
-    classifier says so with confidence >= :data:`MIN_CONFIDENCE`."""
+    classifier says so with confidence >= :data:`MIN_CONFIDENCE`.  A gap window (Part 29g,
+    ``features["gap"]``) was kept for its type and stays that type whatever its label says (the
+    labeller calls most labyrinths parkour)."""
     lab = (rec.get("label") or {}).get("structure_type")
     feats = rec.get("features") or {}
-    if (lab or feats.get("structure")) == structure:
+    if (lab or feats.get("structure")) == structure or feats.get("gap") == structure:
         return True
     if lab and lab not in GENERIC:
         return False
