@@ -46,6 +46,11 @@ class FallbackProvider:
         self.notes: List[str] = []
 
     @property
+    def providers(self) -> Tuple[base.LLMProvider, ...]:
+        """The chain, in the order tried."""
+        return self._providers
+
+    @property
     def name(self) -> str:
         return self._providers[self._current].name
 

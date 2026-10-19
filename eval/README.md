@@ -23,6 +23,12 @@ python -m eval.run --provider gemini --limit 6 --max-calls 15 --sleep 4 \
 - A 429 is recorded as a `quota` failure and the run stops (`--keep-going` continues). Re-run the
   same command with the same `--out` the next day: prompts with results are skipped, `quota` ones
   are retried. `--limit` / `--tags` select a subset (`--tags gravity,impossible`).
+- A 503 / `UNAVAILABLE` ("high demand") is retried after 20, 60 and 120 s (`--backoff 20,60,120`;
+  `--backoff 0` turns it off). Retries are counted in `provider_retries`; the waits are not part of
+  `wall_time_s`.
+- `--fallback` builds the provider with `make_provider_with_fallback`: when Gemini still cannot answer
+  after the backoff (429/404/5xx, timeout), the local model (`GLDTK_LOCAL_FALLBACK`, default
+  `ollama:qwen2.5:14b`) answers. `answered_by` in each record says which provider/model answered.
 - `--record DIR` saves every raw LLM response as `DIR/<prompt_id>/<call index>.txt` plus
   `DIR/meta.json`. Keep recording into the same `DIR` across days.
 
@@ -40,7 +46,8 @@ changes can be compared for free. A prompt that makes more calls than were recor
 ## Options
 
 `--provider --model --tags --limit --seed --profile PATH --out DIR --max-calls --sleep --retries N
---prompts FILE --export --keep-going --record DIR | --replay DIR`; `--compare A B`.
+--prompts FILE --export --keep-going --fallback --backoff S1,S2,.. --record DIR | --replay DIR`;
+`--compare A B`.
 `--export` also writes `<out>/ldtk/<id>.ldtk` (plain tile export, no art).
 `--profile` points at a `gldtk.game.json`; with the default profile no ability is enabled, so the
 `ability-lacks` prompts are expected to score `impossible` items. Enable abilities to test them.
@@ -49,7 +56,8 @@ changes can be compared for free. A prompt that makes more calls than were recor
 
 - `results.jsonl`: one line per prompt: `id, tags, verified, failure {type, message}, fidelity_score,
   fidelity_counts, fidelity_items, expect_failures, llm_calls, llm_attempts, patches,
-  completeness_reprompts, entities_filled, layout_retries, grid_repairs, wall_time_s, provider, model`.
+  completeness_reprompts, entities_filled, layout_retries, grid_repairs, wall_time_s, provider, model, answered_by` (list of `provider/model`),
+  `provider_retries` (503 retries).
   Failure types: `MaxRetriesExceeded`, `LevelBuildFailed`, `quota`, `replay_missing`, or the exception name.
 - `summary.json`: aggregate per `provider/model`.
 - `report.md`: summary table, per-prompt table, worst requirements.
