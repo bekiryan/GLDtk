@@ -1,0 +1,362 @@
+{
+  "title": "Castle Ascent",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 30
+  },
+  "orientation": "horizontal",
+  "sections": [
+    {
+      "id": "courtyard",
+      "name": "Courtyard",
+      "theme": "castle",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "Courtyard with guards.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": {
+        "ceiling_height": 5,
+        "corridor_width": 5,
+        "complexity": 0.3,
+        "branches": 0,
+        "pits": 1,
+        "vertical": "up"
+      },
+      "complexity": 0.3
+    },
+    {
+      "id": "moat",
+      "name": "Moat",
+      "theme": "castle",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "Parkour section over the moat.",
+      "order": 1,
+      "style": "parkour",
+      "structure": "parkour",
+      "params": {
+        "ceiling_height": 7,
+        "corridor_width": 4,
+        "complexity": 0.4,
+        "branches": 0,
+        "pits": 4,
+        "vertical": "up"
+      },
+      "complexity": 0.4
+    },
+    {
+      "id": "throneroom",
+      "name": "Throne Room",
+      "theme": "castle",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "Throne room with a knight boss.",
+      "order": 2,
+      "style": "walk",
+      "structure": "arena",
+      "params": {
+        "ceiling_height": 7,
+        "corridor_width": 6,
+        "complexity": 0.3,
+        "branches": 0,
+        "pits": 0,
+        "vertical": "up"
+      },
+      "complexity": 0.5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 32,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "courtyard"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 256,
+      "y": 64,
+      "w": 64,
+      "h": 16,
+      "section": "courtyard"
+    },
+    {
+      "id": "h1",
+      "type": "Hazard",
+      "x": 640,
+      "y": 48,
+      "w": 160,
+      "h": 16,
+      "section": "moat"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 800,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "moat"
+    },
+    {
+      "id": "boss_floor",
+      "type": "Platform",
+      "x": 1200,
+      "y": 64,
+      "w": 160,
+      "h": 16,
+      "section": "throneroom"
+    },
+    {
+      "id": "exit",
+      "type": "Exit",
+      "x": 1400,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "throneroom"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Walk",
+      "vx": 220,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 500,
+      "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "boss_floor",
+      "type": "Jump",
+      "vx": 150,
+      "vy": 500,
+      "ability": null
+    },
+    {
+      "from": "boss_floor",
+      "to": "exit",
+      "type": "Walk",
+      "vx": 220,
+      "vy": 0,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "hero",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "courtyard",
+      "description": "the player",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "guard1",
+      "kind": "Enemy",
+      "anchor": "p1",
+      "section": "courtyard",
+      "description": "guards",
+      "sprite": "guard",
+      "place": "floor",
+      "position": 0.5,
+      "facing": "left",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": "walker",
+      "health": 2,
+      "damage": 1,
+      "patrol_range": 4,
+      "attack": "melee",
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "knight_boss",
+      "kind": "Enemy",
+      "anchor": "boss_floor",
+      "section": "throneroom",
+      "description": "knight boss",
+      "sprite": "boss",
+      "place": "arena_center",
+      "position": null,
+      "facing": "left",
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": "boss",
+      "health": 10,
+      "damage": 2,
+      "patrol_range": 2,
+      "attack": "melee",
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": "Knight Boss",
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "throne_exit",
+      "kind": "Exit",
+      "anchor": "exit",
+      "section": "throneroom",
+      "description": "throne room exit",
+      "sprite": "door",
+      "place": "exit",
+      "position": null,
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "Courtyard with guards.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Enemy",
+        "subkind": "walker",
+        "min_count": 2,
+        "section": "courtyard",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "Parkour section over the moat.",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 4,
+        "section": "moat",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": "parkour",
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "Throne room with a knight boss.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Enemy",
+        "subkind": "boss",
+        "min_count": 1,
+        "section": "throneroom",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "Complexity 3.7/10 target.",
+      "category": "other",
+      "check": {
+        "type": "complexity",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": null,
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": 3.7,
+        "target_section": null
+      }
+    }
+  ],
+  "complexity": 0.3,
+  "mission": null
+}

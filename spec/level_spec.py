@@ -96,6 +96,22 @@ def _structure_name(v: Any) -> Any:
     return v
 
 
+def _unit_complexity(v: Any) -> Any:
+    """Rescale a complexity given on a 0-10 (or 0-100) scale to 0..1.
+
+    The schema says 0..1, but some models (Ollama ignores ``maximum``) answer
+    2, 5 or 80.  Values already in 0..1 are untouched; others are divided by 10
+    (or 100) and clamped.
+    """
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return v
+    if v < 0:
+        return 0.0
+    if v <= 1:
+        return v
+    return min(1.0, v / 10.0 if v <= 10 else v / 100.0)
+
+
 class LevelSize(_SpecModel):
     width_tiles: int = Field(..., ge=30, le=300, description="Level width in 16 px tiles.")
     height_tiles: int = Field(..., ge=15, le=100, description="Level height in 16 px tiles.")
@@ -139,6 +155,11 @@ class StructureParams(_SpecModel):
         None, description="Shaft/parkour: climb up or drop down (default up)."
     )
 
+    @field_validator("complexity", mode="before")
+    @classmethod
+    def _complexity_scale(cls, v: Any) -> Any:
+        return _unit_complexity(v)
+
 
 class Section(_SpecModel):
     id: str = Field(..., description="Unique section id, no spaces.")
@@ -177,6 +198,11 @@ class Section(_SpecModel):
     )
 
     _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"structure", "params", "complexity"})
+
+    @field_validator("complexity", mode="before")
+    @classmethod
+    def _complexity_scale(cls, v: Any) -> Any:
+        return _unit_complexity(v)
 
     @field_validator("structure", mode="before")
     @classmethod
@@ -394,6 +420,11 @@ class LevelSpec(_SpecModel):
     )
 
     _OMIT_IF_NONE: ClassVar[FrozenSet[str]] = frozenset({"complexity", "mission"})
+
+    @field_validator("complexity", mode="before")
+    @classmethod
+    def _complexity_scale(cls, v: Any) -> Any:
+        return _unit_complexity(v)
 
     @property
     def has_terrain(self) -> bool:

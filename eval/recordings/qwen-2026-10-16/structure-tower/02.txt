@@ -1,0 +1,401 @@
+{
+  "title": "Bell Tower Climb",
+  "size": {
+    "width_tiles": 60,
+    "height_tiles": 40
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "bottom",
+      "name": "Stairs and Rats",
+      "theme": "castle",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "Stairs at the bottom guarded by rats.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 2
+    },
+    {
+      "id": "climbing_shaft",
+      "name": "Climbing Shaft",
+      "theme": "castle",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A climbing shaft.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 3
+    },
+    {
+      "id": "maze",
+      "name": "Maze of Storerooms",
+      "theme": "castle",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A maze of storerooms.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": 4
+    },
+    {
+      "id": "belfry",
+      "name": "Belfry with Gargoyle Boss",
+      "theme": "castle",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A gargoyle boss in the belfry at the top.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "bottom"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "climbing_shaft"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 192,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "boss_platform",
+      "type": "Platform",
+      "x": 288,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "belfry"
+    },
+    {
+      "id": "exit",
+      "type": "Exit",
+      "x": 352,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "belfry"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 480
+    ,
+    "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "boss_platform",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 480
+    ,
+    "ability": null
+    },
+    {
+      "from": "boss_platform",
+      "to": "exit",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "bottom",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "rat1",
+      "kind": "Enemy",
+      "anchor": "p1",
+      "section": "bottom",
+      "description": "a rat guard",
+      "sprite": "rat",
+      "place": "floor",
+      "position": 0.3,
+      "facing": "left",
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker"
+    ,
+    "health": 1,
+    "damage": 1,
+    "patrol_range": 3,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "rat2",
+      "kind": "Enemy",
+      "anchor": "p1",
+      "section": "bottom",
+      "description": "a rat guard",
+      "sprite": "rat",
+      "place": "floor",
+      "position": 0.7,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker"
+    ,
+    "health": 1,
+    "damage": 1,
+    "patrol_range": 3,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "boss",
+      "kind": "Enemy",
+      "anchor": "exit",
+      "section": "belfry",
+      "description": "a gargoyle boss",
+      "sprite": "gargoyle",
+      "place": "floor",
+      "position": 0.5,
+      "facing": "left",
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "boss"
+    ,
+    "health": 10,
+    "damage": 3,
+    "patrol_range": 5,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "exit_door",
+      "kind": "Exit",
+      "anchor": "exit",
+      "section": "belfry",
+      "description": "an exit door",
+      "sprite": "door",
+      "place": "floor",
+      "position": 0.5,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": true
+    ,
+    "archetype": null
+    ,
+    "health": null,
+    "damage": null,
+    "patrol_range": null,
+    "attack": null,
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": "door",
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "key",
+      "text": "Find the key to open the exit door.",
+      "category": "ability",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "Key",
+        "min_count": 1
+      ,
+      "section": null
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "boss_defeated",
+      "text": "Defeat the gargoyle boss to escape.",
+      "category": "ability",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Enemy",
+        "subkind": "GargoyleBoss",
+        "min_count": 0
+      ,
+      "section": null
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    }
+  ],
+  "complexity": 5
+  ,
+  "mission": {
+    "rules": [
+      "ability_gate",
+      "ability_gate",
+      "ability_gate"
+    ]
+  ,
+  "keys": null
+  ,
+  "ability": null
+  ,
+  "locks": []
+  }
+}
