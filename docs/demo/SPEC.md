@@ -7,9 +7,10 @@ with a summary card.
 The user chose the manual side to be **scripted at human pace** (2026-10-17). It is labelled
 "simulated at human pace" in the video.
 
-The user capped the manual recording at **5 minutes of real time** (2026-10-17): the script
-works in a sensible order for 5:00 and stops, and the full manual build is **estimated** from
-the rest of the plan (see "Manual estimate").
+The user first capped the manual recording at **5 minutes of real time** (2026-10-17, an
+**estimate** for the rest; still available as `--budget=300`), then asked for the **full build**
+(2026-10-18): the whole level at human pace with simplified tiles, run offline, checked for
+playability afterwards. The full build is the main video (`demo/out_full/comparison.mp4`).
 
 ## Level
 - **Prompt:** "A crypt: a long corridor with three skeletons, then a small labyrinth of
@@ -48,7 +49,7 @@ Drive LDtk's own editor UI (no GLDtk sidebar) through CDP / DOM events, the way 
 Order: the whole structure first (level setup → big rock rectangles → rock details → hazards →
 tiles), and only then the entities (Start, enemies, boss, chests/doors/keys, exit).
 
-**5-minute cap.** The run stops at the first action after 5:00 of real time. It logs progress on
+**5-minute cap (optional).** The run stops at the first action after 5:00 of real time. It logs progress on
 every action-log line: share of the target collision cells painted, tile cells painted,
 entities placed (n/N), steps so far and the share of the modeled work done.
 
@@ -68,8 +69,9 @@ Put the constants in one config at the top of the script, and show them in the s
 
 **Count:** every click, drag and keystroke.
 
-**Not done by hand:** checking that the level is playable. The summary notes that the manual
-level is unverified, while GLDtk's is verified and soft-lock-free.
+**Not done by hand:** checking that the level is playable. GLDtk's level is verified while it is
+generated; the manual level is checked only after the build (`demo/verify.py --rules-from
+target.ldtk`, outside the recorded time) and the end card says so.
 
 ## Recording
 - **Capture:** use CDP `Page.startScreencast` (no macOS screen-recording permission needed)
@@ -110,7 +112,8 @@ level is unverified, while GLDtk's is verified and soft-lock-free.
   - `demo/record_ai.js`
   - `demo/record_manual.js`
   - `demo/compose.py`
-- **Videos** go in `demo/out/` (git-ignored).
+- **Videos** go in `demo/out/` (AI run, 5-minute variant) and `demo/out_full/` (full build),
+  both git-ignored.
 - **Projects:** never use `playground/` or `demo_*`. Work in fresh project copies under the
   scratchpad or in `demo/out/`.
 - **Port 8765:** check it is free first, and stop only the processes you started.

@@ -6,9 +6,10 @@ LDtk's own editor (left) and with the GLDtk sidebar (right).
 | File | What it does |
 |---|---|
 | `record_ai.js` | Real run. Opens an empty project, types the prompt in the sidebar, presses Generate (real LLM), then "Make this section a arena" on the labyrinth section and undoes it. Saves the generated file as `out/ai/target.ldtk`. |
-| `record_manual.js` | Scripted run at human pace, capped at 5:00 of real time (`--budget`). Rebuilds `target.ldtk` in plain LDtk (sidebar hidden): resizes the level, paints collisions (big rock rectangles with Shift-drag, then details, then hazards), paints tiles the quick way (`--tiles=simple`: the fill variants in random mode, one rectangle per rock mass, then the main top tile as one-row drags along each top surface; `--tiles=exact` paints every tile of the target), then places the entities (start, enemies, boss, items, exit) and sets their fields in the instance panel, saves. When the budget runs out it stops and estimates the full build. The timing constants (`HUMAN`) are at the top. |
+| `record_manual.js` | Scripted run at human pace that builds the whole level (`--budget=0`, ~6 min; `--budget=300` caps it at 5:00 and estimates the rest). Rebuilds `target.ldtk` in plain LDtk (sidebar hidden): resizes the level, paints collisions (big rock rectangles with Shift-drag, then details, then hazards), paints tiles the quick way (`--tiles=simple`: the fill variants in random mode, one rectangle per rock mass, then the main top tile as one-row drags along each top surface; `--tiles=exact` paints every tile of the target), then places the entities (start, enemies, boss, items, exit) and sets their fields in the instance panel, saves. With a budget it stops when the budget runs out and estimates the full build. The timing constants (`HUMAN`) are at the top. |
 | `compose.py` | ffmpeg composition: `comparison.mp4`, `manual_full.mp4`, `ai_full.mp4`, `stats.json`, `poster.png`. |
 | `make_projects.py` | Start projects (`empty`, `blank`) and the manual plan (`plan`: greedy rectangles per IntGrid value and per tile, entity list). |
+| `verify.py` | Offline playability check of a `.ldtk` (GLDtk's route check, no LLM). `--rules-from target.ldtk` judges the hand-built file by the target's level rules. |
 | `compare.py` | How closely the manual file matches the target (collision cells, tile cells, entities with their hand-set fields). |
 | `lib.js` | Launches LDtk with Playwright's Electron driver, reaches the Haxe classes, records with CDP `Page.startScreencast`, logs actions, and paces user actions (`Human`). |
 
@@ -23,18 +24,15 @@ cd ldtk-src && HAXE_STD_PATH="/opt/homebrew/lib/haxe/std" /opt/homebrew/bin/haxe
 GLDTK_MEMORY_DIR=$(mktemp -d) .venv/bin/python server.py &    # own design memory, so the demo does not learn into yours
 
 node demo/record_ai.js                                   # ~90 s, one LLM generate (gemini-3.1-flash-lite; DEMO_MODEL overrides)
-node demo/record_manual.js demo/out/ai/target.ldtk       # 5:00 at human pace, no LLM (--budget=0: build it all, ~6 min; demo/run_full_offline.sh)
-.venv/bin/python demo/compose.py                         # --speed N to force the manual speed-up
-```
-
-Full manual build overnight, offline (no LLM, server or internet; reuses the recorded AI run,
-keeps the Mac awake, retries if LDtk dies, then checks playability with `demo/verify.py` and composes
-the video into `demo/out_full/`):
-
-```bash
-nohup demo/run_full_offline.sh >/dev/null 2>&1 &
+nohup demo/run_full_offline.sh >/dev/null 2>&1 &         # full manual build, then compare, verify, compose
 tail -f demo/out_full/run.log
 ```
+
+The manual build is offline (no LLM, server or internet): it reuses the recorded AI run, keeps the
+Mac awake, retries if LDtk dies, checks playability with `demo/verify.py` and writes the video to
+`demo/out_full/comparison.mp4`. The 5-minute variant: `node demo/record_manual.js
+demo/out/ai/target.ldtk --budget=300`, then `.venv/bin/python demo/compose.py` (into `demo/out/`;
+`--speed N` forces the manual speed-up).
 
 Dry runs of the manual script, without recording, on a few columns:
 
@@ -42,7 +40,7 @@ Dry runs of the manual script, without recording, on a few columns:
 node demo/record_manual.js demo/out/ai/target.ldtk /tmp/m --region=0,20 --no-record [--no-tiles]
 ```
 
-Everything is written to `demo/out/` (git-ignored). Stop the server afterwards.
+Everything is written to `demo/out/` and `demo/out_full/` (both git-ignored; the full build reads `demo/out/ai/`). Stop the server afterwards.
 
 ## How it works, and what is honest about it
 
@@ -59,12 +57,13 @@ Everything is written to `demo/out/` (git-ignored). Stop the server afterwards.
   health, chest contents, start weapon…) when they differ from LDtk's default. GLDtk's own
   bookkeeping fields (`spec_id`, `section`, `anchor`, `gldtk_meta`, `sprite`, `sprite_tile`,
   `description`) are not typed.
-- **Not done by hand:** checking that the level is playable. The video says the manual level
-  is not verified; GLDtk's is verified and soft-lock-free.
+- **Playability.** A designer would have to play-test by hand; GLDtk verifies its level while
+  generating. The manual level is checked only after the build (`verify.py`, not part of the
+  recorded time), and the video says so.
 - **Starting points.** The AI side starts from an empty GLDtk project (`make_projects.py empty`).
   The manual side starts from a project with the same definitions as the target (layers,
   IntGrid values, tileset, entity types: a one-time setup) and an empty 16×16 level.
-- **5-minute cap and estimate.** The manual run stops at the first action after 5:00. Every
+- **5-minute cap and estimate (optional, `--budget=300`).** The manual run stops at the first action after 5:00. Every
   action-log line carries the progress (collision and tile cells painted, entities placed, share
   of the modeled work). The full build is estimated by `estimateFull()`: every planned action of
   the whole level, in the script's order, times the timing constants, scaled by the measured
