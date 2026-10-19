@@ -364,3 +364,18 @@ def test_fallback_flag_wraps_primary_with_backoff_and_records_the_answerer(tmp_p
                                            delays=ev_run.parse_backoff("0"))
     assert plain is local and bp is None
     assert ev_run.parse_backoff("20,60,120") == [20.0, 60.0, 120.0]
+
+
+def test_each_prompt_starts_the_fallback_chain_on_the_primary(load_fixture):
+    from llm.providers.fallback import FallbackProvider
+
+    gemini = _FlakyProvider(1, [load_fixture("valid_minimal.json")])  # 503 once, then answers
+    local = FakeProvider([load_fixture("valid_minimal.json")])
+    local.name = "ollama"
+    base = ev_run.per_prompt(FallbackProvider([gemini, local]))
+    first = base("a")
+    first.complete_json("s", [], {})
+    assert first.name == "ollama"  # switched for this prompt
+    second = base("b")
+    second.complete_json("s", [], {})
+    assert second.name == "gemini"  # the next prompt tries Gemini again

@@ -347,6 +347,19 @@ def build_live_provider(
     return wrapped, wrapped
 
 
+def per_prompt(shared: Any) -> Callable[[str], Any]:
+    """The provider of each prompt: *shared*, but a fallback chain starts over per prompt.
+
+    A ``FallbackProvider`` stays on the provider that last answered; reusing one for the
+    whole run would leave every later prompt on the local model after a single switch.
+    """
+    from llm.providers.fallback import FallbackProvider
+
+    if isinstance(shared, FallbackProvider):
+        return lambda pid: FallbackProvider(list(shared.providers))
+    return lambda pid: shared
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="python -m eval.run", description=__doc__.split("\n")[0])
     ap.add_argument("--provider", help="gemini | anthropic | ollama | openai | deepseek")
@@ -393,7 +406,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _load_dotenv()
         shared, backoff = build_live_provider(provider_name, model, fallback=args.fallback,
                                               delays=parse_backoff(args.backoff))
-        base = lambda pid: shared  # noqa: E731
+        base = per_prompt(shared)
 
     out = Path(args.out) if args.out else ROOT / "eval" / "results" / datetime.now().strftime("%Y%m%d-%H%M%S")
     prompts = load_prompts(
