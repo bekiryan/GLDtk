@@ -283,11 +283,24 @@ class EditContext:
         return self.band_at(col, row).gravity_scale
 
     @property
+    def is_plain(self) -> bool:
+        """No GLDtk section data (a hand-made LDtk level): only the fallback band."""
+        return not any(b.raw for b in self.bands)
+
+    @property
     def has_terrain(self) -> bool:
         return any(b.is_terrain for b in self.bands)
 
     def step_at(self) -> Optional[Callable[[int, int], bool]]:
-        """Where 1-tile steps are walkable (terrain sections), or None."""
+        """Where 1-tile steps are walkable (terrain sections), or None.
+
+        A plain LDtk level (no ``gldtk_sections``) is hand-made terrain: there
+        is no section data to say where steps are carved, so 1-tile steps are
+        walkable everywhere, as in a terrain section.  GLDtk levels keep their
+        per-section rule (open-air sections have no steps).
+        """
+        if self.is_plain:
+            return lambda col, row: True
         if not self.has_terrain:
             return None
         return lambda col, row: self.band_at(col, row).is_terrain

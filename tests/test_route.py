@@ -305,3 +305,31 @@ def test_edit_response_has_the_route(client, monkeypatch, tmp_path):
     assert body["success"], body["error"]
     assert body["route"]["success"] is True
     assert body["route"] == client.get("/route", params={"path": str(path)}).json()
+
+
+def test_plain_ldtk_level_walks_up_a_one_tile_step(tmp_path):
+    """A hand-made LDtk level (no ``gldtk_sections``) walks 1-tile steps.
+
+    The step up sits under a low ceiling, so it cannot be jumped: without the
+    walk step the upper corridor was reported unreachable / soft-locked.
+    """
+    from layout.ir import IRLevel
+    from layout.ldtk_adapter import to_ldtk_dict
+
+    w, h = 30, 10
+    grid = [[TileValue.SOLID if r <= 4 or r >= 8 else TileValue.EMPTY for _ in range(w)]
+            for r in range(h)]
+    for c in range(15, w):  # the step: the floor is one tile higher from column 15
+        grid[7][c] = TileValue.SOLID
+    ir = IRLevel("Level_0", w, h, TS, grid, [IREntity("Start", 2, 7, {}), IREntity("Exit", 25, 6, {})])
+    doc = to_ldtk_dict(ir)
+    for lvl in doc["levels"]:
+        lvl["fieldInstances"] = []  # plain LDtk: no GLDtk level fields at all
+    path = tmp_path / "plain.ldtk"
+    path.write_text(json.dumps(doc))
+
+    assert load_context(path).is_plain
+    route = file_route(path)
+    assert route.ok, route.error
+    assert route.softlock_spans == [] and route.unreachable_required == []
+    assert [s.kind for s in route.steps] == ["walk"] * len(route.steps)
