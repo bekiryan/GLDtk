@@ -9,6 +9,9 @@ It is a **neuro-symbolic pipeline**: an LLM handles creativity, while determinis
 checks handle correctness. Every level written to disk is statically verified: the physics oracle proves
 that the player can get from Start to Exit with the game's own jump and ability settings.
 
+New to GLDtk? Read the **[user guide](docs/USER_GUIDE.md)**: installing (macOS, Windows, from source),
+the first run, every sidebar function, example prompts and troubleshooting.
+
 ---
 
 ## Contents
