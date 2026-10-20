@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from layout.ir import TileValue
 from symbolic.physics import LAUNCH_FRACTIONS, gravity_for, max_jump_height
@@ -98,6 +98,8 @@ class TerrainContext:
     hazards_wanted: int = 0
     player_h: int = 2
     hop_air: int = HOP_AIR  # empty rows the profile's shortest hop needs (``hop_air_for``)
+    profile: Optional[Any] = None  # GameProfile: stamps must carry a route under it (stamp.py)
+    gravity_scale: float = 1.0  # the section's gravity scale (with *profile*)
 
     @property
     def jump_air(self) -> int:

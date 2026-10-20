@@ -15,8 +15,11 @@ from layout.terrain.stamp import MAX_RESIZE, PAD_MAX, PAD_TYPES, pattern_grid
 from spec.level_spec import LevelSpec
 
 STAMP_MIN_SCORE = 0.6  # retrieval score a pattern needs to be stamped
-MAX_STAMPS = 3  # patterns tried per section before the generator (Part 29g: was 2)
-POOL = 8  # Part 29g: hits retrieved per stamp, so ones that fit the section's height go first
+# patterns handed to a section (Part 29g: was 2, then 3).  Ones without a route through the
+# section under the game profile are skipped when stamping (``layout/terrain/stamp.py``), so a
+# longer list costs no terrain attempt unless a stamp fails verification
+MAX_STAMPS = 6
+POOL = 24  # Part 29g: hits retrieved, so ones that fit the section's height go first
 
 
 class StampFinder:
@@ -46,7 +49,7 @@ class StampFinder:
                 if not self.store.vectors:
                     self._disabled = True
                 else:
-                    hits = retrieve(f"{self.description}\n{text}".strip(), MAX_STAMPS * POOL,
+                    hits = retrieve(f"{self.description}\n{text}".strip(), POOL,
                                     Filters(structure_type=structure), store=self.store,
                                     embedder=self.embedder)
                     for h in hits:

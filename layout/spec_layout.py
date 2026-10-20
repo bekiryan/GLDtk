@@ -647,5 +647,5 @@ def layout_spec(
     if spec.has_terrain:
         from .terrain import build_terrain
 
-        build_terrain(layout, spec, seed, terrain_attempts, stamps)
+        build_terrain(layout, spec, seed, terrain_attempts, stamps, profile)
     return layout
