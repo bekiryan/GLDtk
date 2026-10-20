@@ -258,31 +258,48 @@ def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
+# Cloud providers and the environment variable that holds each one's key (ollama needs none)
+PROVIDER_KEY_ENV: Dict[str, str] = {
+    "gemini": "GEMINI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+}
+
+
 class SettingsRequest(BaseModel):
     gemini_api_key: Optional[str] = None
+    provider: Optional[str] = None   # with api_key: whose key it is
+    api_key: Optional[str] = None
     local_fallback: Optional[str] = None
 
 
 def _settings_state() -> Dict[str, Any]:
     return {
         "has_key": bool(os.getenv("GEMINI_API_KEY")),
+        "keys": {p: bool(os.getenv(env)) for p, env in PROVIDER_KEY_ENV.items()},
         "local_fallback": os.getenv("GLDTK_LOCAL_FALLBACK", ""),
     }
 
 
 @app.get("/settings")
 def get_settings() -> Dict[str, Any]:
-    """Whether a Gemini key is configured (the key itself is never returned)."""
+    """Which provider keys are configured (the keys themselves are never returned)."""
     return _settings_state()
 
 
 @app.post("/settings")
 def post_settings(req: SettingsRequest) -> Dict[str, Any]:
-    """Write ``GEMINI_API_KEY`` / ``GLDTK_LOCAL_FALLBACK`` to the per-user ``.env``."""
+    """Write a provider key / ``GLDTK_LOCAL_FALLBACK`` to the per-user ``.env``."""
     updates = {
         "GEMINI_API_KEY": (req.gemini_api_key or "").strip() or None,
         "GLDTK_LOCAL_FALLBACK": (req.local_fallback or "").strip() or None,
     }
+    if req.api_key is not None:
+        env = PROVIDER_KEY_ENV.get(req.provider or "")
+        if env is None:
+            raise HTTPException(status_code=400, detail=f"Provider {req.provider!r} takes no API key")
+        updates[env] = req.api_key.strip() or None
     updates = {k: v for k, v in updates.items() if v is not None}
     for k, v in updates.items():
         if "\n" in v or "\r" in v:
