@@ -281,7 +281,7 @@ def _rect(band) -> Tuple[int, int, int, int]:  # type: ignore[no-untyped-def]
 def generate_section(
     layout, spec: LevelSpec, sec: Section, rect: Tuple[int, int, int, int],  # type: ignore[no-untyped-def]
     entry: Port, exit_: Port, seed: int, attempt: int, grid: List[List[TileValue]],
-    stamps: Optional[List[Dict[str, Any]]] = None,
+    stamps: Optional[List[Dict[str, Any]]] = None, profile: Any = None,
 ) -> TerrainResult:
     """Carve one section into *grid* (in place) and return its result.
 
@@ -304,6 +304,8 @@ def generate_section(
         hazards_wanted=hazards,
         player_h=layout.player_tiles[1],
         hop_air=getattr(layout, "hop_air", HOP_AIR),
+        profile=profile,
+        gravity_scale=float(sec.gravity_scale or 1.0),
     )
     cv = Canvas(ctx)
     if stamps:
@@ -321,7 +323,7 @@ def generate_section(
 def build_terrain(
     layout, spec: LevelSpec, seed: int = 0,  # type: ignore[no-untyped-def]
     attempts: Optional[Dict[str, int]] = None,
-    stamps: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    stamps: Optional[Dict[str, List[Dict[str, Any]]]] = None, profile: Any = None,
 ) -> Optional[TerrainLayout]:
     """Carve every terrain section of *layout* (mutated in place; see the module doc).
     *stamps* maps a section id to its retrieved patterns (v4 Part 26b, ``generate_section``)."""
@@ -344,7 +346,7 @@ def build_terrain(
         entry, exit_ = ports[band.id]
         attempt = attempts.get(band.id, 0)
         result = generate_section(layout, spec, sec, _rect(band), entry, exit_, seed, attempt, base,
-                                  (stamps or {}).get(band.id))
+                                  (stamps or {}).get(band.id), profile)
         band.pattern = result.stats.get("pattern")  # type: ignore[assignment]
         band.stacked = result.stats.get("stacked")  # type: ignore[assignment]
         terrain.sections[band.id] = SectionTerrain(band.id, sec.structure or "open", _rect(band),

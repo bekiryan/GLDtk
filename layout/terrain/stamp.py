@@ -21,7 +21,13 @@ Fitting (:func:`fit_pattern`, deterministic):
 * **ports**: the entry and exit floors are joined to the nearest standable
   pattern cell with ``stair_line`` / ``carve_path``, so the seams always match
   the neighbours.  A pattern whose ports end up in different air regions is
-  rejected.
+  rejected;
+* **route** (:func:`stamp_section`): with a game profile on the context, a fit counts only when
+  the player can cross the section from the entry floor to the exit floor
+  (``layout.route.level_route``).  Repeating columns can still widen a gap between ledges at
+  other heights (a narrow climb stretched 3×), so a window narrower than the section by more
+  than ``MAX_RESIZE`` whose stretched copy has no route is tried again stretched by
+  ``MAX_RESIZE`` at most, with rock on both sides (the port stairs tunnel in).
 
 Only horizontal levels are stamped; vertical ones use the generators.
 """
@@ -94,7 +100,7 @@ def _by_middle(cols: Sequence[int], w: int) -> List[int]:
     return sorted(cols, key=lambda c: (abs(2 * c - w), c))
 
 
-def _fit_width(g: Grid, width: int, head: int) -> Optional[Grid]:
+def _fit_width(g: Grid, width: int, head: int, pad_sides: bool = False) -> Optional[Grid]:
     w = len(g[0])
     if w == width:
         return [list(r) for r in g]
@@ -110,6 +116,17 @@ def _fit_width(g: Grid, width: int, head: int) -> Optional[Grid]:
             for row in out:
                 del row[c]
         return out
+    stretch = min(width - w, int(MAX_RESIZE * w))
+    if pad_sides and stretch < width - w:
+        # too narrow to stretch safely: repeating its flat columns much further can widen the
+        # gaps between ledges (a climb stops working), so it grows by MAX_RESIZE at most and the
+        # rest is rock on both sides; the port stairs tunnel in to it (fit_pattern)
+        g = _fit_width(g, w + stretch, head) if stretch else [list(r) for r in g]
+        if g is None:
+            return None
+        left = (width - len(g[0])) // 2
+        right = width - len(g[0]) - left
+        return [[ROCK] * left + row + [ROCK] * right for row in g]
     safe = _by_middle(_safe_cols(g, head), w)
     if not safe:
         return None
@@ -166,16 +183,19 @@ def _merge(cv: Canvas, work: Canvas) -> None:
     cv.unrock |= work.unrock
 
 
-def fit_pattern(grid: Grid, ctx: TerrainContext, cv: Optional[Canvas] = None) -> Optional[TerrainResult]:
+def fit_pattern(grid: Grid, ctx: TerrainContext, cv: Optional[Canvas] = None,
+                pad_sides: bool = False) -> Optional[TerrainResult]:
     """Fit *grid* to the section of *ctx* and carve it into *cv* (a new canvas when None).
-    None when the pattern does not fit (the canvas is then left untouched)."""
+    None when the pattern does not fit (the canvas is then left untouched).  With *pad_sides*
+    a window narrower than the section by more than ``MAX_RESIZE`` is padded with rock on both
+    sides instead of stretched (``_fit_width``)."""
     if ctx.orientation == "vertical" or not grid or not grid[0]:
         return None
     c_lo, c_hi = ctx.inner_cols
     r_lo, r_hi = ctx.inner_rows
     head = max(1, ctx.player_h)
     g = _fit_height(grid, r_hi - r_lo + 1, PAD_MAX if ctx.structure in PAD_TYPES else MAX_RESIZE)
-    g = _fit_width(g, c_hi - c_lo + 1, head) if g is not None else None
+    g = _fit_width(g, c_hi - c_lo + 1, head, pad_sides) if g is not None else None
     if g is None:
         return None
     work = Canvas(ctx)
@@ -247,7 +267,9 @@ def stamp_section(
 
     A candidate shorter than the section by more than ``MAX_RESIZE`` is first stacked under
     another candidate (*candidates* are one structure type: the finder retrieves them per
-    section); when no stack fits it is padded (:func:`fit_pattern`)."""
+    section); when no stack fits it is padded (:func:`fit_pattern`).  A fit counts only when the
+    player can cross it under ``ctx.profile`` (:func:`_route_ok`); a window much narrower than the
+    section is then tried padded at the sides when its stretched copy has no route."""
     chosen: Optional[TerrainResult] = None
     fits = 0
     grids = [(rec, g) for rec in candidates for g in [pattern_grid(rec)] if g is not None]
@@ -266,12 +288,19 @@ def stamp_section(
                 if stacked is not None:
                     tries.append((stacked, str(rec2["id"])))
         tries.append((g, None))
+        found = False
         for grid, other in tries:
-            work = Canvas(ctx)
-            res = fit_pattern(grid, ctx, work)
-            if res is not None:
+            # stretched first; a narrow window whose stretched copy has no route is padded
+            narrow = width - len(grid[0]) > MAX_RESIZE * len(grid[0])
+            for pad in ((False, True) if narrow else (False,)):
+                work = Canvas(ctx)
+                res = fit_pattern(grid, ctx, work, pad)
+                if res is not None and _route_ok(ctx, work, res):
+                    found = True
+                    break
+            if found:
                 break
-        else:
+        if not found:
             continue
         if fits == index:
             _merge(cv, work)
@@ -281,6 +310,29 @@ def stamp_section(
             chosen = res
         fits += 1
     return chosen, fits
+
+
+def _route_ok(ctx: TerrainContext, work: Canvas, res: TerrainResult) -> bool:
+    """Can the player cross the carved section from its entry floor to its exit floor under
+    ``ctx.profile`` (the verifier's physics, on the section alone)?  A stamp that fails it would
+    only fail verification later and use up a terrain attempt.  True without a profile."""
+    if ctx.profile is None or len(res.path) < 3:
+        return True
+    from layout.ir import IREntity
+    from layout.route import level_route
+
+    height = ctx.level_size[1]
+    full = [[ROCK] * (ctx.c1 + 1) for _ in range(height)]
+    work.apply(full)
+    grid = [row[ctx.c0:] for row in full]
+    (ca, ra), (cb, rb) = res.path[1], res.path[-2]  # first / last floor inside the section
+    ents = [IREntity("Start", ca - ctx.c0, ra - 1), IREntity("Exit", cb - ctx.c0, rb - 1)]
+    g = ctx.gravity_scale
+    try:
+        return level_route(grid, ents, ctx.profile, gravity_scale_at=lambda c, r: g,
+                           step_at=lambda c, r: True).ok
+    except Exception:  # noqa: BLE001 - the verifier still decides
+        return True
 
 
 def stack_grids(bottom: Grid, top: Grid, width: int, height: int, head: int,

@@ -196,7 +196,7 @@ def restructure_section(
         grid = [list(r) for r in ctx.grid]
         if want in TERRAIN_STRUCTURES:
             result = generate_section(shim, spec, sec, bounds, entry, exit_, seed, attempt, grid,
-                                      stamps)
+                                      stamps, ctx.profile)
         else:
             result = _open_band(ctx, band, grid, entry, exit_)
         placer = SectionPlacer(shim, spec, sec, result, bounds, grid)
