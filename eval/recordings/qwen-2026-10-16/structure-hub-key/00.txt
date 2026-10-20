@@ -1,0 +1,394 @@
+{
+  "title": "Abandoned Mansion",
+  "size": {
+    "width_tiles": 40,
+    "height_tiles": 25
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "mansion",
+      "name": "Abandoned Mansion",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "Connected rooms with a hidden side room holding the key to the locked exit door.",
+      "order": 0,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 5
+  },
+  {
+    "id": "hidden_room",
+    "name": "Hidden Side Room",
+    "theme": "dungeon",
+    "difficulty": "medium",
+    "gravity_scale": 1.0,
+    "description": "A hidden side room with the key to unlock the exit door.",
+    "order": 1,
+    "style": "mixed",
+    "structure": "corridor",
+    "params": null
+  ,
+  "complexity": 5
+},
+{
+  "id": "exit_room",
+  "name": "Exit Room",
+  "theme": "dungeon",
+  "difficulty": "medium",
+  "gravity_scale": 1.0,
+  "description": "A room with a locked exit door.",
+  "order": 2,
+  "style": "mixed",
+  "structure": "corridor",
+  "params": null
+,
+"complexity": 5
+}
+],
+"nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "mansion"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "mansion"
+    },
+    {
+      "id": "hidden_room_entry",
+      "type": "Hazard",
+      "x": 256,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "hidden_room"
+    },
+    {
+      "id": "key",
+      "type": "Platform",
+      "x": 304,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "hidden_room"
+    },
+    {
+      "id": "exit_door",
+      "type": "Exit",
+      "x": 256,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "exit_room"
+    }
+],
+"edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 82,
+      "vy": 600
+    ,
+    "ability": null
+},
+{
+  "from": "p1",
+  "to": "hidden_room_entry",
+  "type": "Fall",
+  "vx": 626,
+  "vy": 0
+,
+"ability": null
+},
+{
+  "from": "hidden_room_entry",
+  "to": "key",
+  "type": "Jump",
+  "vx": 82,
+  "vy": 600
+,
+"ability": null
+},
+{
+  "from": "key",
+  "to": "exit_door",
+  "type": "Fall",
+  "vx": 626,
+  "vy": 0
+,
+"ability": null
+}
+],
+"entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "mansion",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": "floor",
+      "position": 0.5,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+  ,
+  "archetype": null
+,
+"health": null
+,
+"damage": null
+,
+"patrol_range": null
+,
+"attack": null
+,
+"pickup_kind": null
+,
+"value": null
+,
+"weapon_kind": null
+,
+"range": null
+,
+"interactive_kind": null
+,
+"linked_to": "exit_door"
+  ,
+  "contents": null
+,
+"name": null
+,
+"dialogue": null
+,
+"opens": null
+,
+"grants_ability": null
+}
+],
+"requirements": [
+    {
+      "id": "R1",
+      "text": "There is an abandoned mansion section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": "Start",
+        "subkind": "mansion"
+      ,
+      "min_count": 1
+    ,
+    "section": null
+,
+"ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": null
+}
+},
+{
+  "id": "R2",
+  "text": "A hidden side room section comes after the mansion.",
+  "category": "section",
+  "check": {
+    "type": "section",
+    "entity_kind": "Start",
+    "subkind": "hidden_room"
+  ,
+  "min_count": 1
+,
+"section": null
+,
+"ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": null
+}
+},
+{
+  "id": "R3",
+  "text": "The hidden side room contains a key.",
+  "category": "entity",
+  "check": {
+    "type": "entity_count",
+    "entity_kind": "Pickup",
+    "subkind": "key",
+    "min_count": 1,
+    "section": "hidden_room"
+  ,
+  "ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": null
+}
+},
+{
+  "id": "R4",
+  "text": "The exit room contains a locked door.",
+  "category": "entity",
+  "check": {
+    "type": "entity_count",
+    "entity_kind": "Exit",
+    "subkind": "door",
+    "min_count": 1,
+    "section": "exit_room"
+  ,
+  "ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": null
+}
+},
+{
+  "id": "R5",
+  "text": "The player starts with a sword.",
+  "category": "entity",
+  "check": {
+    "type": "start_item",
+    "entity_kind": "Start",
+    "subkind": "sword"
+  ,
+  "min_count": null
+,
+"section": null
+,
+"ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": null
+}
+},
+{
+  "id": "R6",
+  "text": "The player can double jump.",
+  "category": "ability",
+  "check": {
+    "type": "ability",
+    "entity_kind": "Start",
+    "subkind": "double_jump"
+  ,
+  "min_count": null
+,
+"section": null
+,
+"ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": null
+}
+},
+{
+  "id": "R7",
+  "text": "The exit room has a locked door.",
+  "category": "layout",
+  "check": {
+    "type": "mission",
+    "entity_kind": "Exit",
+    "subkind": "lock",
+    "min_count": null,
+    "section": "exit_room"
+  ,
+  "ability": null
+,
+"min_width_tiles": null
+,
+"min_height_tiles": null
+,
+"gravity_scale": null
+,
+"structure": null
+,
+"target_difficulty": null
+,
+"target_section": "hidden_room"
+}
+}
+] ,
+"complexity": 5
+,
+"mission": {
+    "rules": [
+        "ability_gate",
+        "lock_key_cycle"
+    ]
+,
+"keys": 1
+,
+"ability": null
+,
+"locks": [
+    {"key_section": "hidden_room", "lock_section": "exit_room"}
+]
+}
+}

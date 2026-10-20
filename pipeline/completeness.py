@@ -1,5 +1,7 @@
 """Completeness loop: meet every requirement before layout, spending as few LLM calls as possible.
 
+    0. ``from_prompt``   — deterministic: requirements the prompt states outright
+       (structure types it names, a key and lock) that the LLM left out
     1. ``fill_missing``  — deterministic: add missing entities, start items, size
     2. ``check_spec``    — anything still ``missing`` (a missing section, a
        Start / Exit count, gravity) → **one** LLM re-prompt (``reprompt``),
@@ -17,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 from fidelity import FidelityReport, check_spec, fill_missing
+from fidelity.prompt import from_prompt
 from game.profile import GameProfile
 from spec.level_spec import LevelSpec
 
@@ -42,20 +45,23 @@ def ensure_complete(
     spec: LevelSpec,
     profile: Optional[GameProfile] = None,
     reprompt: Optional[Reprompt] = None,
+    prompt: Optional[str] = None,
 ) -> CompletenessResult:
     """Fill, check, and (at most once) re-prompt; see the module docstring.
 
     *reprompt* ``(spec, missing_lines) -> LevelSpec`` is the LLM call (None =
-    deterministic fill only).
+    deterministic fill only).  *prompt* is the user's description (None = no
+    prompt requirements are added).
     """
     profile = profile or GameProfile()
-    fill = fill_missing(spec)
+    asked = from_prompt(spec, prompt)
+    fill = fill_missing(asked.spec)
     out = CompletenessResult(
         spec=fill.spec,
         report=check_spec(fill.spec, profile, fill.filled),
-        filled=list(fill.filled),
+        filled=sorted(set(asked.added) | set(fill.filled)),
         entities_added=fill.entities_added,
-        notes=list(fill.notes),
+        notes=asked.notes + list(fill.notes),
     )
     if not out.report.missing or reprompt is None:
         return out
@@ -68,11 +74,12 @@ def ensure_complete(
         out.notes.append(f"completeness re-prompt failed ({exc}); kept the filled spec")
         return out
 
-    fill = fill_missing(answer)
+    asked = from_prompt(answer, prompt)
+    fill = fill_missing(asked.spec)
     out.spec = fill.spec
-    out.filled = sorted(set(out.filled) | set(fill.filled))
+    out.filled = sorted(set(out.filled) | set(asked.added) | set(fill.filled))
     out.entities_added += fill.entities_added
-    out.notes += fill.notes
+    out.notes += asked.notes + fill.notes
     out.report = check_spec(out.spec, profile, out.filled)
     still = [i.id for i in out.report.missing]
     if still:

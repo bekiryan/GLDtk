@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from llm.providers.base import ProviderError
 
@@ -47,6 +47,7 @@ class CountingProvider:
         self._budget = budget
         self.calls = 0  # calls made through this wrapper (one prompt)
         self.models_used: List[str] = []  # models that answered (Gemini may fall back)
+        self.answered_by: List[str] = []  # provider/model labels that answered
         self.name = getattr(inner, "name", "unknown")
 
     def complete_json(self, system: str, messages: List[Dict[str, Any]], schema: Dict[str, Any]) -> str:
@@ -63,6 +64,9 @@ class CountingProvider:
         used = getattr(self._inner, "model_used", None)
         if used and used not in self.models_used:
             self.models_used.append(used)
+        label = answered_label(self._inner)
+        if label and label not in self.answered_by:
+            self.answered_by.append(label)
         return raw
 
 
@@ -74,7 +78,10 @@ class RecordingProvider:
         self._dir = Path(directory) / prompt_id
         self._dir.mkdir(parents=True, exist_ok=True)
         self._index = 0
-        self.name = getattr(inner, "name", "unknown")
+
+    @property
+    def name(self) -> str:  # live: a FallbackProvider's name changes when it switches
+        return getattr(self._inner, "name", "unknown")
 
     @property
     def model_used(self) -> Optional[str]:
@@ -121,3 +128,60 @@ def is_quota_error(exc: BaseException) -> bool:
         return True
     text = str(exc)
     return "429" in text or "RESOURCE_EXHAUSTED" in text or "quota" in text.lower()
+
+
+# ── backoff on overload ─────────────────────────────────────────────────────
+
+DEFAULT_BACKOFF = (20.0, 60.0, 120.0)  # seconds before retry 1, 2, 3
+
+
+def is_unavailable_error(exc: BaseException) -> bool:
+    """HTTP 503 / UNAVAILABLE ("model is experiencing high demand"): wait and retry."""
+    if isinstance(exc, ProviderError) and exc.status == 503:
+        return True
+    text = str(exc)
+    return "503" in text or "UNAVAILABLE" in text
+
+
+class BackoffProvider:
+    """Retries a call after 503/UNAVAILABLE, sleeping ``delays[i]`` before retry i+1.
+
+    ``retries`` and ``slept`` are cumulative (the harness takes per-prompt deltas);
+    any other error, or the last 503, is raised as is.
+    """
+
+    def __init__(self, inner: Any, delays: Sequence[float] = DEFAULT_BACKOFF,
+                 sleep: Callable[[float], None] = time.sleep,
+                 log: Callable[[str], None] = lambda s: None) -> None:
+        self._inner = inner
+        self._delays = tuple(delays)
+        self._sleep = sleep
+        self._log = log
+        self.retries = 0
+        self.slept = 0.0
+
+    def __getattr__(self, attr: str) -> Any:  # name, model, model_used, ...
+        return getattr(self._inner, attr)
+
+    def complete_json(self, system: str, messages: List[Dict[str, Any]], schema: Dict[str, Any]) -> str:
+        for attempt in range(len(self._delays) + 1):
+            try:
+                return self._inner.complete_json(system, messages, schema)
+            except Exception as exc:
+                if attempt >= len(self._delays) or not is_unavailable_error(exc):
+                    raise
+                delay = self._delays[attempt]
+                self._log(f"wait  {delay:g}s after 503/UNAVAILABLE (retry {attempt + 1}/{len(self._delays)})")
+                self._sleep(delay)
+                self.retries += 1
+                self.slept += delay
+        raise AssertionError("unreachable")
+
+
+def answered_label(provider: Any) -> Optional[str]:
+    """``provider/model`` of the provider that answered the last call (None if unknown)."""
+    name = getattr(provider, "name", None) or "unknown"
+    model = getattr(provider, "model_used", None) or getattr(provider, "model", None)
+    if not model:
+        return name
+    return model if str(model).startswith(f"{name}/") else f"{name}/{model}"

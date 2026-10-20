@@ -8,6 +8,8 @@ provider from tests; ``--dry-run`` makes no LLM call.
     python -m patterns.build --provider gemini --max-calls 40 --embedder gemini
     python -m patterns.build --source all --max-levels 40 \\
         --provider ollama --model qwen2.5:14b --max-calls 150 --embedder ollama
+    python -m patterns.build --vision --embedder ollama     # Part 29d, local vision model
+    python -m patterns.build --vision --vision-provider gemini --max-calls 480 --embedder ollama
 
 ``--source`` (Part 26d) shallow-clones the game into the app-data ``sources/`` folder when it is
 missing, checks each level's licence, converts and ingests it (see ``patterns.sources``).
@@ -94,6 +96,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--reclassify", action="store_true",
                     help="Part 26f: recompute the geometry structure type of every window "
                          "(default: only windows without one)")
+    ap.add_argument("--vision", action="store_true",
+                    help="Part 29d: describe labelled patterns with a local vision model (Ollama)")
+    ap.add_argument("--vision-provider", choices=["ollama", "gemini"], default="ollama",
+                    help="ollama (local, default) | gemini (falls back to the local model)")
+    ap.add_argument("--vision-model", default=None,
+                    help="default qwen2.5vl:7b (ollama) or gemini-3.5-flash-lite (gemini)")
     args = ap.parse_args(argv)
 
     store = PatternStore()
@@ -165,6 +173,18 @@ def main(argv: Optional[List[str]] = None) -> int:
               f"{lrep.calls} call(s)" + (" [dry run]" if args.dry_run else "")
               + (" [budget reached]" if lrep.stopped else ""))
         for e in lrep.errors:
+            print("  error:", e)
+    if args.vision and not args.dry_run:
+        from patterns.vision import describe_pending
+
+        vrep = describe_pending(store, model=args.vision_model, provider=args.vision_provider,
+                                max_calls=args.max_calls)
+        print(f"vision: {vrep.described} new, {vrep.cached} cached, {vrep.calls} call(s), "
+              f"{vrep.disagreed} text label(s) contradicted, {vrep.retried} retried for false claims, "
+              f"{len(vrep.errors)} error(s)" + (" [budget reached]" if vrep.stopped else "")
+              + (f" [skipped: {vrep.skipped}]" if vrep.skipped else "")
+              + (f" [fell back: {vrep.fell_back}]" if vrep.fell_back else ""))
+        for e in vrep.errors[:10]:
             print("  error:", e)
     if args.dry_run:
         print("dry run: nothing saved")

@@ -283,3 +283,99 @@ def test_records_the_model_that_answered_when_none_was_requested(tmp_path, load_
     recs = ev_run.run_suite(SUITE[1:2], factory, tmp_path / "o2", provider_name="gemini",
                             model="gemini-3.8-flash", log=lambda s: None)
     assert recs[0]["model"] == "gemini-3.8-flash"  # an explicit model is kept as requested
+
+
+# ── 503 backoff and --fallback ──────────────────────────────────────────────
+
+
+class _FlakyProvider:
+    """Raises 503 *fails* times, then answers from *responses*."""
+
+    def __init__(self, fails, responses, name="gemini", model="gemini-3.1-flash-lite"):
+        self.fails, self.name, self.model = fails, name, model
+        self.model_used = None
+        self._fake = FakeProvider(responses)
+        self.calls = 0
+
+    def complete_json(self, system, messages, schema):
+        self.calls += 1
+        if self.fails > 0:
+            self.fails -= 1
+            raise ProviderError("HTTP 503: UNAVAILABLE, high demand", status=503)
+        self.model_used = self.model
+        return self._fake.complete_json(system, messages, schema)
+
+
+def test_backoff_retries_503_then_answers(tmp_path, load_fixture):
+    from eval.providers import BackoffProvider
+
+    waits = []
+    flaky = _FlakyProvider(2, [load_fixture("valid_minimal.json")])
+    bp = BackoffProvider(flaky, [20, 60, 120], sleep=waits.append)
+    recs = ev_run.run_suite(SUITE[:1], lambda pid: bp, tmp_path / "o", provider_name="gemini",
+                            model="gemini-3.1-flash-lite", backoff=bp, log=lambda s: None)
+    r = recs[0]
+    assert r["verified"] and waits == [20, 60]
+    assert r["provider_retries"] == 2 and r["llm_calls"] == 1
+    assert r["answered_by"] == ["gemini/gemini-3.1-flash-lite"]
+    assert r["wall_time_s"] < 20  # the waits are not counted
+
+
+def test_backoff_gives_up_after_the_last_delay_and_ignores_other_errors():
+    from eval.providers import BackoffProvider
+
+    waits = []
+    bp = BackoffProvider(_FlakyProvider(9, []), [1, 2, 3], sleep=waits.append)
+    with pytest.raises(ProviderError):
+        bp.complete_json("s", [], {})
+    assert waits == [1, 2, 3] and bp.retries == 3
+    bp = BackoffProvider(_QuotaProvider(), [1, 2, 3], sleep=waits.append)
+    with pytest.raises(ProviderError):
+        bp.complete_json("s", [], {})
+    assert bp.retries == 0  # a 429 is not retried
+
+
+def test_fallback_flag_wraps_primary_with_backoff_and_records_the_answerer(tmp_path, load_fixture):
+    from llm.providers.fallback import FallbackProvider
+
+    waits = []
+    gemini = _FlakyProvider(99, [])  # never answers
+    local = FakeProvider([load_fixture("valid_minimal.json")])
+    local.name, local.model = "ollama", "qwen2.5:14b"
+    seen = {}
+
+    def with_fallback(name, model=None):
+        seen["args"] = (name, model)
+        return FallbackProvider([gemini, local])
+
+    shared, bp = ev_run.build_live_provider("gemini", "gemini-3.1-flash-lite", fallback=True,
+                                            delays=[20, 60, 120], make_with_fallback=with_fallback,
+                                            sleep=waits.append, log=lambda s: None)
+    assert seen["args"] == ("gemini", "gemini-3.1-flash-lite")
+    recs = ev_run.run_suite(SUITE[:1], lambda pid: shared, tmp_path / "o", provider_name="gemini",
+                            model="gemini-3.1-flash-lite", backoff=bp, record_dir=tmp_path / "rec",
+                            log=lambda s: None)
+    r = recs[0]
+    assert r["verified"] and waits == [20, 60, 120] and gemini.calls == 4
+    assert r["answered_by"] == ["ollama/qwen2.5:14b"] and r["provider_retries"] == 3
+
+    # without --fallback: plain make_provider, backoff around it; --backoff 0 disables it
+    plain, bp = ev_run.build_live_provider("gemini", None, make=lambda n, model=None: local,
+                                           delays=ev_run.parse_backoff("0"))
+    assert plain is local and bp is None
+    assert ev_run.parse_backoff("20,60,120") == [20.0, 60.0, 120.0]
+
+
+def test_each_prompt_starts_the_fallback_chain_on_the_primary(load_fixture):
+    from llm.providers.fallback import FallbackProvider
+
+    gemini = _FlakyProvider(1, [load_fixture("valid_minimal.json")])  # 503 once, then answers
+    local = FakeProvider([load_fixture("valid_minimal.json")])
+    local.name = "ollama"
+    base = ev_run.per_prompt(FallbackProvider([gemini, local]))
+    first = base("a")
+    first.complete_json("s", [], {})
+    assert first.name == "ollama"  # switched for this prompt
+    second = base("b")
+    second.complete_json("s", [], {})
+    assert second.name == "gemini"  # the next prompt tries Gemini again

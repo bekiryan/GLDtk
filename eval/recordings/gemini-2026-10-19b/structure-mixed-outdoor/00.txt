@@ -1,0 +1,368 @@
+{
+  "title": "Sky Islands to Spider Arena",
+  "size": {
+    "width_tiles": 80,
+    "height_tiles": 30
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "sky_islands",
+      "name": "Open Sky Islands",
+      "theme": "open sky",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "Start on open sky islands.",
+      "order": 0,
+      "style": "walk",
+      "structure": "open",
+      "params": null
+    ,
+    "complexity": 3
+    },
+    {
+      "id": "cave_corridor",
+      "name": "Cave Corridor",
+      "theme": "dungeon",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "Dive into a cave corridor with spike pits and bats.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 5
+    },
+    {
+      "id": "spider_arena",
+      "name": "Spider Arena",
+      "theme": "dungeon",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "End in a closed arena fight against a giant spider.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "arena",
+      "params": null
+    ,
+    "complexity": 8
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "sky_islands"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "sky_islands"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 192,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "sky_islands"
+    },
+    {
+      "id": "spikes1",
+      "type": "Hazard",
+      "x": 304,
+      "y": 16,
+      "w": 48,
+      "h": 16,
+      "section": "cave_corridor"
+    },
+    {
+      "id": "p3",
+      "type": "Platform",
+      "x": 352,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "cave_corridor"
+    },
+    {
+      "id": "spikes2",
+      "type": "Hazard",
+      "x": 448,
+      "y": 16,
+      "w": 48,
+      "h": 16,
+      "section": "cave_corridor"
+    },
+    {
+      "id": "p4",
+      "type": "Platform",
+      "x": 544,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "cave_corridor"
+    },
+    {
+      "id": "spider_arena_platform",
+      "type": "Platform",
+      "x": 608,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "spider_arena"
+    },
+    {
+      "id": "exit",
+      "type": "Exit",
+      "x": 752,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "spider_arena"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 500,
+      "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "p3",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "p3",
+      "to": "p4",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "p4",
+      "to": "spider_arena_platform",
+      "type": "Fall",
+      "vx": 626,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "spider_arena_platform",
+      "to": "exit",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 500,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "sky_islands",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "coin1",
+      "kind": "Pickup",
+      "anchor": "p2",
+      "section": "sky_islands",
+      "description": "a coin",
+      "sprite": "gold coin",
+      "place": null,
+      "position": null,
+      "facing": null,
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "spider",
+      "kind": "Enemy",
+      "anchor": "exit",
+      "section": "spider_arena",
+      "description": "a giant spider",
+      "sprite": "giant spider",
+      "place": "floor",
+      "position": 0.5,
+      "facing": "left",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": false
+    ,
+    "archetype": "walker"
+    ,
+    "health": 10,
+    "damage": 2,
+    "patrol_range": 5,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    },
+    {
+      "id": "bat",
+      "kind": "Enemy",
+      "anchor": "p3",
+      "section": "cave_corridor",
+      "description": "a bat",
+      "sprite": "bat",
+      "place": "floor",
+      "position": 0.5,
+      "facing": "left",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": false
+    ,
+    "archetype": "flyer"
+    ,
+    "health": 1,
+    "damage": 1,
+    "patrol_range": 2,
+    "attack": "melee",
+    "pickup_kind": null,
+    "value": null,
+    "weapon_kind": null,
+    "range": null,
+    "interactive_kind": null,
+    "linked_to": null,
+    "contents": null,
+    "name": null,
+    "dialogue": null,
+    "opens": null,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "key",
+      "text": "Find the key to open the door.",
+      "category": "other"
+    ,
+    "check": null
+    },
+    {
+      "id": "coin",
+      "text": "Collect coins for points.",
+      "category": "other"
+    ,
+    "check": null
+    }
+  ],
+  "complexity": 8,
+  "mission": {
+    "rules": [
+      "ability_gate",
+      "ability_gate",
+      "ability_gate",
+      "ability_gate",
+      "ability_gate",
+      "ability_gate",
+      "ability_gate"
+    ]
+  ,
+    "keys": null
+  ,
+    "ability": null
+  ,
+    "locks": null
+  }
+}

@@ -1,0 +1,402 @@
+{
+  "title": "Hedge Maze Labyrinth",
+  "size": {
+    "width_tiles": 120,
+    "height_tiles": 80
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "maze",
+      "name": "Maze",
+      "theme": "hedge maze",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A hedge maze labyrinth with several dead ends; coins hidden at the dead ends and the exit gate on the far side.",
+      "order": 0,
+      "style": "walk",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": 5
+  },
+  {
+    "id": "exit",
+    "name": "Exit",
+    "theme": "hedge maze",
+    "difficulty": "easy",
+    "gravity_scale": 1.0,
+    "description": "The exit gate on the far side.",
+    "order": 1,
+    "style": "walk",
+    "structure": "corridor",
+    "params": null
+  ,
+    "complexity": 2
+  }
+],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 160,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "dead_end_1",
+      "type": "Hazard",
+      "x": 352,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "coin_dead_end_1",
+      "type": "Platform",
+      "x": 304,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 576,
+      "y": 192,
+      "w": 48,
+      "h": 16,
+      "section": "maze"
+    },
+    {
+      "id": "exit_gate",
+      "type": "Exit",
+      "x": 1024,
+      "y": 352,
+      "w": 48,
+      "h": 16,
+      "section": "exit"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 100,
+      "vy": 500
+    ,
+    "ability": null
+  },
+    {
+      "from": "p1",
+      "to": "coin_dead_end_1",
+      "type": "Fall",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+  },
+    {
+      "from": "coin_dead_end_1",
+      "to": "dead_end_1",
+      "type": "Jump",
+      "vx": 50,
+      "vy": 300
+    ,
+    "ability": null
+  },
+    {
+      "from": "p2",
+      "to": "exit_gate",
+      "type": "Fall",
+      "vx": 100,
+      "vy": 0
+    ,
+    "ability": null
+  }
+],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "maze",
+      "description": "the player, starting with no items",
+      "sprite": "knight",
+      "place": null,
+      "position": null
+    ,
+    "facing": "right"
+  ,
+    "starting_items": [],
+    "starting_weapon": null
+  ,
+    "requires_key": false
+  ,
+    "archetype": null
+  ,
+    "health": null
+  ,
+    "damage": null
+  ,
+    "patrol_range": null
+  ,
+    "attack": null
+  ,
+    "pickup_kind": null
+  ,
+    "value": null
+  ,
+    "weapon_kind": null
+  ,
+    "range": null
+  ,
+    "interactive_kind": null
+  ,
+    "linked_to": null
+  ,
+    "contents": null
+  ,
+    "name": null
+  ,
+    "dialogue": null
+  ,
+    "opens": null
+  ,
+    "grants_ability": null
+  },
+    {
+      "id": "coin1",
+      "kind": "Pickup",
+      "anchor": "coin_dead_end_1",
+      "section": "maze",
+      "description": "a coin hidden at a dead end",
+      "sprite": "gold coin",
+      "place": null,
+      "position": null
+    ,
+    "facing": null
+  ,
+    "starting_items": [],
+    "starting_weapon": null
+  ,
+    "requires_key": false
+  ,
+    "archetype": null
+  ,
+    "health": null
+  ,
+    "damage": null
+  ,
+    "patrol_range": null
+  ,
+    "attack": null
+  ,
+    "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "There is a hedge maze labyrinth section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "maze"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": "labyrinth",
+      "target_difficulty": null,
+      "target_section": null
+  }
+  },
+    {
+      "id": "R2",
+      "text": "Coins are hidden at the dead ends.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "coin",
+        "min_count": 1,
+        "section": "maze"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+  }
+  },
+    {
+      "id": "R3",
+      "text": "The exit gate is on the far side.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "exit"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+  }
+  },
+    {
+      "id": "R4",
+      "text": "The maze has several dead ends.",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 3,
+        "section": "maze"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": "labyrinth",
+      "target_difficulty": null,
+      "target_section": null
+  }
+  },
+    {
+      "id": "R5",
+      "text": "The maze has a complex structure.",
+      "category": "layout",
+      "check": {
+        "type": "hazard",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "maze"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": "labyrinth",
+      "target_difficulty": null,
+      "target_section": null
+  }
+  },
+    {
+      "id": "R6",
+      "text": "The player starts with no items.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Start",
+        "subkind": null,
+        "min_count": 1,
+        "section": "maze"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+  }
+  },
+    {
+      "id": "R7",
+      "text": "The exit gate is the final goal.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "exit"
+      ,
+      "ability": null
+    ,
+      "min_width_tiles": null
+    ,
+      "min_height_tiles": null
+    ,
+      "gravity_scale": null
+    ,
+      "structure": null,
+      "target_difficulty": null,
+      "target_section": null
+  }
+  }
+]
+  , "complexity": 5
+  , "mission": {
+        "rules": [
+            "ability_gate",
+            "ability_gate"
+        ],
+        "keys": null,
+        "ability": null,
+        "locks": null
+    }
+}
