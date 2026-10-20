@@ -111,6 +111,7 @@ The LLM emits a `LevelSpec` (`spec/level_spec.py`): size, sections, the node/edg
 source .venv/bin/activate
 pytest                                   # whole offline suite (FakeProvider + tests/fixtures/llm/); no file lists needed
 pytest -m e2e tests/e2e/test_gemini.py -s   # real Gemini call (uses free-tier quota)
+python -m eval.run --tags structure --fallback   # live eval; 503 backoff (--backoff), records answered_by
 ```
 
 ## Adding new parameters

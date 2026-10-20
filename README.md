@@ -254,6 +254,9 @@ never the art.
 ```bash
 python -m patterns.build --dry-run                          # ingest only, no LLM call
 python -m patterns.build --provider gemini --max-calls 40   # label and embed
+python -m patterns.build --gaps                             # add rare-type (labyrinth, arena, hub) and tall parkour windows
+python -m patterns.build --vision --vision-provider gemini  # describe a rendered PNG of each pattern (or ollama, qwen2.5vl:7b)
+python -m patterns.coverage --real                          # which structure types stamp at which heights
 ```
 
 ### Design memory
@@ -350,7 +353,9 @@ Environment variables: `GEMINI_API_KEY` (`.env`), `GLDTK_LOCAL_FALLBACK`, `GLDTK
 retries and timing per provider and model. See [eval/README.md](eval/README.md). The first real run
 (Gemini, 8 prompts, 2026-10-15) scored **100% playable and 100% fidelity**
 (`eval/results/gemini-2026-10-15/report.md`). Its responses are recorded, so the run can be replayed
-offline with `--replay eval/recordings/gemini-2026-10-15`.
+offline with `--replay eval/recordings/gemini-2026-10-15`. A 503 is retried after 20, 60 and 120 s
+(`--backoff`, `0` turns it off); `--fallback` lets the local model answer when Gemini cannot, and each
+record's `answered_by` names the model that did.
 
 ---
 
