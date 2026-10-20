@@ -1180,6 +1180,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                     help="exit when this process is gone (the packaged app passes its own pid)")
     ap.add_argument("--check", action="store_true", help="import everything, load assets, exit")
     args = ap.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):  # Windows consoles default to cp1252, which has no "→"
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     if args.check:
         sys.exit(check())
     print(f"GLDtk companion → http://{args.host}:{args.port}")
