@@ -10,6 +10,7 @@ on:
         default: master
   push:
     tags: ["v*"]
+    branches: [feat/windows-release]  # TEMP: test before the workflow is on main
 
 permissions:
   contents: write
@@ -33,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bekiryan/ldtk
-          ref: ${{ inputs.ldtk_ref || 'master' }}
+          ref: ${{ inputs.ldtk_ref || 'feat/windows-backend' }}  # TEMP
           path: ldtk-src
 
       - uses: actions/setup-python@v5
