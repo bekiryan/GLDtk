@@ -38,11 +38,16 @@ class ProviderError(RuntimeError):
     """Raised when a provider call fails (HTTP, connection, empty output)."""
 
     def __init__(
-        self, message: str, status: int | None = None, timed_out: bool = False
+        self,
+        message: str,
+        status: int | None = None,
+        timed_out: bool = False,
+        missing_key: bool = False,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.timed_out = timed_out  # the request timed out (no HTTP status)
+        self.missing_key = missing_key  # no API key set; nothing was sent
 
 
 # ─────────────────────────────────────────────────────────────────────────────

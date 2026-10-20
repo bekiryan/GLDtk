@@ -112,7 +112,8 @@ class GeminiProvider:
         if not self._api_key:
             raise base.ProviderError(
                 "Gemini provider requires an API key. "
-                "Pass api_key=... or set GEMINI_API_KEY (e.g. in .env)."
+                "Pass api_key=... or set GEMINI_API_KEY (e.g. in .env).",
+                missing_key=True,
             )
         response = self._post_with_fallback(system, messages, schema)
         self.last_usage = dict(response.get("usageMetadata") or {})

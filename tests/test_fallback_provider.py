@@ -52,6 +52,16 @@ def test_falls_back_on_service_errors(err):
     assert primary.calls == 1 and len(p.notes) == 1
 
 
+def test_missing_key_says_so(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    local = _local(['{"a": 1}'])
+    p = FallbackProvider([gemini.GeminiProvider(model="gemini-3.8-flash"), local])
+    assert p.complete_json("s", [], {}) == '{"a": 1}'
+    assert p.notes == [
+        "No Gemini API key set — used the local model qwen2.5:14b. Add a key in Settings."
+    ]
+
+
 def test_client_errors_do_not_fall_back():
     primary, local = _Failing(ProviderError("bad key", status=400)), _local(['{}'])
     with pytest.raises(ProviderError, match="bad key"):
