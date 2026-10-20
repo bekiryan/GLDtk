@@ -5,11 +5,13 @@
 #   3. electron-builder --mac dmg --arm64          -> ldtk-src/app/redist/
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export HAXE_STD_PATH="${HAXE_STD_PATH:-/opt/homebrew/lib/haxe/std}"
-HAXE="${HAXE:-/opt/homebrew/bin/haxe}"
+if [ -z "${HAXE_STD_PATH:-}" ] && [ -d /opt/homebrew/lib/haxe/std ]; then
+  export HAXE_STD_PATH=/opt/homebrew/lib/haxe/std
+fi
+HAXE="${HAXE:-$(command -v haxe || echo /opt/homebrew/bin/haxe)}"
 
 echo "==> 1/3 backend bundle (PyInstaller)"
-PY="$ROOT/.venv/bin/python"
+PY="${PYTHON:-$ROOT/.venv/bin/python}"
 "$PY" -m pip install --quiet pyinstaller
 (cd "$ROOT/packaging" && rm -rf dist build \
   && "$PY" -m PyInstaller --noconfirm --distpath dist --workpath build gldtk-server.spec)

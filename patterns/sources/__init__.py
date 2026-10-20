@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
+from app_dirs import app_support_dir
 from layout.ir import IREntity, TileValue
 
 TILE = 16
@@ -38,7 +39,7 @@ def sources_dir() -> Path:
     env = os.environ.get("GLDTK_SOURCES_DIR")
     if env:
         return Path(env)
-    return Path.home() / "Library" / "Application Support" / "GLDtk" / "sources"
+    return app_support_dir() / "sources"
 
 
 def _one_spdx(text: str) -> Optional[str]:

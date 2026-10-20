@@ -39,6 +39,7 @@ import logging
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app_dirs import app_support_dir
 from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
 from aesthetic.themes import THEMES, Theme, detect_theme
 from api import art_routes, jobs
@@ -130,7 +131,7 @@ def user_config_dir() -> Path:
     override = os.getenv("GLDTK_CONFIG_DIR")
     if override:
         return Path(override)
-    return Path.home() / "Library" / "Application Support" / "GLDtk"
+    return app_support_dir()
 
 
 # The per-user file wins over the repo one (already-set variables are never overridden).
@@ -1130,6 +1131,30 @@ def check() -> int:
     return 0
 
 
+def _pid_alive(pid: int) -> bool:
+    """Whether process ``pid`` still runs (on Windows ``os.kill(pid, 0)`` would send it CTRL+C)."""
+    import sys
+
+    if sys.platform == "win32":
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return ctypes.get_last_error() == 5  # ERROR_ACCESS_DENIED: it exists
+        code = ctypes.c_ulong()
+        ok = kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        kernel32.CloseHandle(handle)
+        return not ok or code.value == 259  # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        pass
+    return True
+
+
 def _exit_with_parent(pid: int) -> None:
     """Daemon thread: the server never outlives the app that started it, however the app exits."""
     import threading
@@ -1138,12 +1163,8 @@ def _exit_with_parent(pid: int) -> None:
     def watch() -> None:
         while True:
             time.sleep(1.0)
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
+            if not _pid_alive(pid):
                 os._exit(0)
-            except OSError:
-                pass
 
     threading.Thread(target=watch, daemon=True).start()
 

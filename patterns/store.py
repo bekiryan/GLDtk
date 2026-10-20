@@ -13,6 +13,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional
 
+from app_dirs import app_support_dir
+
 INDEX_VERSION = 1
 
 
@@ -20,7 +22,7 @@ def patterns_dir() -> Path:
     env = os.environ.get("GLDTK_PATTERNS_DIR")
     if env:
         return Path(env)
-    return Path.home() / "Library" / "Application Support" / "GLDtk" / "patterns"
+    return app_support_dir() / "patterns"
 
 
 class PatternStore:

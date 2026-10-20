@@ -27,6 +27,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app_dirs import app_support_dir
 from llm.providers import base
 from llm.providers.gemini import DEFAULT_BASE_URL, adapt_schema
 
@@ -160,7 +161,7 @@ def _gemini_key() -> str:
     """``GEMINI_API_KEY`` from the environment, else from the user or repo ``.env``."""
     if os.environ.get("GEMINI_API_KEY"):
         return os.environ["GEMINI_API_KEY"]
-    for env in (Path.home() / "Library" / "Application Support" / "GLDtk" / ".env",
+    for env in (app_support_dir() / ".env",
                 Path(__file__).resolve().parent.parent / ".env"):
         if env.is_file():
             for line in env.read_text(encoding="utf-8").splitlines():

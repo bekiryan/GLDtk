@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
+from app_dirs import app_support_dir
+
 ROTATE_BYTES = 5 * 1024 * 1024
 EVENTS_FILE = "events.jsonl"
 OLD_EVENTS_FILE = "events.1.jsonl"
@@ -24,7 +26,7 @@ _lock = threading.RLock()
 
 def memory_dir() -> Path:
     env = os.environ.get("GLDTK_MEMORY_DIR")
-    return Path(env) if env else Path.home() / "Library" / "Application Support" / "GLDtk" / "memory"
+    return Path(env) if env else app_support_dir() / "memory"
 
 
 def default_prefs() -> Dict[str, Any]:
