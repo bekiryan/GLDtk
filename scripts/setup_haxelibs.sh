@@ -2,7 +2,7 @@
 # Install the haxelibs the LDtk fork builds with, at the versions GLDtk is tested with.
 # deepnightLibs must stay at e1237f8 (newer commits break the build). Used by CI; on a dev
 # machine run it once into a fresh haxelib repo (`haxelib setup <dir>` first).
-# Works in bash on macOS, Linux and Git Bash on Windows.
+# Works in bash on macOS and Linux.
 set -euo pipefail
 REPO="$(haxelib config | tr -d '\r')"
 REPO="${REPO%/}"

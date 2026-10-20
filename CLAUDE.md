@@ -103,7 +103,7 @@ The LLM emits a `LevelSpec` (`spec/level_spec.py`): size, sections, the node/edg
 
 **Environment variables:** `GEMINI_API_KEY` (`.env`), `GLDTK_LOCAL_FALLBACK` (local model, `off` disables), `GLDTK_MEMORY_DIR` (design memory folder), `GLDTK_PATTERNS_DIR` (pattern index folder), `GLDTK_CONFIG_DIR` (Mac app settings / `.env`), `GLDTK_FAKE_LLM` (tests: canned replies from a fixture file or directory), `GLDTK_HOST` / `GLDTK_PORT`. Tests set the memory, patterns and config dirs to temp folders.
 
-**Mac app:** `scripts/build_mac_app.sh` (unsigned, Apple Silicon; PyInstaller backend in `packaging/`). It overwrites `ldtk-src/app/assets/js/renderer.js` with a release build; re-run `renderer.debug.hxml` for development. **Windows:** `scripts/build_windows_app.ps1` (NSIS x64 installer; the app spawns `gldtk-server.exe`; per-user folder `%APPDATA%\GLDtk`, see `app_dirs.py`). **CI:** `.github/workflows/release.yml` builds both (workflow_dispatch / `v*` tags), with haxelibs from `scripts/setup_haxelibs.sh` — never run that script against `~/haxelib` here.
+**Mac app:** `scripts/build_mac_app.sh` (unsigned, Apple Silicon; PyInstaller backend in `packaging/`). It overwrites `ldtk-src/app/assets/js/renderer.js` with a release build; re-run `renderer.debug.hxml` for development. Per-user folder: `app_dirs.py`. **CI:** `.github/workflows/release.yml` builds the `.dmg` (workflow_dispatch / `v*` tags), with haxelibs from `scripts/setup_haxelibs.sh` — never run that script against `~/haxelib` here.
 
 ## Tests
 

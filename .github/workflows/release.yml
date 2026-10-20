@@ -1,5 +1,5 @@
-# Builds the GLDtk desktop app (macOS .dmg, Windows .exe installer); on v* tags also
-# attaches them to a GitHub Release. The LDtk fork comes from bekiryan/ldtk.
+# Builds the GLDtk macOS app (.dmg, Apple Silicon, unsigned); on v* tags also attaches it to a
+# draft GitHub Release. The LDtk fork comes from bekiryan/ldtk.
 name: release
 
 on:
@@ -10,33 +10,21 @@ on:
         default: master
   push:
     tags: ["v*"]
-    branches: [feat/windows-release]  # TEMP: test before the workflow is on main
+    branches: [feat/mac-release]  # TEMP: test before the workflow is on main
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            artifact: GLDtk-macos-arm64
-            files: ldtk-src/app/redist/*.dmg
-            server: ldtk-src/app/redist/mac-arm64/GLDtk.app/Contents/Resources/gldtk-server/gldtk-server
-          - os: windows-latest
-            artifact: GLDtk-windows-x64
-            files: ldtk-src/app/redist/*.exe
-            server: ldtk-src/app/redist/win-unpacked/resources/gldtk-server/gldtk-server.exe
-    runs-on: ${{ matrix.os }}
+  macos:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/checkout@v4
         with:
           repository: bekiryan/ldtk
-          ref: ${{ inputs.ldtk_ref || 'feat/windows-backend' }}  # TEMP
+          ref: ${{ inputs.ldtk_ref || 'master' }}
           path: ldtk-src
 
       - uses: actions/setup-python@v5
@@ -53,13 +41,11 @@ jobs:
           haxe-version: 4.3.7
 
       - name: Haxe libraries (pinned)
-        shell: bash
         run: |
           haxelib setup "$HOME/haxelib"
           scripts/setup_haxelibs.sh
 
       - name: Python dependencies
-        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[server]" pillow pyinstaller
@@ -68,27 +54,18 @@ jobs:
         working-directory: ldtk-src/app
         run: npm install
 
-      - name: Build (macOS)
-        if: runner.os == 'macOS'
+      - name: Build
         env:
           PYTHON: python
         run: scripts/build_mac_app.sh
 
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        env:
-          PYTHON: python
-        shell: pwsh
-        run: scripts/build_windows_app.ps1
-
       - name: Smoke test (packaged backend)
-        shell: bash
-        run: python scripts/smoke_test_app.py "${{ matrix.server }}"
+        run: python scripts/smoke_test_app.py ldtk-src/app/redist/mac-arm64/GLDtk.app/Contents/Resources/gldtk-server/gldtk-server
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.files }}
+          name: GLDtk-macos-arm64
+          path: ldtk-src/app/redist/*.dmg
           if-no-files-found: error
           compression-level: 0
 
@@ -96,5 +73,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.files }}
+          files: ldtk-src/app/redist/*.dmg
           draft: true

@@ -23,7 +23,7 @@ that the player can get from Start to Exit with the game's own jump and ability 
 8. [Evaluation](#evaluation)
 9. [Tests](#tests)
 10. [Troubleshooting](#troubleshooting)
-11. [Build the desktop app (macOS, Windows)](#build-the-desktop-app-macos-windows)
+11. [Build the Mac app](#build-the-mac-app)
 
 ---
 
@@ -51,8 +51,8 @@ source .venv/bin/activate && python server.py   # backend
 cd ldtk-src/app && npm start                    # LDtk with the GLDtk sidebar
 ```
 
-Prefer an app? Download the macOS `.dmg` or Windows installer from the GitHub Releases page, or build it
-yourself (see [Build the desktop app](#build-the-desktop-app-macos-windows)).
+Prefer an app? Download the macOS `.dmg` from the GitHub Releases page, or build it yourself (see
+[Build the Mac app](#build-the-mac-app)).
 
 `ldtk-src/` is a fork of LDtk ([github.com/bekiryan/ldtk](https://github.com/bekiryan/ldtk), branch
 `feat/v2`) with the GLDtk sidebar built in. After changing its Haxe sources, rebuild it (see
@@ -383,7 +383,7 @@ pytest -m e2e tests/e2e/test_gemini.py -s    # one real Gemini call (uses free-t
 
 ---
 
-## Build the desktop app (macOS, Windows)
+## Build the Mac app
 
 `scripts/build_mac_app.sh` builds an unsigned, Apple Silicon `GLDtk.app` and `.dmg` that bundle the
 backend (no terminal, venv or Node needed to run it):
@@ -397,16 +397,10 @@ quit. Enter the Gemini API key in the sidebar on first launch; it is saved to
 `~/Library/Application Support/GLDtk/.env`. Note the release renderer build overwrites
 `ldtk-src/app/assets/js/renderer.js`; re-run `renderer.debug.hxml` for development. `gldtk-server --check` smoke-tests a bundle.
 
-**Windows.** `scripts/build_windows_app.ps1` does the same and builds an unsigned x64 NSIS installer
-(`ldtk-src/app/redist/GLDtk-<version>-x64.exe`). It uses `.venv\Scripts\python.exe` (or `$env:PYTHON`) and `haxe`
-on `PATH`. The app keeps its settings and `.env` in `%APPDATA%\GLDtk`. Windows SmartScreen warns about the unsigned
-installer ("More info" → "Run anyway").
-
-**Haxe libraries.** Both scripts need Haxe 4.3 and the LDtk haxelibs. `scripts/setup_haxelibs.sh` (bash, also Git
-Bash on Windows) installs them at the tested versions, with `deepnightLibs` pinned to `e1237f8`; run it against a fresh
+**Haxe libraries.** The script needs Haxe 4.3 and the LDtk haxelibs. `scripts/setup_haxelibs.sh` (bash) installs them at the tested versions, with `deepnightLibs` pinned to `e1237f8`; run it against a fresh
 haxelib repo (`haxelib setup <dir>`), since it re-points existing libraries. Clone the LDtk fork into `ldtk-src/` first
 (`git clone https://github.com/bekiryan/ldtk ldtk-src`).
 
-**CI.** `.github/workflows/release.yml` builds both on `macos-latest` and `windows-latest` (manual run, or a `v*`
-tag) and uploads the `.dmg` / `.exe` as workflow artifacts; on a tag it also attaches them to a draft GitHub
+**CI.** `.github/workflows/release.yml` builds it on `macos-latest` (manual run, or a `v*` tag), smoke-tests the
+bundled backend and uploads the `.dmg` as a workflow artifact; on a tag it also attaches it to a draft GitHub
 Release.
