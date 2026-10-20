@@ -190,6 +190,9 @@ GLDtk-ն կարող է LLM-ին ցույց տալ իրական մակարդակ�
 ```bash
 python -m patterns.build --dry-run                          # ingest only, no LLM call
 python -m patterns.build --provider gemini --max-calls 40   # label and embed
+python -m patterns.build --gaps                             # ավելացնում է հազվադեպ տիպերի (labyrinth, arena, hub) և բարձր parkour պատուհաններ
+python -m patterns.build --vision --vision-provider gemini  # նկարագրում է յուրաքանչյուր pattern-ի PNG պատկերը (կամ ollama, qwen2.5vl:7b)
+python -m patterns.coverage --real                          # որ structure տիպերն են stamp արվում որ բարձրություններում
 ```
 
 ### Design memory
@@ -280,7 +283,7 @@ Environment variable-ներ. `GEMINI_API_KEY` (`.env`), `GLDTK_LOCAL_FALLBACK`, 
 
 ## Գնահատում
 
-`python -m eval.run`-ը իրական pipeline-ով աշխատեցնում է 27 prompt-ից բաղկացած փաթեթ և հաշվետվություն է տալիս fidelity-ի, խաղալիության, կրկնությունների և ժամանակի մասին՝ ըստ provider-ի և մոդելի։ Տես [eval/README.md](eval/README.md)։ Առաջին իրական գործարկումը (Gemini, 8 prompt, 2026-10-15) ստացավ **100% խաղալի և 100% fidelity** (`eval/results/gemini-2026-10-15/report.md`)։ Նրա պատասխանները գրանցված են, ուստի գործարկումը կարելի է կրկնել offline՝ `--replay eval/recordings/gemini-2026-10-15`-ով։
+`python -m eval.run`-ը իրական pipeline-ով աշխատեցնում է 27 prompt-ից բաղկացած փաթեթ և հաշվետվություն է տալիս fidelity-ի, խաղալիության, կրկնությունների և ժամանակի մասին՝ ըստ provider-ի և մոդելի։ Տես [eval/README.md](eval/README.md)։ Առաջին իրական գործարկումը (Gemini, 8 prompt, 2026-10-15) ստացավ **100% խաղալի և 100% fidelity** (`eval/results/gemini-2026-10-15/report.md`)։ Նրա պատասխանները գրանցված են, ուստի գործարկումը կարելի է կրկնել offline՝ `--replay eval/recordings/gemini-2026-10-15`-ով։ 503 պատասխանը կրկնվում է 20, 60 և 120 վ հետո (`--backoff`, `0`-ն անջատում է)։ `--fallback`-ը թույլ է տալիս տեղական մոդելին պատասխանել, երբ Gemini-ն չի կարող, և յուրաքանչյուր գրառման `answered_by`-ը նշում է, թե որ մոդելն է պատասխանել։
 
 ---
 
