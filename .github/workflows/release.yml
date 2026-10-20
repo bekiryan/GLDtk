@@ -24,9 +24,11 @@ jobs:
           - os: macos-latest
             artifact: GLDtk-macos-arm64
             files: ldtk-src/app/redist/*.dmg
+            server: ldtk-src/app/redist/mac-arm64/GLDtk.app/Contents/Resources/gldtk-server/gldtk-server
           - os: windows-latest
             artifact: GLDtk-windows-x64
             files: ldtk-src/app/redist/*.exe
+            server: ldtk-src/app/redist/win-unpacked/resources/gldtk-server/gldtk-server.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +80,10 @@ jobs:
           PYTHON: python
         shell: pwsh
         run: scripts/build_windows_app.ps1
+
+      - name: Smoke test (packaged backend)
+        shell: bash
+        run: python scripts/smoke_test_app.py "${{ matrix.server }}"
 
       - uses: actions/upload-artifact@v4
         with:
