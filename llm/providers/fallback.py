@@ -2,7 +2,8 @@
 
 The Gemini free tier runs out (429), gets overloaded (503) or retires models
 (404).  ``FallbackProvider`` tries each provider in order and moves on only for
-those "the service cannot answer" errors; anything else (a bad key, a malformed
+those "the service cannot answer" errors (or a missing API key, which never
+reaches the network); anything else (a bad key, a malformed
 response) is raised as is.  Once a fallback has answered, later calls of the
 same request go straight to it, so a multi-call generate does not pay for the
 failing provider again.  ``notes`` records each switch for the response
@@ -21,7 +22,7 @@ FALLBACK_STATUSES = {404, 429, 500, 502, 503, 504}
 
 
 def should_fall_back(err: base.ProviderError) -> bool:
-    """Quota, overload, retired model, timeout or no connection at all."""
+    """Quota, overload, retired model, timeout, no connection or no API key."""
     return err.status in FALLBACK_STATUSES or err.timed_out or err.status is None
 
 
@@ -65,6 +66,7 @@ class FallbackProvider:
         schema: Dict[str, Any],
     ) -> str:
         errors: List[str] = []
+        missing_key = False
         for i in range(self._current, len(self._providers)):
             provider = self._providers[i]
             try:
@@ -78,12 +80,16 @@ class FallbackProvider:
                             timed_out=err.timed_out,
                         ) from err
                     raise
+                if i == self._current and getattr(err, "missing_key", False):
+                    missing_key = True
                 errors.append(f"{provider_label(provider)}: {_short(err)}")
                 jobs.report("llm", switch_message(self._providers[i + 1]))
                 continue
             if i != self._current:
                 self.notes.append(
-                    f"{self._providers[self._current].name} unavailable "
+                    _no_key_note(self._providers[self._current], provider)
+                    if missing_key
+                    else f"{self._providers[self._current].name} unavailable "
                     f"({_short(_last_error(errors))}); answered by {provider_label(provider)}"
                 )
                 self._current = i
@@ -99,8 +105,17 @@ def switch_message(provider: Any) -> str:
     return f"Switched to {provider_label(provider)}"
 
 
+def _no_key_note(primary: Any, used: Any) -> str:
+    """The warning when *primary* was skipped because no API key is set."""
+    model = getattr(used, "model", None) or provider_label(used)
+    where = f"the local model {model}" if used.name == "ollama" else provider_label(used)
+    return f"No {primary.name.capitalize()} API key set — used {where}. Add a key in Settings."
+
+
 def _short(err: Any) -> str:
     if isinstance(err, base.ProviderError):
+        if err.missing_key:
+            return "no API key"
         if err.status:
             return f"HTTP {err.status}"
         return "timeout" if err.timed_out else "connection error"
