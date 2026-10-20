@@ -42,6 +42,7 @@ from pydantic import BaseModel
 from aesthetic import build_aesthetic_layer, copy_aesthetic_assets
 from aesthetic.themes import THEMES, Theme, detect_theme
 from api import art_routes, jobs
+from api.samples import refuse_sample_write, writes_outside_samples
 from api.models import (
     CancelRequest,
     CancelResponse,
@@ -360,6 +361,7 @@ def put_profile(
     path: str = Query(..., description=".ldtk or gldtk.game.json path"),
     profile: GameProfile = Body(...),
 ) -> Dict[str, Any]:
+    refuse_sample_write(path)
     profile_path = resolve_profile_path(path)
     try:
         save_profile(profile, profile_path)
@@ -370,6 +372,7 @@ def put_profile(
 
 
 @app.post("/generate", response_model=GenerateResponse)
+@writes_outside_samples
 @job_route(lambda: GenerateResponse(success=False, error="Cancelled", cancelled=True),
            "Generating the level")
 @memory_hooks.track("generate")
@@ -894,6 +897,7 @@ def _provider_or_error(req: Any):
 
 
 @app.post("/edit/region", response_model=EditResponse)
+@writes_outside_samples
 @job_route(_cancelled_edit, "Reading the level for a region edit")
 @memory_hooks.track("edit")
 def edit_region_route(req: RegionEditRequest) -> EditResponse:
@@ -908,6 +912,7 @@ def edit_region_route(req: RegionEditRequest) -> EditResponse:
 
 
 @app.post("/edit/section", response_model=EditResponse)
+@writes_outside_samples
 @job_route(_cancelled_edit, "Reading the level for a section edit")
 @memory_hooks.track("edit")
 def edit_section_route(req: SectionEditRequest) -> EditResponse:
@@ -923,6 +928,7 @@ def edit_section_route(req: SectionEditRequest) -> EditResponse:
 
 
 @app.post("/edit/entities", response_model=EditResponse)
+@writes_outside_samples
 @job_route(_cancelled_edit, "Reading the level for an entity edit")
 @memory_hooks.track("edit")
 def edit_entities_route(req: EntityEditRequest) -> EditResponse:
@@ -953,6 +959,7 @@ def edit_locate_route(req: LocateRequest) -> LocateResponse:
 
 
 @app.post("/undo", response_model=UndoResponse, response_model_exclude_unset=True)
+@writes_outside_samples
 def undo_route(req: PathRequest) -> UndoResponse:
     memory_hooks.before(req.path, approve=False)
     snaps = edit_history.list_snapshots(req.path)
@@ -1101,6 +1108,7 @@ def history_route(path: str = Query(..., description=".ldtk path"),
 
 
 @app.post("/chunks", response_model=ChunksResponse)
+@writes_outside_samples
 @job_route(lambda: ChunksResponse(success=False, error="Cancelled", cancelled=True),
            "Appending chunks")
 def chunks_route(req: ChunksRequest) -> ChunksResponse:
