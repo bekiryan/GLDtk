@@ -7,7 +7,7 @@ import random
 from api.models import GenerateRequest
 from layout.ir import TileValue
 from layout.terrain.base import Canvas, Port, TerrainContext
-from layout.terrain.stamp import _air_connected, fit_pattern, pattern_grid
+from layout.terrain.stamp import _air_connected, _fit_width, fit_pattern, pattern_grid, stamp_section
 from pipeline import build_level
 from pipeline.chunks import _FixedController
 from pipeline.level import _layout_and_verify
@@ -137,7 +137,32 @@ def test_stamp_that_breaks_verification_falls_back_to_procedural():
     sl, rep, applied = _layout_and_verify(spec, PROFILE, 0, finder)
     assert rep.ok
     assert not any(b.pattern for b in sl.sections)
-    assert any(a.startswith("terrain:") for a in applied)
+
+
+def test_stamp_without_a_route_does_not_fit_and_the_next_one_is_used():
+    # with the game profile on the context, the uncrossable spike floor is skipped at fit time
+    # (it no longer uses up a terrain attempt) and the next candidate is stamped
+    bad, good = record("bad", corridor_ascii(pit=(8, 21))), record("good", corridor_ascii())
+    ctx = ctx_for()
+    assert stamp_section(ctx, Canvas(ctx), [bad, good], 0)[1] == 2  # no profile: geometry only
+    ctx.profile = PROFILE
+    res, fits = stamp_section(ctx, Canvas(ctx), [bad, good], 0)
+    assert fits == 1 and res is not None and res.stats["pattern"] == "good"
+
+
+def test_narrow_window_is_padded_at_the_sides_instead_of_stretched():
+    g = pattern_grid(record("n", corridor_ascii(w=16)))
+    padded = _fit_width(g, 58, 2, pad_sides=True)
+    assert padded is not None and len(padded[0]) == 58
+    inner = [c for c in range(58) if any(row[c] != TileValue.SOLID for row in padded)]
+    assert len(inner) <= 16 * 1.25  # stretched by MAX_RESIZE at most, rock on both sides
+    assert sum(row.count(TileValue.HAZARD) for row in padded) == 2  # the pit is kept
+    ctx = ctx_for()
+    cv = Canvas(ctx)
+    res = fit_pattern(g, ctx, cv, pad_sides=True)
+    assert res is not None
+    assert _air_connected(cv, (1, 19), (59, 21))  # the port stairs tunnel in to the window
+    assert len(_fit_width(g, 58, 2)[0]) == 58  # without pad_sides it is stretched
 
 
 def test_off_or_empty_index_means_procedural_only():

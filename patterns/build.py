@@ -89,6 +89,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--label-budget", type=int, default=600,
                     help="most labels written in one run, richest windows first (default 600)")
     ap.add_argument("--max-levels", type=int, default=None, help="cap on converted levels per game")
+    ap.add_argument("--gaps", action="store_true",
+                    help="Part 29g: re-read SuperTux and Open Surge with denser cuts and keep only "
+                         "windows that fill stamping gaps (labyrinth / arena / hub, tall parkour); "
+                         "labelling then covers only the gap windows")
     ap.add_argument("--reclassify", action="store_true",
                     help="Part 26f: recompute the geometry structure type of every window "
                          "(default: only windows without one)")
@@ -140,6 +144,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                 store.save()
     else:
         print(f"  (open-licensed game levels: --source supertux|opensurge|frogatto|all)")
+    added_ids = None
+    if args.gaps:
+        from patterns.gaps import ingest_gaps
+
+        grep, by_type = ingest_gaps(store, max_levels=args.max_levels)
+        # every gap window (this run's and earlier ones), so an interrupted labelling resumes
+        added_ids = {pid for pid, r in store.patterns.items() if (r.get("features") or {}).get("gap")}
+        print(f"gaps: {grep.added} new window(s) {dict(sorted(by_type.items()))}, "
+              f"{grep.duplicates} already indexed")
+        if not args.dry_run:
+            store.save()
 
     # Part 26f: the geometry structure type of every window (no LLM); --reclassify redoes all
     n_geo = fill_structure_geo(store, only_missing=not args.reclassify)
@@ -153,7 +168,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
             provider = make_provider(args.provider, model=args.model)
         lrep = label_pending(store, provider, max_calls=args.max_calls, dry_run=args.dry_run,
-                             budget=args.label_budget)
+                             budget=args.label_budget, only=added_ids)
         print(f"label: {lrep.labelled} new, {lrep.cached} cached, {lrep.pending} pending, "
               f"{lrep.calls} call(s)" + (" [dry run]" if args.dry_run else "")
               + (" [budget reached]" if lrep.stopped else ""))

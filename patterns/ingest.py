@@ -17,7 +17,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from game.profile import GameProfile
 from layout.ir import IREntity, IRLevel, TileValue
@@ -438,12 +438,16 @@ def ingest_grid(
     attribution: Optional[str] = None,
     max_windows: Optional[int] = None,
     max_fill: Optional[float] = None,
+    win_sizes: Sequence[Tuple[int, int, int]] = WIN_SIZES,
+    keep: Optional[Callable[[Dict[str, Any], int, int, List[List[Any]]], Optional[str]]] = None,
 ) -> IngestReport:
     """Cut one level into patterns and add them to *store* (not saved).
 
     *max_windows* keeps at most that many windows, evenly spread over the level (big game
     levels, Part 26d); *max_fill* drops windows whose share of non-empty cells is higher
-    (solid rock around a few corridors)."""
+    (solid rock around a few corridors).  *win_sizes* are the ``(rows, columns, stride)`` cut;
+    *keep* (Part 29g, gap filling) is asked about every accepted window with
+    ``(features, row, col, grid)`` and returns None to keep it or the reason it is dropped."""
     profile = profile or GameProfile()
     rep = IngestReport()
     if not grid or not grid[0]:
@@ -456,7 +460,7 @@ def ingest_grid(
 
     cands = []
     seen_win = set()
-    for win_h, win_w, stride in WIN_SIZES:
+    for win_h, win_w, stride in win_sizes:
         for r0, r1 in _row_cuts(len(grid), win_h):
             for c0, c1 in _snap_cuts(grid[r0:r1], width, win_w, stride):
                 if c1 - c0 < MIN_WIN_W or (r0, r1, c0, c1) in seen_win:
@@ -505,6 +509,10 @@ def ingest_grid(
         f = window_features(win, wents, profile)
         if not accept_features(f):
             drop("no route or soft-lock")
+            continue
+        why = keep(f, r0, c0, win) if keep is not None else None
+        if why:
+            drop(why)
             continue
         rec = {
             "id": rid,

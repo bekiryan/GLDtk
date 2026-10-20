@@ -147,7 +147,8 @@ def embed_text(rec: Dict[str, Any]) -> str:
              " ".join(lab.get("visual_tags") or [])]  # Part 29d: the vision model's description
     geo = f.get("structure_geo") or {}
     if geo.get("type") and float(geo.get("confidence") or 0) >= MIN_CONFIDENCE \
-            and (not lab.get("structure_type") or lab.get("structure_type") in GENERIC):
+            and (not lab.get("structure_type") or lab.get("structure_type") in GENERIC
+                 or f.get("gap") == geo["type"]):  # Part 29g: a gap window keeps its shape words
         parts.append(GEO_WORDS.get(geo["type"], geo["type"]))  # Part 26f: name the measured shape
     if f.get("hazards"):
         parts.append("hazard spikes lava")
