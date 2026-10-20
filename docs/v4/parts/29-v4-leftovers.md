@@ -34,10 +34,20 @@ asked for all of them on 2026-10-16.
   gameplay grid and the verification are identical with the background on or off.
 
 ## 29d. Vision labelling of patterns (Python, after Part 26d merges)
-- **Render:** `patterns/label.py` can render each pattern to a small PNG (grid colours: rock,
-  air, hazard, route), and send it with the text to a local vision model (`ollama:qwen2.5vl:7b`,
-  pulled 2026-10-16).
-- **CLI:** opt-in with `python -m patterns.build --vision`.
+- **Render:** `patterns/vision.py` renders each pattern to a small PNG (grid colours: rock,
+  air, hazard, start, exit, enemy, pickup, other entity) and sends it with the text label to a
+  vision model: `--vision-provider ollama` (default, `qwen2.5vl:7b`) or `gemini`
+  (`gemini-3.5-flash-lite`, image as inline PNG, paced to 12 requests a minute, backs off on
+  429/5xx and switches to the local model after 3 failures in a row). Patterns carry no route
+  cells (only the ASCII grid and entities), so the PNG has no route colour.
+- **Facts and post-check:** the prompt carries the measured counts (size, hazards, enemies,
+  pickups, start, exit) and forbids mentioning a kind whose count is 0. qwen2.5vl echoed the
+  text label without them (12 of its first 70 descriptions named hazards or enemies the grid did
+  not have). A negation-aware check (`false_claims`) catches such a description; it is asked
+  again once with the correction and dropped (counted as an error) if still wrong.
+- **CLI:** opt-in with `python -m patterns.build --vision [--vision-provider gemini]
+  [--vision-model M] [--max-calls N]`; descriptions already present are kept, so a capped run
+  resumes the next day.
 - **Merge:** the vision model's description is merged into the label (`label.visual`) and into
   the embedded text.
 - **Fallback:** if the model is missing, use text-only labels and log a warning once.

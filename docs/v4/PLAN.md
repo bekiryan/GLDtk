@@ -142,11 +142,11 @@ showing the LLM real examples.
 
 ---
 
-## Later (deferred by the user, 2026-10-16)
-- **Part 29d: vision labelling of patterns.**
-  - **What:** render each pattern to a small PNG and have a local vision model add a visual
-    description to its label. Spec: [parts/29-v4-leftovers.md](parts/29-v4-leftovers.md) §29d.
-  - **Model:** `qwen2.5vl:7b` (about 6 GB). The download was stopped at about 850 MB because it
-    was slow; `ollama pull qwen2.5vl:7b` resumes it.
-  - **When:** after Part 26d and the pattern-library rebuild, especially if retrieval quality
-    shows weak labels.
+## 29d. Vision labelling of patterns (done 2026-10-19)
+- Each labelled pattern is drawn as a PNG and described by a vision model; the description is
+  stored as `label.visual` and embedded. `python -m patterns.build --vision
+  [--vision-provider gemini|ollama]`. Spec: [parts/29-v4-leftovers.md](parts/29-v4-leftovers.md) §29d.
+- The prompt carries the measured counts, and a post-check drops descriptions that name hazards,
+  enemies or pickups the grid lacks (qwen2.5vl: 17% false claims before the fix).
+- First run (gemini-3.5-flash-lite, 480 calls, 52 min): 480 described, 0 false claims,
+  95 text labels contradicted, 0 errors; 218 labelled patterns still wait for a second run.
