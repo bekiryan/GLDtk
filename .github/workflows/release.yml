@@ -45,8 +45,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: ldtk-src/app/package-lock.json
 
       - uses: krdlab/setup-haxe@v1
         with:
@@ -64,9 +62,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[server]" pillow pyinstaller
 
-      - name: npm install
+      - name: npm install  # bekiryan/ldtk does not track package-lock.json
         working-directory: ldtk-src/app
-        run: npm ci
+        run: npm install
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
