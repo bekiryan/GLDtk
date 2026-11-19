@@ -38,7 +38,10 @@ if [ "$DEV_MODE" -eq 0 ] && [ "$(uname -s)" = "Darwin" ]; then
     APP_PATH="$ROOT/GLDtk.app"
   fi
 
-  xattr -cr "$APP_PATH" 2>/dev/null || true
+  xattr -dr com.apple.quarantine "$APP_PATH" 2>/dev/null || true
+  [ -d "$HOME/Downloads/GLDtk.app" ] && xattr -dr com.apple.quarantine "$HOME/Downloads/GLDtk.app" 2>/dev/null || true
+  [ -d "/Applications/GLDtk.app" ] && xattr -dr com.apple.quarantine "/Applications/GLDtk.app" 2>/dev/null || true
+  codesign --verify --deep --strict "$APP_PATH" >/dev/null 2>&1 || codesign --force --deep --sign - "$APP_PATH"
   echo "[GLDtk] Opening $APP_PATH …"
   open -a "$APP_PATH"
   exit 0
