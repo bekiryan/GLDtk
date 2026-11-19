@@ -10,7 +10,6 @@ on:
         default: master
   push:
     tags: ["v*"]
-    branches: [feat/mac-release]  # TEMP: test before the workflow is on main
 
 permissions:
   contents: write
@@ -36,9 +35,12 @@ jobs:
         with:
           node-version: 20
 
-      - uses: krdlab/setup-haxe@v1
-        with:
-          haxe-version: 4.3.7
+      - name: Install Haxe (Homebrew)
+        run: |
+          brew install haxe
+          if [ -d /opt/homebrew/lib/haxe/std ]; then
+            echo "HAXE_STD_PATH=/opt/homebrew/lib/haxe/std" >> "$GITHUB_ENV"
+          fi
 
       - name: Haxe libraries (pinned)
         run: |

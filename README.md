@@ -6,40 +6,25 @@ GLDtk turns a text prompt into a **playable, statically verified 2D platformer l
 
 ## How to Run on Desktop
 
-GLDtk has two parts — the Python neuro-symbolic backend (`GLDtk`) and the forked LDtk desktop editor with the AI sidebar (`ldtk`). You can either run the **all-in-one desktop installer** or **run both repos from source**:
-
-### Option A — Prebuilt Desktop App (Recommended, 1-click)
-
-No repository cloning, Python, Node.js, or Haxe setup required — the `.app` / `.exe` bundles both the LDtk editor and the Python `gldtk-server` backend:
-
-- **macOS (Apple Silicon):** Open [`ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg`](ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg) (or download from [GitHub Releases](https://github.com/bekiryan/GLDtk/releases)), drag **GLDtk** to **Applications**, right-click → **Open** on first launch, and set your free [Gemini API key](https://aistudio.google.com/apikey) (or local [Ollama](https://ollama.com)) in **Settings**.
-- **Windows:** Download the installer `.exe` from [GitHub Releases](https://github.com/bekiryan/GLDtk/releases) (or GitHub Actions artifacts). See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#2-installing) for details.
-
-### Option B — Run from Source (2 Repositories: `GLDtk` + `ldtk`)
-
-Yes — running from source uses **2 repositories**:
-1. [`bekiryan/GLDtk`](https://github.com/bekiryan/GLDtk) — the Python backend (`server.py`, pipeline, A* verifier, RAG)
-2. [`bekiryan/ldtk`](https://github.com/bekiryan/ldtk) — the LDtk 1.5.3 Haxe/Electron fork with the GLDtk sidebar, cloned inside `GLDtk/` as `ldtk-src/`
+### Fastest Way (1 Repo Clone + 1 Command, No Haxe Build)
 
 ```bash
-# 1. Clone both repos (ldtk goes inside GLDtk as ldtk-src/)
 git clone https://github.com/bekiryan/GLDtk.git
 cd GLDtk
-git clone https://github.com/bekiryan/ldtk.git ldtk-src
-
-# 2. One-time Python & Electron setup (requires Python 3.11+ & Node.js)
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[server,dev]"
-(cd ldtk-src/app && npm install)
-
-# 3. Configure an LLM provider (cloud key or local Ollama fallback)
-echo 'GEMINI_API_KEY=your-key' > .env   # or: ollama pull qwen2.5:14b
-
-# 4. Launch both the Python backend (:8765) and the LDtk desktop app
 ./start.sh
 ```
 
-*(On a fresh `ldtk-src/` clone where `renderer.debug.js` / `client.js` are not yet compiled, also run Haxe setup & compilation once per [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#23-building-from-source). To start the two processes manually instead of `./start.sh`, run `source .venv/bin/activate && python server.py` and `cd ldtk-src/app && npm start` in separate terminals.)*
+`start.sh` handles everything automatically on first launch — **you do not need to install Haxe or manually clone a second repo**:
+1. Pulls the precompiled frontend execution files (`main.js` & `renderer.js`, already built and pushed in [`bekiryan/ldtk`](https://github.com/bekiryan/ldtk)) into `ldtk-src/`.
+2. Creates `.venv` (`pip install -e ".[server]"`) and installs Electron packages (`npm install`) once.
+3. Starts the Python backend (`http://127.0.0.1:8765`) and opens the LDtk desktop app. Set your free [Gemini API key](https://aistudio.google.com/apikey) (or local [Ollama](https://ollama.com)) inside the sidebar's **Settings** fold.
+
+### Prebuilt Release Downloads (`v1.5.3`)
+
+- **[GitHub Release `v1.5.3`](https://github.com/bekiryan/GLDtk/releases/tag/v1.5.3)** — download either:
+  - **`gldtk-execution-bundle.zip`** (lightweight precompiled `main.js`, `renderer.js`, `release-notes.md`, and `start.sh` execution files only)
+  - **`GLDtk-1.5.3-arm64.dmg`** (standalone macOS Apple Silicon app; drag **GLDtk** to Applications, right-click → **Open** on first run — or open the local copy at [`ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg`](ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg))
+- Detailed install & manual Haxe rebuild steps (for editing LDtk UI itself): [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#2-installing)
 
 ### Run Tests & Offline Ablations
 
