@@ -120,3 +120,177 @@ def test_failed_retype_falls_back_to_the_old_structure_before_the_llm(monkeypatc
     assert built.report.ok and repairs == []
     assert _built(built.spec) == ["open", "arena"]
     assert any("kept their old structure" in w for w in built.warnings)
+
+
+def _vertical_tower_spec() -> LevelSpec:
+    """Two-section homogeneous stone tower spec (climb_bottom + climb_top)."""
+    return LevelSpec.model_validate({
+        "title": "Tower Climb",
+        "size": {"width_tiles": 30, "height_tiles": 40},
+        "orientation": "vertical",
+        "sections": [
+            {
+                "id": "climb_bottom",
+                "name": "Tower Base",
+                "theme": "stone tower",
+                "difficulty": "easy",
+                "gravity_scale": 1.0,
+                "description": "The base of the tower with the player start.",
+                "order": 0,
+            },
+            {
+                "id": "climb_top",
+                "name": "Tower Peak",
+                "theme": "stone tower",
+                "difficulty": "medium",
+                "gravity_scale": 1.0,
+                "description": "The peak of the tower with the exit.",
+                "order": 1,
+            },
+        ],
+        "nodes": [
+            {"id": "n_start", "type": "Start", "x": 80, "y": 32, "w": 64, "h": 16, "section": "climb_bottom"},
+            {"id": "n_mid1", "type": "Platform", "x": 160, "y": 80, "w": 64, "h": 16, "section": "climb_bottom"},
+            {"id": "n_mid2", "type": "Platform", "x": 80, "y": 128, "w": 64, "h": 16, "section": "climb_bottom"},
+            {"id": "n_mid3", "type": "Platform", "x": 160, "y": 176, "w": 64, "h": 16, "section": "climb_top"},
+            {"id": "n_mid4", "type": "Platform", "x": 80, "y": 224, "w": 64, "h": 16, "section": "climb_top"},
+            {"id": "n_exit", "type": "Exit", "x": 160, "y": 272, "w": 64, "h": 16, "section": "climb_top"},
+        ],
+        "edges": [
+            {"from": "n_start", "to": "n_mid1", "type": "Jump", "vx": 150, "vy": 500},
+            {"from": "n_mid1", "to": "n_mid2", "type": "Jump", "vx": -150, "vy": 500},
+            {"from": "n_mid2", "to": "n_mid3", "type": "Jump", "vx": 150, "vy": 500},
+            {"from": "n_mid3", "to": "n_mid4", "type": "Jump", "vx": -150, "vy": 500},
+            {"from": "n_mid4", "to": "n_exit", "type": "Jump", "vx": 150, "vy": 500},
+        ],
+        "entities": [
+            {"id": "player", "kind": "Start", "anchor": "n_start", "section": "climb_bottom",
+             "description": "player start", "sprite": "player", "facing": "right", "starting_items": []},
+            {"id": "tower_exit", "kind": "Exit", "anchor": "n_exit", "section": "climb_top",
+             "description": "tower exit", "sprite": "portal", "facing": "right", "requires_key": False},
+        ],
+        "requirements": [
+            {"id": "R1", "text": "The level is a tall vertical tower.", "category": "size",
+             "check": {"type": "size", "min_width_tiles": 30, "min_height_tiles": 40}},
+            {"id": "R2", "text": "There are platforms zig-zagging upward.", "category": "layout", "check": None},
+        ],
+    })
+
+
+def test_single_tower_collapses_unrequested_homogeneous_sections():
+    import pipeline.level as pl
+    from game import GameProfile
+    from pipeline.chunks import _FixedController
+
+    prompt = ("A tall vertical tower to climb: the player starts at the bottom and the exit is at "
+              "the very top, with platforms zig-zagging upward.")
+    spec = _vertical_tower_spec()
+
+    res = from_prompt(spec, prompt)
+    assert "P_single_tower" in res.added
+    assert any("merged unrequested extra tower sections" in n for n in res.notes)
+    assert [s.id for s in res.spec.sections] == ["climb_bottom"]
+    assert res.spec.sections[0].order == 0
+    assert all(n.section == "climb_bottom" for n in res.spec.nodes)
+    assert all(e.section == "climb_bottom" for e in res.spec.entities)
+
+    comp = ensure_complete(spec, prompt=prompt)
+    assert [s.id for s in comp.spec.sections] == ["climb_bottom"]
+    assert not comp.report.missing
+
+    built = pl.build_level(prompt, _FixedController(spec), GameProfile(), densify=False)
+    assert built.report.ok
+    assert [s.id for s in built.spec.sections] == ["climb_bottom"]
+    assert all(n.section == "climb_bottom" for n in built.spec.nodes)
+    assert all(e.section == "climb_bottom" for e in built.spec.entities)
+
+
+def test_multi_section_vertical_prompts_keep_all_sections():
+    # structure-tower: 4 distinct structures & section/structure requirements
+    st_prompt = ("A tall bell tower to climb: stairs at the bottom guarded by rats, a climbing shaft, "
+                 "a maze of storerooms and a gargoyle boss in the belfry at the top.")
+    st_reqs = [
+        {"id": "R1", "text": "The level is a tall bell tower to climb.", "category": "size",
+         "check": {"type": "size", "min_width_tiles": 30, "min_height_tiles": 60}},
+        {"id": "R2", "text": "There are stairs at the bottom section.", "category": "section",
+         "check": {"type": "section", "section": "s0", "structure": "corridor"}},
+        {"id": "R3", "text": "There is a climbing shaft section.", "category": "section",
+         "check": {"type": "structure", "section": "s1", "structure": "shaft"}},
+        {"id": "R4", "text": "There is a maze of storerooms.", "category": "section",
+         "check": {"type": "structure", "section": "s2", "structure": "labyrinth"}},
+        {"id": "R5", "text": "There is a belfry at the top.", "category": "section",
+         "check": {"type": "section", "section": "s3", "structure": "arena"}},
+    ]
+    st_spec = _spec(["corridor", "shaft", "labyrinth", "arena"],
+                    ["Tower Base Stairs", "Climbing Shaft", "Storeroom Maze", "The Belfry"],
+                    requirements=st_reqs)
+    st_spec = st_spec.model_copy(update={"orientation": "vertical"})
+    st_res = from_prompt(st_spec, st_prompt)
+    assert len(st_res.spec.sections) == 4
+    assert "P_single_tower" not in st_res.added
+
+    # Explicit two-section vertical prompt even if the LLM emitted homogeneous sections
+    mine_prompt = ("A deep mine shaft that goes up in two sections: a damp lower mine with 4 gems "
+                   "and a crystal cavern on top with the exit.")
+    mine_spec = _vertical_tower_spec()
+    mine_res = from_prompt(mine_spec, mine_prompt)
+    assert len(mine_res.spec.sections) == 2
+    assert "P_single_tower" not in mine_res.added
+
+    # Even with "tower" in the prompt, explicit "two sections" keeps all sections
+    two_tower_prompt = "A tall stone tower in two sections: a lower hall and an upper spire."
+    two_tower_res = from_prompt(mine_spec, two_tower_prompt)
+    assert len(two_tower_res.spec.sections) == 2
+    assert "P_single_tower" not in two_tower_res.added
+
+
+def test_single_tower_guards_and_order():
+    prompt = ("A tall vertical tower to climb: the player starts at the bottom and the exit is at "
+              "the very top, with platforms zig-zagging upward.")
+    base = _vertical_tower_spec()
+
+    # Non-homogeneous theme/structure/gravity keeps all sections
+    diff_theme = base.model_copy(update={
+        "sections": [base.sections[0], base.sections[1].model_copy(update={"theme": "ice tower"})]
+    })
+    assert len(from_prompt(diff_theme, prompt).spec.sections) == 2
+
+    diff_grav = base.model_copy(update={
+        "sections": [base.sections[0], base.sections[1].model_copy(update={"gravity_scale": 0.5})]
+    })
+    assert len(from_prompt(diff_grav, prompt).spec.sections) == 2
+
+    # Horizontal orientation keeps all sections
+    horiz = base.model_copy(update={"orientation": "horizontal"})
+    assert len(from_prompt(horiz, prompt).spec.sections) == 2
+
+    # Requirement referencing a section keeps all sections
+    from spec import Requirement
+    sec_req = base.model_copy(update={
+        "requirements": [
+            *base.requirements,
+            Requirement.model_validate({
+                "id": "R3", "text": "Reach the peak.", "category": "entity",
+                "check": {"type": "entity_count", "entity_kind": "Exit", "section": "climb_top"},
+            }),
+        ]
+    })
+    assert len(from_prompt(sec_req, prompt).spec.sections) == 2
+
+    # Mission with keys/locks keeps all sections
+    locked = LevelSpec.model_validate({
+        **base.model_dump(by_alias=True),
+        "mission": {"rules": ["lock_key_cycle"], "keys": 1, "locks": None},
+    })
+    assert len(from_prompt(locked, prompt).spec.sections) == 2
+
+    # Out-of-order sections still keep the lowest-order section and normalize order to 0
+    reordered = base.model_copy(update={
+        "sections": [
+            base.sections[1].model_copy(update={"order": 2}),
+            base.sections[0].model_copy(update={"order": 1}),
+        ]
+    })
+    res = from_prompt(reordered, prompt)
+    assert [s.id for s in res.spec.sections] == ["climb_bottom"]
+    assert res.spec.sections[0].order == 0

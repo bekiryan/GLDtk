@@ -45,6 +45,7 @@ class FallbackProvider:
         self._providers: Tuple[base.LLMProvider, ...] = tuple(providers)
         self._current = 0
         self.notes: List[str] = []
+        self.fallback_reasons: List[str] = []
 
     @property
     def providers(self) -> Tuple[base.LLMProvider, ...]:
@@ -67,11 +68,13 @@ class FallbackProvider:
     ) -> str:
         errors: List[str] = []
         missing_key = False
+        self.fallback_reasons = []
         for i in range(self._current, len(self._providers)):
             provider = self._providers[i]
             try:
                 text = provider.complete_json(system, messages, schema)
             except base.ProviderError as err:
+                _append_unique(self.fallback_reasons, getattr(provider, "fallback_reasons", None))
                 if not should_fall_back(err) or i == len(self._providers) - 1:
                     if errors:
                         raise base.ProviderError(
@@ -82,9 +85,12 @@ class FallbackProvider:
                     raise
                 if i == self._current and getattr(err, "missing_key", False):
                     missing_key = True
-                errors.append(f"{provider_label(provider)}: {_short(err)}")
+                reason = _short(err)
+                _append_unique(self.fallback_reasons, (reason,))
+                errors.append(f"{provider_label(provider)}: {reason}")
                 jobs.report("llm", switch_message(self._providers[i + 1]))
                 continue
+            _append_unique(self.fallback_reasons, getattr(provider, "fallback_reasons", None))
             if i != self._current:
                 self.notes.append(
                     _no_key_note(self._providers[self._current], provider)
@@ -120,6 +126,13 @@ def _short(err: Any) -> str:
             return f"HTTP {err.status}"
         return "timeout" if err.timed_out else "connection error"
     return str(err)
+
+
+def _append_unique(target: List[str], items: Any) -> None:
+    """Append items to *target* in order, skipping duplicates."""
+    for item in items or ():
+        if item not in target:
+            target.append(item)
 
 
 def _last_error(errors: List[str]) -> str:

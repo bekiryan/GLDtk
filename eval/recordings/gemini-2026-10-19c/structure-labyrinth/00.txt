@@ -1,0 +1,452 @@
+{
+  "title": "Hedge Maze Labyrinth",
+  "size": {
+    "width_tiles": 60,
+    "height_tiles": 24
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "hedge_maze",
+      "name": "Hedge Maze",
+      "theme": "garden labyrinth",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A dense hedge maze labyrinth with twisting pathways, several dead ends concealing coins, and an exit gate situated on the far side.",
+      "order": 0,
+      "style": "walk",
+      "structure": "labyrinth",
+      "params": {
+        "ceiling_height": 5,
+        "corridor_width": 4,
+        "complexity": 0.7,
+        "branches": 3,
+        "pits": 0,
+        "vertical": "up"
+      },
+      "complexity": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_node",
+      "type": "Start",
+      "x": 32,
+      "y": 48,
+      "w": 96,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_main_1",
+      "type": "Platform",
+      "x": 160,
+      "y": 48,
+      "w": 80,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_deadend_1",
+      "type": "Platform",
+      "x": 160,
+      "y": 112,
+      "w": 64,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_main_2",
+      "type": "Platform",
+      "x": 272,
+      "y": 48,
+      "w": 96,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_deadend_2",
+      "type": "Platform",
+      "x": 272,
+      "y": 112,
+      "w": 64,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_main_3",
+      "type": "Platform",
+      "x": 400,
+      "y": 48,
+      "w": 80,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_deadend_3",
+      "type": "Platform",
+      "x": 400,
+      "y": 112,
+      "w": 64,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_main_4",
+      "type": "Platform",
+      "x": 512,
+      "y": 48,
+      "w": 96,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "plat_main_5",
+      "type": "Platform",
+      "x": 640,
+      "y": 48,
+      "w": 96,
+      "h": 16,
+      "section": "hedge_maze"
+    },
+    {
+      "id": "exit_node",
+      "type": "Exit",
+      "x": 768,
+      "y": 48,
+      "w": 96,
+      "h": 16,
+      "section": "hedge_maze"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_node",
+      "to": "plat_main_1",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_1",
+      "to": "plat_deadend_1",
+      "type": "Jump",
+      "vx": 0,
+      "vy": 500,
+      "ability": null
+    },
+    {
+      "from": "plat_deadend_1",
+      "to": "plat_main_1",
+      "type": "Fall",
+      "vx": 0,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_1",
+      "to": "plat_main_2",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_2",
+      "to": "plat_deadend_2",
+      "type": "Jump",
+      "vx": 0,
+      "vy": 500,
+      "ability": null
+    },
+    {
+      "from": "plat_deadend_2",
+      "to": "plat_main_2",
+      "type": "Fall",
+      "vx": 0,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_2",
+      "to": "plat_main_3",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_3",
+      "to": "plat_deadend_3",
+      "type": "Jump",
+      "vx": 0,
+      "vy": 500,
+      "ability": null
+    },
+    {
+      "from": "plat_deadend_3",
+      "to": "plat_main_3",
+      "type": "Fall",
+      "vx": 0,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_3",
+      "to": "plat_main_4",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_4",
+      "to": "plat_main_5",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "plat_main_5",
+      "to": "exit_node",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "spawn_player",
+      "kind": "Start",
+      "anchor": "start_node",
+      "section": "hedge_maze",
+      "description": "player spawn at the hedge maze entrance",
+      "sprite": "hero",
+      "place": "entry",
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "coin_1",
+      "kind": "Pickup",
+      "anchor": "plat_deadend_1",
+      "section": "hedge_maze",
+      "description": "coin hidden at a dead end",
+      "sprite": "gold coin",
+      "place": "dead_end",
+      "position": null,
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "coin_2",
+      "kind": "Pickup",
+      "anchor": "plat_deadend_2",
+      "section": "hedge_maze",
+      "description": "coin hidden at a dead end",
+      "sprite": "gold coin",
+      "place": "dead_end",
+      "position": null,
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "coin_3",
+      "kind": "Pickup",
+      "anchor": "plat_deadend_3",
+      "section": "hedge_maze",
+      "description": "coin hidden at a dead end",
+      "sprite": "gold coin",
+      "place": "dead_end",
+      "position": null,
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": "coin",
+      "value": 1,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "gate_exit",
+      "kind": "Exit",
+      "anchor": "exit_node",
+      "section": "hedge_maze",
+      "description": "the exit gate on the far side",
+      "sprite": "hedge gate",
+      "place": "exit",
+      "position": null,
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": false,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "The level is built as a hedge maze labyrinth.",
+      "category": "layout",
+      "check": {
+        "type": "structure",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 3,
+        "section": "hedge_maze",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": "labyrinth",
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "The labyrinth has several dead ends.",
+      "category": "layout",
+      "check": {
+        "type": "structure",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 3,
+        "section": "hedge_maze",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": "labyrinth",
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "Coins are hidden at the dead ends.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Pickup",
+        "subkind": "coin",
+        "min_count": 3,
+        "section": "hedge_maze",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "There is an exit gate on the far side.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "hedge_maze",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    }
+  ],
+  "complexity": null,
+  "mission": null
+}

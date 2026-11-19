@@ -135,11 +135,16 @@ Workflow for each part: write a spec in `docs/v2/parts/NN-name.md` → dispatch 
   - **ldtk #2 sidebar:** the open-project check runs again in the `ProjectLoader` callback, so switching projects during the file read no longer swaps the result in; a skipped reload clears `fullReload`.
   - **Live eval 2026-10-19** (`--tags structure --fallback`, `eval/results/gemini-2026-10-19c`, not committed): all 6 structure prompts build and verify (playable 6/6, fidelity 0.95). 5 were answered by `gemini-3.7-flash`, `v4-mission-metroidvania` by the qwen2.5:14b fallback. Expectation failures: structure-crypt has no parkour section; metroidvania has no Key entity and no hub section.
 
-## Open (resume here)
-1. 324 tall parkour gap windows have no label yet (embedded only); label them with qwen and/or `--vision`.
-2. Gemini free-tier quota (~20 requests/day per Flash model) and frequent 503 "high demand" limit live evals and vision runs.
-3. The eval records who answered (`answered_by`) but not why the fallback happened (429 vs 503).
-4. The tower prompt gets sections that were not requested.
-5. Still open from earlier: the Part 9 profile panel needs scrolling; Part 6 AI art has not run on real images (no free-tier image quota).
+- 2026-11-19: **Missing thesis/engineering items completed and uploaded.**
+  - **Pattern gap labels (`patterns/label.py`, `patterns/build.py`):** added deterministic `label_from_features()` / `--provider geometry`; labelled all 324 remaining tall parkour gap windows (`0` unlabelled gap windows left; `3,413` vectors synced with `ollama`).
+  - **Fallback trigger reasons (`llm/providers/`, `eval/`):** `GeminiProvider`, `FallbackProvider`, `CountingProvider`, `run_suite`, and `eval/metrics.py` now record and report exact `fallback_reasons` (`HTTP 429`, `HTTP 503`, `HTTP 404`, `timeout`, `no API key`, `connection error`).
+  - **Single-tower section constraint (`fidelity/prompt.py`):** `_collapse_unrequested_tower_sections()` merges unrequested homogeneous split sections on single vertical tower prompts while keeping multi-section prompts intact.
+  - **Sidebar Game Profile scrolling (`ldtk-src/app/assets/css/gldtk-sidebar.css`):** added `max-height: 240px; overflow-y: auto; flex-shrink: 0;` to `#gldtk-root .g-prof` and rebuilt `renderer.debug.hxml`.
+  - **5 Offline Replay Ablations (`eval/ablation.py`, `eval/results/ablations/`):** A1 `no-SymbolicPatcher` (playable 11/12 → 5/12, `-50.0 pp`), A2 `no-CompletenessFill` (`expect_failed` 0 → 2, `satisfied` 56 → 53), A3 `no-GridAndSoftlockRepair` (playable 21/22 → 20/22, `-4.5 pp`), A4 `no-PatternStamping` (stamped sections 2 → 0), A5 `no-ClosedLoopComplexity` (band error `0.200` → `0.400`, strict in-range `66.7%` → `0.0%`).
+  - **Repo upload & streamlined README:** added high-level Draw.io diagrams (`docs/architecture/`), compiled thesis PDF (`docs/thesis/GLDtk_Thesis_Paper.pdf`), demo videos (`docs/demo/`), and concise `README.md` backed by `docs/TECHNICAL_REFERENCE.md`.
+
+## Open (remaining external/optional)
+1. Gemini free-tier quota (~20 requests/day per Flash model) and frequent 503 "high demand" limit live cloud runs (local `ollama:qwen2.5:14b` fallback handles offline use).
+2. Prompts 9–27 live cloud evaluation & Part 6 AI art live image call (needs billed Gemini API key with image quota).
 
 - App testing: Playwright from `~/.npm/_npx/9833c18b2d85bc59/node_modules/playwright`, `_electron.launch({executablePath: ldtk-src/app/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron, args: ['.'], cwd: ldtk-src/app})`. Wait for the window that has `button.load` (the first window is a splash). Stub both `dialog.showOpenDialog` and `dialog.showOpenDialogSync`, then click `button.load`. Sidebar selectors: `#g-prompt`, `.g-gen-btn`. To avoid using quota, run the server with `server.provider_factory = lambda req: FakeProvider([fixture])`. On macOS the server process is named `Python`, so stop it with `kill $(lsof -tiTCP:8765 -sTCP:LISTEN)`.

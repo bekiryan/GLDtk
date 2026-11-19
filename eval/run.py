@@ -273,6 +273,7 @@ def run_suite(
         # the requested model, else the one(s) that answered (Gemini falls back on 429/503)
         rec["model"] = model or ",".join(counted.models_used) or None
         rec["answered_by"] = list(counted.answered_by)  # provider/model labels (fallback shows here)
+        rec["fallback_reasons"] = list(counted.fallback_reasons)
         rec["provider_retries"] = (backoff.retries - retries0) if backoff else 0
         with results.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec) + "\n")

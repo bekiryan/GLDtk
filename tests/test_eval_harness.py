@@ -358,12 +358,197 @@ def test_fallback_flag_wraps_primary_with_backoff_and_records_the_answerer(tmp_p
     r = recs[0]
     assert r["verified"] and waits == [20, 60, 120] and gemini.calls == 4
     assert r["answered_by"] == ["ollama/qwen2.5:14b"] and r["provider_retries"] == 3
+    assert r["fallback_reasons"] == ["HTTP 503"]
 
     # without --fallback: plain make_provider, backoff around it; --backoff 0 disables it
-    plain, bp = ev_run.build_live_provider("gemini", None, make=lambda n, model=None: local,
+    local_fake = FakeProvider([load_fixture("valid_minimal.json")])
+    plain, bp = ev_run.build_live_provider("gemini", None, make=lambda n, model=None: local_fake,
                                            delays=ev_run.parse_backoff("0"))
-    assert plain is local and bp is None
+    assert plain is local_fake and bp is None
     assert ev_run.parse_backoff("20,60,120") == [20.0, 60.0, 120.0]
+
+
+def test_gemini_fallback_reasons_order_dedup_reset_and_exception():
+    from llm.providers.gemini import GeminiProvider
+
+    class _MockGemini(GeminiProvider):
+        def __init__(self, script):
+            super().__init__(
+                api_key="test",
+                fallback_models=("m1", "m2", "m3", "m4"),
+            )
+            self._script = list(script)
+
+        def _post_with_retry(self, url, headers, payload):
+            nxt = self._script.pop(0)
+            if isinstance(nxt, BaseException):
+                raise nxt
+            return {"candidates": [{"content": {"parts": [{"text": nxt}]}}]}
+
+    # 1. Deduplicates while preserving order across 429, 503, duplicate 429, 404, timeout
+    mg = _MockGemini([
+        ProviderError("rate", status=429),
+        ProviderError("busy", status=503),
+        ProviderError("rate2", status=429),
+        ProviderError("gone", status=404),
+        "{}",
+    ])
+    assert mg.complete_json("s", [], {}) == "{}"
+    assert mg.fallback_reasons == ["HTTP 429", "HTTP 503", "HTTP 404"]
+
+    # 2. Resets per request on success
+    mg._script = ["{}"]
+    assert mg.complete_json("s", [], {}) == "{}"
+    assert mg.fallback_reasons == []
+
+    # 3. Records timeout and keeps reasons even when a later model raises
+    mg._script = [
+        ProviderError("slow", timed_out=True),
+        ProviderError("bad", status=400),
+    ]
+    with pytest.raises(ProviderError):
+        mg.complete_json("s", [], {})
+    assert mg.fallback_reasons == ["timeout"]
+
+    # 4. Resets when API key is missing on a subsequent call
+    mg._api_key = None
+    with pytest.raises(ProviderError):
+        mg.complete_json("s", [], {})
+    assert mg.fallback_reasons == []
+
+
+def test_fallback_provider_reasons_and_wrappers(tmp_path, load_fixture):
+    from eval.metrics import aggregate, render_report
+    from eval.providers import CallBudget, CountingProvider, RecordingProvider
+    from llm.providers.fallback import FallbackProvider
+
+    class _StubProvider:
+        def __init__(self, name, model, outcome, inner_reasons=()):
+            self.name = name
+            self.model = model
+            self.outcome = outcome
+            self.fallback_reasons = list(inner_reasons)
+
+        def complete_json(self, system, messages, schema):
+            if isinstance(self.outcome, BaseException):
+                raise self.outcome
+            return self.outcome
+
+    ok_json = load_fixture("valid_minimal.json")
+
+    # Merges inner reasons + switch reason, deduplicated in order, across all reason types
+    cases = [
+        (ProviderError("no key", missing_key=True), (), ["no API key"]),
+        (ProviderError("net"), (), ["connection error"]),
+        (ProviderError("slow", timed_out=True), (), ["timeout"]),
+        (ProviderError("gone", status=404), ("HTTP 429", "HTTP 404"), ["HTTP 429", "HTTP 404"]),
+    ]
+    for err, inner_r, expected in cases:
+        fp = FallbackProvider([_StubProvider("gemini", "g1", err, inner_r), _StubProvider("ollama", "o1", ok_json)])
+        assert fp.complete_json("s", [], {}) == ok_json
+        assert fp.fallback_reasons == expected
+        # Sticky second call directly on ollama resets fallback_reasons
+        assert fp.complete_json("s", [], {}) == ok_json
+        assert fp.fallback_reasons == []
+
+    # Non-fallback 400 and terminal last-provider error are not added as fallback reasons,
+    # while earlier fallback reasons ARE preserved on exception
+    fp_400 = FallbackProvider([
+        _StubProvider("gemini", "g1", ProviderError("bad", status=400), inner_reasons=("HTTP 429",)),
+        _StubProvider("ollama", "o1", ok_json),
+    ])
+    with pytest.raises(ProviderError):
+        fp_400.complete_json("s", [], {})
+    assert fp_400.fallback_reasons == ["HTTP 429"]
+
+    fp_all_fail = FallbackProvider([
+        _StubProvider("gemini", "g1", ProviderError("quota", status=429)),
+        _StubProvider("ollama", "o1", ProviderError("refused")),
+    ])
+    rp = RecordingProvider(fp_all_fail, tmp_path / "rec", "p_fail")
+    cp = CountingProvider(rp, CallBudget())
+    with pytest.raises(ProviderError):
+        cp.complete_json("s", [], {})
+    assert fp_all_fail.fallback_reasons == ["HTTP 429"]
+    assert rp.fallback_reasons == ["HTTP 429"]
+    assert cp.fallback_reasons == ["HTTP 429"]
+
+    # CountingProvider deduplicates across multiple calls for one prompt
+    p1 = FallbackProvider([
+        _StubProvider("gemini", "g1", ProviderError("quota", status=429), inner_reasons=("HTTP 503",)),
+        _StubProvider("ollama", "o1", ok_json),
+    ])
+    p2 = FallbackProvider([
+        _StubProvider("gemini", "g1", ProviderError("slow", timed_out=True), inner_reasons=("HTTP 429",)),
+        _StubProvider("ollama", "o1", ok_json),
+    ])
+    cp2 = CountingProvider(RecordingProvider(p1, tmp_path / "rec", "p_ok"), CallBudget())
+    cp2.complete_json("s", [], {})
+    cp2._inner = RecordingProvider(p2, tmp_path / "rec", "p_ok2")
+    cp2.complete_json("s", [], {})
+    assert cp2.fallback_reasons == ["HTTP 503", "HTTP 429", "timeout"]
+
+    # aggregate & render_report without reasons omit the suffix; with reasons include counts
+    no_fb = [{"id": "a", "verified": True, "fidelity_score": 1.0, "wall_time_s": 0.1, "llm_calls": 1}]
+    assert aggregate(no_fb)["fallback_reasons"] == {}
+    assert "fallback reasons:" not in render_report(no_fb)
+
+
+def test_run_suite_tracks_fallback_reasons_across_reprompt_and_failure(tmp_path, load_fixture):
+    from eval.metrics import aggregate, render_report
+    from llm.providers.fallback import FallbackProvider
+
+    class _ScriptedChain:
+        name = "gemini"
+        model = "gemini-3.8-flash"
+
+        def __init__(self, steps):
+            self._steps = list(steps)
+            self.fallback_reasons = []
+
+        def complete_json(self, system, messages, schema):
+            reasons, outcome = self._steps.pop(0)
+            self.fallback_reasons = list(reasons)
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return outcome
+
+    alpha_resp = load_fixture("valid_minimal.json")
+    gamma_1 = load_fixture("completeness_reprompt/01_missing_castle.json")
+    gamma_2 = load_fixture("completeness_reprompt/02_with_castle.json")
+
+    def factory(pid):
+        if pid == "alpha":
+            return _ScriptedChain([([], alpha_resp)])
+        if pid == "beta":
+            return FallbackProvider([
+                _ScriptedChain([(["HTTP 429"], ProviderError("busy", status=503))]),
+                _ScriptedChain([([], ProviderError("ollama down"))]),
+            ])
+        # gamma: call 1 returns gamma_1 after 429+503; call 2 runs completeness reprompt with timeout
+        return _ScriptedChain([
+            (["HTTP 429", "HTTP 503"], gamma_1),
+            (["HTTP 503", "timeout"], gamma_2),
+        ])
+
+    out = tmp_path / "eval_out"
+    rec_dir = tmp_path / "rec_dir"
+    recs = ev_run.run_suite(
+        SUITE, factory, out, provider_name="gemini", model="gemini-3.8-flash",
+        record_dir=rec_dir, keep_going=True, log=lambda s: None,
+    )
+    by_id = {r["id"]: r for r in recs}
+    assert by_id["alpha"]["fallback_reasons"] == []
+    assert by_id["beta"]["failure"]["type"] == "ProviderError"
+    assert by_id["beta"]["fallback_reasons"] == ["HTTP 429", "HTTP 503"]
+    assert by_id["gamma"]["verified"] is True
+    assert by_id["gamma"]["fallback_reasons"] == ["HTTP 429", "HTTP 503", "timeout"]
+
+    agg = aggregate(recs)
+    assert agg["fallback_reasons"] == {"HTTP 429": 2, "HTTP 503": 2, "timeout": 1}
+    report = (out / "report.md").read_text(encoding="utf-8")
+    assert "fallback reasons: HTTP 429 x2, HTTP 503 x2, timeout x1" in report
+    assert "fallback reasons:" in render_report(recs)
 
 
 def test_each_prompt_starts_the_fallback_chain_on_the_primary(load_fixture):

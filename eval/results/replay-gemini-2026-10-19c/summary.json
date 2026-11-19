@@ -1,0 +1,49 @@
+{
+  "gemini/gemini-3.7-flash": {
+    "prompts": 6,
+    "fidelity_mean": 0.93125,
+    "fidelity_scored": 6,
+    "status_counts": {
+      "satisfied": 29,
+      "approximated": 4,
+      "impossible": 0,
+      "missing": 0,
+      "unchecked": 2
+    },
+    "verified": 6,
+    "playable_share": 1.0,
+    "failures": {},
+    "wall_mean_s": 0.6869833333333334,
+    "wall_p95_s": 2.3697,
+    "llm_calls_total": 7,
+    "expect_failed": 0,
+    "difficulty_by_label": {
+      "easy": {
+        "n": 4,
+        "mean": 4.9,
+        "min": 0.6,
+        "max": 6.7
+      },
+      "medium": {
+        "n": 8,
+        "mean": 2.5375,
+        "min": 0.6,
+        "max": 5.4
+      },
+      "hard": {
+        "n": 5,
+        "mean": 6.540000000000001,
+        "min": 3.9,
+        "max": 8.4
+      }
+    },
+    "fallback_reasons": {},
+    "llm_attempts_mean": 1.1666666666666667,
+    "llm_calls_mean": 1.1666666666666667,
+    "patches_mean": 0.8333333333333334,
+    "completeness_reprompts_mean": 0.0,
+    "entities_filled_mean": 0.0,
+    "layout_retries_mean": 0.0,
+    "grid_repairs_mean": 0.0
+  }
+}

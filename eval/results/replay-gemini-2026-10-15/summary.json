@@ -1,0 +1,49 @@
+{
+  "gemini/default": {
+    "prompts": 8,
+    "fidelity_mean": 0.9791666666666666,
+    "fidelity_scored": 8,
+    "status_counts": {
+      "satisfied": 27,
+      "approximated": 0,
+      "impossible": 0,
+      "missing": 1,
+      "unchecked": 2
+    },
+    "verified": 8,
+    "playable_share": 1.0,
+    "failures": {},
+    "wall_mean_s": 0.81865,
+    "wall_p95_s": 2.0492,
+    "llm_calls_total": 9,
+    "expect_failed": 0,
+    "difficulty_by_label": {
+      "easy": {
+        "n": 4,
+        "mean": 1.9249999999999998,
+        "min": 1.4,
+        "max": 2.4
+      },
+      "medium": {
+        "n": 6,
+        "mean": 2.433333333333333,
+        "min": 1.0,
+        "max": 3.7
+      },
+      "hard": {
+        "n": 2,
+        "mean": 4.550000000000001,
+        "min": 4.4,
+        "max": 4.7
+      }
+    },
+    "fallback_reasons": {},
+    "llm_attempts_mean": 1.125,
+    "llm_calls_mean": 1.125,
+    "patches_mean": 1.875,
+    "completeness_reprompts_mean": 0.0,
+    "entities_filled_mean": 0.0,
+    "layout_retries_mean": 0.0,
+    "grid_repairs_mean": 0.0
+  }
+}

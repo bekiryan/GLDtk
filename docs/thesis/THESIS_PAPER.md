@@ -207,7 +207,7 @@ Implemented in [`layout/softlock.py`](file:///Users/bekiryan/Projects/GLDtk/layo
 | **Cloud LLMs & VLMs** | Google Gemini (`gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite`), Anthropic Claude (`claude-sonnet-5-5` with prompt caching), OpenAI (`gpt-4o-mini`), DeepSeek (`deepseek-chat`) | Schema-enforced `LevelSpec`, `RegionSpec`, and `WorldOutline` generation; pattern vision labeling; optional AI pixel-art theme/sprite synthesis (`gemini-3.1-flash-image`). |
 | **Local Open-Weight Models** | Ollama: `qwen2.5:14b` (default local fallback), `llama3.1`, `qwen2.5vl:7b` (local vision), `nomic-embed-text` (768-dim embeddings) | Offline/zero-cost generation, automatic fallback on Gemini 429/503 errors, local pattern labeling and vector embedding. |
 | **Licensed Assets & Corpora** | Kenney CC0 1.0 (*Tiny Dungeon*, *Tiny Town*, *1-Bit Pack*), LDtk MIT Samples, *SuperTux* (CC-BY-SA 4.0), *Open Surge* (CC-BY 3.0/4.0) | 8 curated $80 \times 64\text{ px}$ 14-role autotile themes, 25 entity sprites (`gldtk_assets/sprites.png`), and 3,336 verified level pattern windows ([`assets/LICENSES.md`](file:///Users/bekiryan/Projects/GLDtk/assets/LICENSES.md)). |
-| **Packaging & Testing** | PyInstaller, `electron-builder`, GitHub Actions (`.github/workflows/release.yml`), `pytest` (737 offline tests), Playwright Electron harness | Standalone Apple Silicon `GLDtk.app` (322 MB) / `GLDtk-1.5.3-arm64.dmg` (144 MB), Windows bundle (`feat/windows-build`), deterministic offline test suite. |
+| **Packaging & Testing** | PyInstaller, `electron-builder`, GitHub Actions (`.github/workflows/release.yml`), `pytest` (752 offline tests), Playwright Electron harness | Standalone Apple Silicon `GLDtk.app` (322 MB) / `GLDtk-1.5.3-arm64.dmg` (144 MB), Windows bundle (`feat/windows-build`), deterministic offline test suite. |
 
 ---
 
@@ -246,30 +246,37 @@ Unlike text benchmarks that only check JSON syntax, GLDtk evaluates generated le
 4. **Multimodal Vision Labeling Eliminates Text-Label Hallucinations (Part 29d, PR #9):**
    Across **917 pattern windows** labeled with `gemini-3.5-flash-lite` Vision and audited by the deterministic `false_claims` count checker ([`patterns/vision.py`](file:///Users/bekiryan/Projects/GLDtk/patterns/vision.py)), the vision pipeline produced **0 false claims** and identified **173 patterns (18.9%)** where earlier text-only LLM labels had mischaracterized the visual geometry.
 5. **100% (4/4) RAG Pattern Stamping Coverage Across All Terrain Types and Heights (Parts 29g & PR #11):**
-   Following the geometry classifier (`classify.py`), the +641 gap-window ingestion (`--gaps`), and route-verified rock padding (`stamp.py`), real-index stamping coverage (`python -m patterns.coverage --real`) reached **4/4 stamped sections** across all 6 carved terrain types (`corridor`, `parkour`, `labyrinth`, `arena`, `shaft`, `hub`) at every standard section height ($20, 26, 32, 34, 40$ rows).
+   Following the geometry classifier (`classify.py`), the +641 gap-window ingestion (`--gaps`), deterministic geometry-based labelling of all remaining 324 tall parkour windows (`--provider geometry`, reaching `0` unlabelled gap windows and `1,241` labelled / `3,413` embedded patterns), and route-verified rock padding (`stamp.py`), real-index stamping coverage (`python -m patterns.coverage --real`) reached **4/4 stamped sections** across all 6 carved terrain types (`corridor`, `parkour`, `labyrinth`, `arena`, `shaft`, `hub`) at every standard section height ($20, 26, 32, 34, 40$ rows).
+
+### 6.4 Offline Replay Ablation Results (`eval/ablation.py`, `eval/results/ablations/report.md`)
+
+Running all five controlled offline replay ablations across the recorded suites (`gemini-2026-10-15`, `gemini-2026-10-19c`, `gemini-2026-10-16`, and `qwen-2026-10-16`) isolates each symbolic subsystem's quantitative impact:
+
+| ID | Ablation | Prompts | Primary Metric | Full Pipeline (Baseline) | Ablated | Delta |
+|---|---|---:|---|---|---|---|
+| **A1** | `no-SymbolicPatcher` | 12 | Playable share | **11/12 (91.7%)** | 5/12 (41.7%) | **-50.0 pp** (`qwen` drops 5/6 $\to$ 0/6) |
+| **A2** | `no-CompletenessFill` | 14 | Playable / `expect_failed` | **14/14, `expect_fail=0`** | 14/14, `expect_fail=2` | **`+2` failed expectations** (`satisfied` 56 $\to$ 53) |
+| **A3** | `no-GridAndSoftlockRepair` | 22 | Playable share | **21/22 (95.5%)** | 20/22 (90.9%) | **-4.5 pp** (`fidelity_mean` 0.945 $\to$ 0.932) |
+| **A4** | `no-PatternStamping` | 6 | Stamped sections / prompts | **2 (2/6)** | 0 (0/6) | **-2** (`6/6` verified in both) |
+| **A5** | `no-ClosedLoopComplexity` | 3 | Target-band MAE / strict in-range | **`0.200` (2/3 = 66.7%)** | `0.400` (0/3 = 0.0%) | **`+0.200` MAE, -66.7 pp** |
 
 ---
 
-## 7. What Remains To Do (Open Items & Roadmap to Thesis Defense)
+## 7. What Remains To Do (Completed vs. Remaining Optional Roadmap)
 
-While the core neuro-symbolic pipeline, native LDtk sidebar, standalone macOS app, and 737-test suite are complete, the following items remain to finalize the project and thesis dissertation (detailed in [`docs/thesis/PROJECT_STATUS_AND_ROADMAP.md`](file:///Users/bekiryan/Projects/GLDtk/docs/thesis/PROJECT_STATUS_AND_ROADMAP.md)):
+The core neuro-symbolic pipeline, native LDtk sidebar, standalone macOS app, 5 offline ablation studies, and 752-test suite are complete (detailed in `docs/thesis/PROJECT_STATUS_AND_ROADMAP.md`):
 
-### 7.1 Remaining Engineering & Pattern Index Tasks
-- [ ] **Label the Remaining 324 Tall Parkour Gap Windows (`PROGRESS.md` Open Item #1):** 324 tall parkour windows added in Part 29g have `nomic-embed-text` vector embeddings and geometry types but do not yet have `qwen2.5:14b` text labels or `--vision` descriptions.
-- [ ] **Log Exact Fallback Trigger Reason in `eval/metrics.py` (`PROGRESS.md` Open Item #3):** Currently, `eval/run.py` records `answered_by` (e.g., `ollama:qwen2.5:14b`), but does not distinguish whether the primary cloud model failed due to HTTP 429 (quota), HTTP 503 (high demand), or read timeout.
-- [ ] **Constrain Unrequested Extra Sections on Vertical Tower Prompts (`PROGRESS.md` Open Item #4):** Add a section-count clamp or fidelity rule in `fidelity/prompt.py` when a vertical tower prompt specifies an explicit number of sections.
-- [ ] **Sidebar Game Profile Panel Scrolling (`PROGRESS.md` Open Item #5):** Add `max-height` and `overflow-y: auto` to the Game Profile panel in `GldtkSidebar.hx` for compact laptop screens.
+### 7.1 Completed Since Initial v4 Release
+- [x] **Label the Remaining 324 Tall Parkour Gap Windows (`PROGRESS.md` Open Item #1):** Implemented `label_from_features()` and `--provider geometry` in `patterns/label.py` & `patterns/build.py`; labelled all 324 remaining gap windows (`0` unlabelled gap windows left; `3,413` Ollama embeddings synced).
+- [x] **Log Exact Fallback Trigger Reason in `eval/metrics.py` (`PROGRESS.md` Open Item #3):** Threaded `fallback_reasons` (`HTTP 429`, `HTTP 503`, `HTTP 404`, `timeout`, `no API key`, `connection error`) across `llm/providers/`, `eval/providers.py`, `eval/run.py`, and `eval/metrics.py`.
+- [x] **Constrain Unrequested Extra Sections on Vertical Tower Prompts (`PROGRESS.md` Open Item #4):** Implemented `_collapse_unrequested_tower_sections()` in `fidelity/prompt.py` so homogeneous split tower levels collapse into one section while explicit multi-section tower prompts remain multi-section.
+- [x] **Sidebar Game Profile Panel Scrolling (`PROGRESS.md` Open Item #5):** Added `max-height: 240px; overflow-y: auto; flex-shrink: 0;` to `#gldtk-root .g-prof` in `ldtk-src/app/assets/css/gldtk-sidebar.css` and rebuilt `renderer.debug.hxml`.
+- [x] **Run the 5 Offline Replay Ablation Studies (`eval/ablation.py`):** Implemented deterministic offline ablations A1–A5 with results archived in `eval/results/ablations/`.
+
+### 7.2 Remaining Optional / External Tasks
 - [ ] **Merge Windows Build Workflow (`feat/windows-build`):** Merge commit `535a460` (`feat/windows-build`) into the main release workflow if cross-platform macOS + Windows CI artifacts are desired alongside `feat/mac-release`.
 - [ ] **Optional Live Test of Paid Gemini Image Generation (Part 6):** `art/pipeline.py` (autotile derivation and sprite quantization) passes all offline synthetic tests, but requires a billed Gemini API key to test live image generation (`gemini-3.1-flash-image` has 0 free-tier quota).
-
-### 7.2 Remaining Evaluation & Ablation Runs for the Thesis Paper
-- [ ] **Execute Prompts 9–27 of `eval/prompts.json`:** Prompts 1–8 (`gemini-2026-10-15`), 28–33 (`gemini-2026-10-19c`), and 34–35 (`gemini-2026-10-16`) have been executed live. Running the middle 19 prompts (covering `ability-lacks`, `gravity-low/high`, `impossible-*`, `vague-*`, and `long-detailed`) will complete the full 35-prompt benchmark table.
-- [ ] **Run the 5 Offline Replay Ablation Studies:** Using recorded LLM responses (`--replay`), run controlled ablations to quantify each symbolic module's exact contribution for the thesis evaluation chapter:
-  1. *No SymbolicPatcher* (quantifies drop in playability and rise in LLM retries).
-  2. *No Deterministic Completeness Fill* (quantifies drop in Fidelity Score).
-  3. *No Grid Repair / Soft-Lock Repair* (quantifies fraction of levels rescued by stepping-stone/ceiling/trap repair).
-  4. *Procedural Carvers Only vs. RAG Pattern Stamping* (`stamp_finder=None` vs. enabled).
-  5. *Open-Loop vs. Closed-Loop Complexity Controller* (quantifies $|\text{Measured} - \text{Target}|$ difficulty error).
+- [ ] **Execute Middle Prompts 9–27 Live (`eval/prompts.json`):** Prompts 1–8, 28–33, and 34–35 have live recordings; running the middle 19 prompts live depends on free-tier cloud quota availability.
 
 ---
 

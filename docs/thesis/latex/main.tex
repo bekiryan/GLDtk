@@ -687,7 +687,7 @@ GLDtk is engineered as a client-server architecture (\Cref{tab:tech_stack}). The
 \addlinespace
 \textbf{Asset Corpora} & Kenney CC0 1.0, LDtk MIT Samples, \emph{SuperTux} (CC-BY-SA 4.0), \emph{Open Surge} (CC-BY 3.0/4.0) & 8 curated 14-role autotile themes, 25 packed entity sprites, and 3,336 verified structural room windows. \\
 \addlinespace
-\textbf{Packaging \& CI} & PyInstaller, \texttt{electron-builder}, Playwright Electron, GitHub Actions & Standalone Apple Silicon bundle (\texttt{GLDtk-1.5.3-arm64.dmg}), Windows CI workflow, 737 offline unit tests. \\
+\textbf{Packaging \& CI} & PyInstaller, \texttt{electron-builder}, Playwright Electron, GitHub Actions & Standalone Apple Silicon bundle (\texttt{GLDtk-1.5.3-arm64.dmg}), Windows CI workflow, 752 offline unit tests. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -760,6 +760,28 @@ To quantify production efficiency, a controlled trial compared manual authoring 
 
 As documented in \Cref{fig:manual_vs_ai_summary}, manual level design required \textbf{5 minutes 57 seconds (357 seconds) and 311 editor clicks}, culminating in an accidental soft-lock trap. In contrast, GLDtk synthesized and verified the equivalent level in \textbf{1 minute 13 seconds (73 seconds) and 172 automated background operations}---delivering a \textbf{4.89$\times$ acceleration} with mathematical playability guarantees.
 
+\section{Controlled Offline Replay Ablations (A1--A5)}
+\label{sec:ablations}
+To isolate the causal contribution of each symbolic subsystem, five controlled replay ablations (\texttt{python -m eval.ablation}) were executed over the recorded suites (\Cref{tab:ablations}).
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Quantitative results of the five controlled offline replay ablations (\texttt{eval/results/ablations/report.md}).}
+\label{tab:ablations}
+\begin{tabularx}{\textwidth}{l l c l l X}
+\toprule
+\textbf{ID} & \textbf{Ablation} & \textbf{N} & \textbf{Baseline} & \textbf{Ablated} & \textbf{Measured Impact ($\Delta$)} \\
+\midrule
+\textbf{A1} & \texttt{no-SymbolicPatcher} & 12 & 11/12 (91.7\%) & 5/12 (41.7\%) & $-50.0$\,pp playable (\texttt{qwen} drops 5/6 $\to$ 0/6) \\
+\textbf{A2} & \texttt{no-CompletenessFill} & 14 & 14/14, 0 fail & 14/14, 2 fail & $+2$ expectation failures; satisfied $56 \to 53$ \\
+\textbf{A3} & \texttt{no-GridAndSoftlockRepair} & 22 & 21/22 (95.5\%) & 20/22 (90.9\%) & $-4.5$\,pp playable; mean fidelity $0.945 \to 0.932$ \\
+\textbf{A4} & \texttt{no-PatternStamping} & 6 & 2 stamped (2/6) & 0 stamped (0/6) & $-2$ stamped sections (6/6 verified in both) \\
+\textbf{A5} & \texttt{no-ClosedLoopComplexity} & 3 & err $0.200$ (66.7\%) & err $0.400$ (0.0\%) & $+0.200$ band error; strict in-range $-66.7$\,pp \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 % -----------------------------------------------------------------------------
 % CHAPTER 7: COMPLETED MILESTONES & ROADMAP
 % -----------------------------------------------------------------------------
@@ -767,26 +789,16 @@ As documented in \Cref{fig:manual_vs_ai_summary}, manual level design required \
 \label{chap:status}
 
 \section{Completed Engineering Milestones}
-The GLDtk project encompasses 29 major implementation parts and 15 pull requests, verified by 737 deterministic offline unit tests:
+The GLDtk project encompasses 29 major implementation parts and 15+ pull requests, verified by 752 deterministic offline unit tests:
 \begin{itemize}
     \item \textbf{Parts 1--15 (Core Neuro-Symbolic Substrate):} Sugiyama graph layout, Pydantic \texttt{LevelSpec}, kinematic physics oracle, swept-hitbox verification, native Haxe sidebar, and prompt fidelity reporting.
     \item \textbf{Parts 16--25 (World Realism \& Metroidvania Engine):} 7 procedural rock carvers, comfort-first jump pacing, Tarjan SCC soft-lock freedom, Item-State Product Automaton, Dormans mission grammars, and 60~Hz Play Mode.
-    \item \textbf{Parts 26--29g (RAG Patterns, Vision \& Packaging):} 3,577-record pattern index, multimodal vision labeling, cross-project Design Memory, and Apple Silicon \texttt{.dmg} distribution.
+    \item \textbf{Parts 26--29g (RAG Patterns, Vision \& Packaging):} 3,577-record pattern index (including geometry-based labelling of all 324 tall parkour gap windows), multimodal vision labeling, cross-project Design Memory, and Apple Silicon \texttt{.dmg} distribution.
+    \item \textbf{Thesis Evaluation & Polish:} Offline ablation suite A1--A5 (\Cref{sec:ablations}), HTTP fallback reason tracking (\texttt{fallback\_reasons}), single-tower section consolidation, and scrollable sidebar Game Profile panel.
 \end{itemize}
 
-\section{Roadmap Items and Planned Ablation Studies}
-Prior to formal thesis defense, the remaining work items include:
-\begin{enumerate}
-    \item \textbf{Execution of Middle Prompts 9--27:} Complete the remaining 19 prompts in \texttt{eval/prompts.json} across cloud and local backends.
-    \item \textbf{Five Controlled Offline Ablation Studies:}
-    \begin{itemize}
-        \item \emph{Ablation 1: No SymbolicPatcher} (quantifies playability drop without deterministic repairs).
-        \item \emph{Ablation 2: No Deterministic Completeness Fill} (measures prompt fidelity reduction).
-        \item \emph{Ablation 3: No Grid/Soft-Lock Repair} (quantifies fraction of levels rescued from pit traps).
-        \item \emph{Ablation 4: Procedural Carvers vs. RAG Stamping} (contrasts geometric variety).
-        \item \emph{Ablation 5: Open-Loop vs. Closed-Loop Complexity Control} (evaluates difficulty targeting accuracy).
-    \end{itemize}
-\end{enumerate}
+\section{Optional Future Extensions}
+Remaining optional extensions for post-defense releases include executing prompts 9--27 live against cloud quotas, testing paid-tier Gemini image generation (\texttt{gemini-3.1-flash-image}), and merging the Windows CI packaging workflow.
 
 % -----------------------------------------------------------------------------
 % CHAPTER 8: CONCLUSION

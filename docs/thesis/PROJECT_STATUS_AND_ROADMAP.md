@@ -468,86 +468,41 @@ flowchart LR
     Phase1 --> Phase2 --> Phase3
 ```
 
-### 5.1 Open Engineering & Pattern Index Tasks
+### 5.1 Engineering & Pattern Index Tasks
 
-- [ ] **1. Label 324 Tall Parkour Gap Windows:**
-  - *Context:* Part 29g introduced 641 specialized gap windows to ensure 100% stamp coverage across all section heights. Currently, 324 tall parkour windows are embedded in vector space but lack semantic text/vision descriptions.
-  - *Action:* Execute `python -m patterns.build --label-pending --only parkour` using local Ollama (`qwen2.5:14b`) or Gemini 3.5 Flash Lite to populate structural labels.
-- [ ] **2. Second-Pass Vision Labeling Run:**
-  - *Context:* `patterns/vision.py` has verified 917 patterns with multimodal models (Gemini 3.5 Flash Lite / Qwen 2.5-VL), discovering 173 textual contradictions. A batch of 218 patterns remains queued for vision description.
-  - *Action:* Run `python -m patterns.build --vision --vision-provider gemini --max-calls 250` with quota pacing to complete multimodal verification across the entire pattern index.
-- [ ] **3. Vertical Tower Section Over-Generation Constraint:**
-  - *Context:* Prompts requesting a single vertical climb (e.g. `structure-tower`) occasionally generate superfluous horizontal corridor sections.
-  - *Action:* Update `llm/validator.py` and `fidelity/prompt.py` to enforce strict section-count bounds when the prompt explicitly requests a single vertical structure.
-- [ ] **4. GameProfile Sidebar Panel CSS Overflow:**
-  - *Context:* On smaller displays or constrained sidebar widths, the GameProfile physics configuration form clips input labels and buttons.
-  - *Action:* Apply `overflow-y: auto; max-height: calc(100vh - 120px);` to the `.game-profile-panel` container in `ldtk-src/src/electron.renderer/ui/GldtkSidebar.hx`.
+- [x] **1. Label 324 Tall Parkour Gap Windows:**
+  - *Status:* Completed via deterministic `label_from_features()` / `--provider geometry` (`patterns/label.py`, `patterns/build.py`); all 324 gap windows are labelled (`0` remaining unlabelled gap windows; `1,241` total labelled / `3,413` embedded patterns).
+- [ ] **2. Optional Second-Pass Vision Labeling Run:**
+  - *Context:* `patterns/vision.py` has verified 917 patterns with multimodal models (Gemini 3.5 Flash Lite / Qwen 2.5-VL), discovering 173 textual contradictions. A batch of 218 patterns remains queued for optional vision description.
+- [x] **3. Vertical Tower Section Over-Generation Constraint:**
+  - *Status:* Implemented `_collapse_unrequested_tower_sections()` in `fidelity/prompt.py` so homogeneous unrequested extra sections on vertical tower prompts merge cleanly into one section while multi-section tower prompts stay intact.
+- [x] **4. GameProfile Sidebar Panel CSS Overflow:**
+  - *Status:* Added `max-height: 240px; overflow-y: auto; flex-shrink: 0;` to `#gldtk-root .g-prof` in `ldtk-src/app/assets/css/gldtk-sidebar.css` and rebuilt `renderer.debug.hxml`.
 - [ ] **5. Windows CI Workflow Integration:**
   - *Context:* The Windows packaging branch (`feat/windows-build`) contains verified UTF-8 stdout patches and PyInstaller configurations.
   - *Action:* Merge `feat/windows-build` into `main` and consolidate `.github/workflows/release.yml` to produce both macOS `.dmg` and Windows `.zip` release artifacts on tag triggers.
 - [ ] **6. Live Paid-Key Verification for Part 6 AI Art:**
   - *Context:* The generative AI theme and sprite pipeline (`aesthetic/image_provider.py`) is fully implemented with downscaling, palette quantization, and autotile slicing, but was tested only with offline stubs due to free-tier image quota restrictions.
   - *Action:* Run a live verification pass with an active Google Cloud project key to validate end-to-end AI theme generation on real pixel art sheets.
-- [ ] **7. HTTP Reason Code Logging in Evaluation Metrics:**
-  - *Context:* `eval/metrics.py` currently logs which provider answered a query (`answered_by`) but does not record the specific trigger for fallbacks (distinguishing between HTTP 429 quota exhaustion vs. HTTP 503 high-demand errors).
-  - *Action:* Thread the underlying HTTP exception status code into the evaluation recording schema (`eval/run.py` and `eval/metrics.py`).
+- [x] **7. HTTP Reason Code Logging in Evaluation Metrics:**
+  - *Status:* Threaded `fallback_reasons` (`HTTP 429`, `HTTP 503`, `HTTP 404`, `timeout`, `no API key`, `connection error`) across `llm/providers/`, `eval/providers.py`, `eval/run.py`, and `eval/metrics.py`.
 
 ---
 
-### 5.2 Open Evaluation & Ablation Suite for the Thesis Paper
-
-To provide empirical backing for the Master's dissertation, the evaluation harness must execute full benchmark runs and ablation experiments comparing GLDtk against baseline alternatives.
+### 5.2 Evaluation & Completed Ablation Suite (`eval/ablation.py`)
 
 #### 1. Live Benchmark Expansion (Prompts 1–35)
-- **Objective:** Run the full 35-prompt benchmark suite (`eval/prompts.json`) live across multiple models to produce comprehensive statistical performance tables.
-- **Evaluation Metrics:**
-  - **Playability Rate ($\%$):** Percentage of generated levels passing 100% kinematic route verification and soft-lock analysis.
-  - **Prompt Fidelity Score ($0.0 - 1.0$):** Share of explicit prompt constraints satisfied without contradiction.
-  - **Mean LLM Attempts:** Average number of generation attempts (including validator repairs and reprompts) required to achieve a verified level.
-  - **Wall-Clock Latency (s):** Mean and P95 latency from prompt dispatch to LDtk project generation.
-  - **Repair Frequency:** Average count of deterministic stepping stones or soft-lock repairs injected per level.
+- Prompts 1–8, 28–33, and 34–35 have recorded live benchmark runs; middle prompts 9–27 (`ability-lacks`, `gravity-*`, `impossible-*`, `vague-*`, `long-detailed`) remain optional live cloud runs subject to quota.
 
-#### 2. Cross-Model Comparative Benchmark Matrix
-Evaluate the identical 35-prompt suite across the following model configurations:
+#### 2. Five Completed Offline Replay Ablation Experiments (`eval/results/ablations/report.md`)
 
-| Model Identifier | Provider | Parameter Size | Schema Enforcement | Target Role |
-|---|---|---|---|---|
-| `gemini-3.7-flash` | Google Cloud | Large MoE | Native JSON Schema | Primary Cloud Production |
-| `gemini-3.5-flash-lite`| Google Cloud | Lightweight | Native JSON Schema | High-Speed / Budget Cloud |
-| `claude-3-5-sonnet` | Anthropic | Large Dense | Output Schema | Cloud Quality Ceiling |
-| `qwen2.5:14b` | Ollama (Local) | 14.7B | SpecNormalizePatch | Offline Studio Deployment |
-| `deepseek-v3` | DeepSeek API | 671B MoE | Best-Effort JSON | Multi-Provider Validation |
-
-#### 3. Five Critical Offline Replay Ablation Experiments
-Using recorded generation traces in `eval/recordings/`, run offline replay ablations to isolate and quantify the contribution of each core architectural component:
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                          5 OFFLINE REPLAY ABLATION EXPERIMENTS                         │
-├────┬─────────────────────────────┬─────────────────────────────────────────────────────┤
-│ A1 │ No SymbolicPatcher          │ Quantifies LLM syntax, boundary, and type errors   │
-│ A2 │ No CompletenessFill         │ Measures prompt constraint loss without fill loops  │
-│ A3 │ No GridRepair / Softlock    │ Evaluates baseline playability & soft-lock trapping │
-│ A4 │ No PatternStamping          │ Compares procedural carving vs. real-pattern RAG    │
-│ A5 │ No Closed-Loop Complexity   │ Measures variance from target difficulty metrics    │
-└────┴─────────────────────────────┴─────────────────────────────────────────────────────┘
-```
-
-1. **Ablation 1: `no-SymbolicPatcher`**
-   - *Setup:* Disable `SymbolicPatcher`, `SpecNormalizePatch`, and `EdgeReclassifyPatch` in `llm/validator.py`.
-   - *Measurement:* Measure the baseline syntax failure rate, out-of-bounds error frequency, and invalid edge type rate emitted by raw LLMs.
-2. **Ablation 2: `no-CompletenessFill`**
-   - *Setup:* Disable the deterministic completeness fill loop in `pipeline/completeness.py`.
-   - *Measurement:* Compare the prompt fidelity score ($\%$) with and without automated entity/structure injection.
-3. **Ablation 3: `no-GridRepair` and `no-SoftlockRepair`**
-   - *Setup:* Disable deterministic stepping-stone synthesis (`layout/repair.py`) and soft-lock repairs (`layout/softlock_repair.py`).
-   - *Measurement:* Measure the playability drop ($\Delta\%$) and soft-lock trap occurrence rate in raw uncorrected layouts.
-4. **Ablation 4: `no-PatternStamping`**
-   - *Setup:* Disable pattern stamping (`pipeline/stamps.py`), forcing the engine to rely exclusively on algorithmic procedural carvers (`layout/terrain/`).
-   - *Measurement:* Quantify structural variety, topological cycle ranks, and qualitative design aesthetics between pure procedural generation and RAG stamping.
-5. **Ablation 5: `no-ClosedLoopComplexity`**
-   - *Setup:* Run generation in open-loop mode, bypassing post-generation metric scoring and parameter adjustments.
-   - *Measurement:* Measure the variance between requested complexity targets ($1–10$) and realized difficulty metrics.
+| ID | Ablation | Prompts | Primary Metric | Baseline | Ablated | Delta |
+|---|---|---:|---|---|---|---|
+| **A1** | `no-SymbolicPatcher` | 12 | Playable share | **11/12 (91.7%)** | 5/12 (41.7%) | **-50.0 pp** |
+| **A2** | `no-CompletenessFill` | 14 | Playable / `expect_failed` | **14/14, `expect_fail=0`** | 14/14, `expect_fail=2` | **+2 failed** |
+| **A3** | `no-GridAndSoftlockRepair` | 22 | Playable share | **21/22 (95.5%)** | 20/22 (90.9%) | **-4.5 pp** |
+| **A4** | `no-PatternStamping` | 6 | Stamped sections / prompts | **2 (2/6)** | 0 (0/6) | **-2** |
+| **A5** | `no-ClosedLoopComplexity` | 3 | Mean band error / strict in-range | **0.200 (66.7%)** | 0.400 (0.0%) | **+0.200 / -66.7 pp** |
 
 ---
 

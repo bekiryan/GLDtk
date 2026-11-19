@@ -7,23 +7,23 @@ Editable [diagrams.net (Draw.io)](https://app.diagrams.net) `.drawio` architectu
 | File | Description | Open / Edit |
 |---|---|---|
 | [`gldtk_architecture_master.drawio`](gldtk_architecture_master.drawio) | **All-in-one 3-tab Draw.io workbook** containing all three diagrams below | Draw.io Desktop / [app.diagrams.net](https://app.diagrams.net) |
-| [`01_pipeline_dag.drawio`](01_pipeline_dag.drawio) | **End-to-End 11-Stage Neuro-Symbolic Pipeline DAG** (`pipeline/level.py::build_level`) | [SVG](01_pipeline_dag.svg) · [PNG](01_pipeline_dag.png) |
-| [`02_system_architecture.drawio`](02_system_architecture.drawio) | **Client-Server & Subsystem Component Architecture** (LDtk Haxe UI ↔ FastAPI `:8765` ↔ Providers & Storage) | [SVG](02_system_architecture.svg) · [PNG](02_system_architecture.png) |
-| [`03_verification_and_mission_dags.drawio`](03_verification_and_mission_dags.drawio) | **Verification, Soft-Lock SCC/Automaton, Mission Grammar & Seam-Locked Edit Sub-DAGs** | [SVG](03_verification_and_mission_dags.svg) · [PNG](03_verification_and_mission_dags.png) |
+| [`01_pipeline_dag.drawio`](01_pipeline_dag.drawio) | **High-Level Neuro-Symbolic Pipeline DAG** (`Prompt → Spec → Terrain → Verify/Repair → LDtk`) | [SVG](01_pipeline_dag.svg) · [PNG](01_pipeline_dag.png) |
+| [`02_system_architecture.drawio`](02_system_architecture.drawio) | **High-Level System Architecture** (`LDtk Haxe UI ↔ FastAPI :8765 ↔ LLMs & Storage`) | [SVG](02_system_architecture.svg) · [PNG](02_system_architecture.png) |
+| [`03_verification_and_mission_dags.drawio`](03_verification_and_mission_dags.drawio) | **Verification Guarantees & Mixed-Initiative Editing Flows** (`Kinematics · Soft-Locks · Regional Edits`) | [SVG](03_verification_and_mission_dags.svg) · [PNG](03_verification_and_mission_dags.png) |
 
 ---
 
-## 1. End-to-End 11-Stage Neuro-Symbolic Pipeline DAG
+## 1. High-Level Neuro-Symbolic Pipeline DAG
 
-![End-to-End 11-Stage Neuro-Symbolic Pipeline DAG](01_pipeline_dag.png)
+![High-Level Neuro-Symbolic Pipeline DAG](01_pipeline_dag.png)
 
-## 2. Client-Server & Subsystem Component Architecture
+## 2. High-Level System Architecture
 
-![Client-Server and Subsystem Component Architecture](02_system_architecture.png)
+![High-Level System Architecture](02_system_architecture.png)
 
-## 3. Formal Verification, Soft-Lock SCC/Automaton, Mission & Regional Edit DAGs
+## 3. Verification Guarantees & Mixed-Initiative Editing Flows
 
-![Formal Verification, Soft-Lock SCC/Automaton, Mission and Regional Edit DAGs](03_verification_and_mission_dags.png)
+![Verification Guarantees & Mixed-Initiative Editing Flows](03_verification_and_mission_dags.png)
 
 ---
 

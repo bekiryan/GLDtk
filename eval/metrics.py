@@ -63,6 +63,7 @@ def aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         "llm_calls_total": sum(r.get("llm_calls", 0) for r in records),
         "expect_failed": sum(1 for r in records if r.get("expect_failures")),
         "difficulty_by_label": difficulty_by_label(records),
+        "fallback_reasons": dict(Counter(reason for r in records for reason in (r.get("fallback_reasons") or []))),
     }
     for f in MEAN_FIELDS:
         out[f + "_mean"] = _mean(r[f] for r in records if r.get(f) is not None)
@@ -166,12 +167,18 @@ def render_report(records: List[Dict[str, Any]], summary: Optional[Dict[str, Any
     lines.append("")
     for key, s in summary.items():
         sc = s["status_counts"]
+        fallback_str = (
+            "; fallback reasons: " + ", ".join(f"{k} x{v}" for k, v in s["fallback_reasons"].items())
+            if s.get("fallback_reasons")
+            else ""
+        )
         lines.append(
             f"- **{key}** fidelity items: "
             + ", ".join(f"{k} {v}" for k, v in sc.items())
             + "; failures: "
             + (", ".join(f"{k} x{v}" for k, v in s["failures"].items()) or "none")
             + f"; expectation failures: {s['expect_failed']}"
+            + fallback_str
         )
     diff_rows = [(key, label, d) for key, s in summary.items()
                  for label, d in (s.get("difficulty_by_label") or {}).items()]

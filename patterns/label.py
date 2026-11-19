@@ -39,14 +39,6 @@ def is_example_title(title: str) -> bool:
     return title.strip().strip('."\'').lower() in EXAMPLE_TITLES
 
 
-def richness(rec: dict) -> float:
-    """How much structure a window has (more is a better labelling candidate)."""
-    f = rec.get("features") or {}
-    r = f.get("route") or {}
-    return (f.get("platforms", 0) + 2 * r.get("jumps", 0) + 2 * f.get("hazards", 0) ** 0.5
-            + f.get("enemies", 0) + len(set(f.get("platform_widths") or [])) + (f.get("max_gap", 0) > 0))
-
-
 class PatternLabel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -57,6 +49,129 @@ class PatternLabel(BaseModel):
     structure_type: StructureType
     difficulty: int = Field(ge=1, le=10)
     tags: List[str] = Field(default_factory=list)
+
+
+def label_from_features(rec: dict) -> PatternLabel:
+    """Deterministically synthesizes a valid PatternLabel from features and source."""
+    f = rec.get("features") or {}
+    g = f.get("geometry") or {}
+    r = f.get("route") or {}
+    geo = f.get("structure_geo") or {}
+
+    valid_types = ("corridor", "parkour", "labyrinth", "arena", "shaft", "hub", "open")
+
+    if geo.get("type") in valid_types and float(geo.get("confidence") or 0) >= 0.6:
+        structure_type = geo["type"]
+    elif f.get("gap") in valid_types:
+        structure_type = f.get("gap")
+    elif f.get("structure") in valid_types:
+        structure_type = f.get("structure")
+    else:
+        structure_type = "parkour"
+
+    raw_diff = f.get("difficulty")
+    difficulty = max(1, min(10, int(round(float(5.0 if raw_diff is None else raw_diff)))))
+
+    hazards = f.get("hazards") or 0
+    enemies = f.get("enemies") or 0
+    rise = g.get("rise") or 0
+    height = f.get("height") or 0
+    width = f.get("width") or 0
+    platforms = f.get("platforms") or 0
+    max_gap = f.get("max_gap") or 0
+    pickups = f.get("pickups") or 0
+    jumps = r.get("jumps") or 0
+
+    mechanics = ["jump"]
+    if not hazards and not enemies and not (rise >= 6):
+        mechanics.insert(0, "walk")
+    if rise >= 6:
+        mechanics.append("climb")
+    if hazards > 0:
+        mechanics.append("hazard dodge")
+    if enemies > 0:
+        mechanics.append("combat")
+    if pickups > 0:
+        mechanics.append("collect")
+    if (g.get("dead_ends") or 0) > 0 or (g.get("cycles") or 0) > 0:
+        mechanics.append("exploration")
+
+    if hazards > 0:
+        mood = "tense hazardous"
+    elif enemies >= 3:
+        mood = "combative"
+    elif height >= 26:
+        mood = "athletic vertical"
+    else:
+        mood = "brisk platforming"
+
+    size_word = "Tall" if height >= 26 else "Compact"
+    feat_word = ("Spiked" if hazards > 0
+                 else "Guarded" if enemies > 0
+                 else "Multi-tier" if platforms >= 8
+                 else "Stepped")
+    struct_word = structure_type.capitalize()
+    challenge_word = ("Ascent" if rise >= 6
+                      else "Crossing" if max_gap >= 4
+                      else "Run")
+
+    title = f"{size_word} {feat_word} {struct_word} {challenge_word}"
+    if is_example_title(title):
+        title = f"{size_word} {struct_word} {challenge_word}"
+
+    if hazards > 0 and enemies > 0:
+        pacing_clause = "balancing hazard avoidance and enemy encounters"
+    elif hazards > 0:
+        pacing_clause = "testing precision movement around hazards"
+    elif enemies > 0:
+        pacing_clause = "combining platforming with enemy encounters"
+    elif rise >= 6 or height >= 26:
+        pacing_clause = "shaping vertical pacing and platforming flow"
+    else:
+        pacing_clause = "maintaining steady platforming flow and pacing"
+
+    dims = f"{width}x{height} " if (width and height) else ""
+    purpose = (f"A {dims}{structure_type} area with {platforms} platforms and {jumps} jumps, "
+               f"{pacing_clause}.")
+
+    tags = [structure_type, "tall" if height >= 26 else "compact"]
+    if hazards > 0:
+        tags.append("hazards")
+    if enemies > 0:
+        tags.append("enemies")
+    if rise >= 6:
+        tags.append("vertical")
+    src_tag = str(rec.get("source") or "corpus").strip().lower()
+    if src_tag and src_tag not in tags:
+        tags.append(src_tag)
+    if max_gap >= 4:
+        tags.append("gaps")
+    if pickups > 0:
+        tags.append("pickups")
+    tags = list(dict.fromkeys(t.lower() for t in tags if t))[:6]
+    if len(tags) < 3:
+        if "platforming" not in tags:
+            tags.append("platforming")
+        if "challenge" not in tags:
+            tags.append("challenge")
+
+    return PatternLabel(
+        title=title,
+        purpose=purpose,
+        mood=mood,
+        mechanics=mechanics,
+        structure_type=structure_type,
+        difficulty=difficulty,
+        tags=tags,
+    )
+
+
+def richness(rec: dict) -> float:
+    """How much structure a window has (more is a better labelling candidate)."""
+    f = rec.get("features") or {}
+    r = f.get("route") or {}
+    return (f.get("platforms", 0) + 2 * r.get("jumps", 0) + 2 * f.get("hazards", 0) ** 0.5
+            + f.get("enemies", 0) + len(set(f.get("platform_widths") or [])) + (f.get("max_gap", 0) > 0))
 
 
 @dataclass
@@ -132,9 +247,6 @@ def label_pending(
     """Label accepted, unlabelled patterns, structurally richest first and rotating across
     sources (saves the store after each label).  *budget* caps the number of labels written,
     *max_calls* the provider calls; *only* (Part 29g) limits the run to those pattern ids."""
-    from edit.llm import EditLLMFailed, run_structured
-    from eval.providers import BudgetExceeded, CallBudget, CountingProvider
-
     todo = rich_order([r for r in store if r.get("accepted") and not r.get("label")
                        and r.get("kind", "pattern") == "pattern"
                        and (only is None or r["id"] in only)])
@@ -142,6 +254,29 @@ def label_pending(
     if dry_run:
         rep.pending = len(todo)
         return rep
+
+    is_geometry = (
+        (isinstance(provider, str) and provider.lower() == "geometry")
+        or str(getattr(provider, "name", "") or "").lower() == "geometry"
+    )
+
+    if is_geometry:
+        for rec in todo:
+            if budget is not None and rep.labelled >= budget:
+                rep.stopped = True
+                break
+            lbl = label_from_features(rec)
+            rec["label"] = lbl.model_dump()
+            rep.labelled += 1
+        if rep.labelled:
+            store.save()
+        rep.calls = 0
+        rep.pending = sum(1 for r in store if r.get("accepted") and not r.get("label") and r.get("kind", "pattern") == "pattern")
+        return rep
+
+    from edit.llm import EditLLMFailed, run_structured
+    from eval.providers import BudgetExceeded, CallBudget, CountingProvider
+
     budget_labels = budget
     budget = CallBudget(max_calls)
     counted = CountingProvider(provider, budget)
@@ -188,4 +323,4 @@ def label_pending(
     return rep
 
 
-__all__ = ["LABEL_SYSTEM_PROMPT", "EXAMPLE_TITLES", "LabelReport", "PatternLabel", "rich_order", "richness", "is_example_title", "label_pending", "label_messages"]
+__all__ = ["LABEL_SYSTEM_PROMPT", "EXAMPLE_TITLES", "LabelReport", "PatternLabel", "rich_order", "richness", "is_example_title", "label_from_features", "label_pending", "label_messages"]

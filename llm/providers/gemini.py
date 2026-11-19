@@ -68,6 +68,7 @@ class GeminiProvider:
         self._transient_retries = transient_retries
         self._backoff_seconds = backoff_seconds
         self.last_usage: Dict[str, Any] = {}  # usageMetadata of the last call
+        self.fallback_reasons: List[str] = []
 
     # ------------------------------------------------------------------
 
@@ -109,6 +110,7 @@ class GeminiProvider:
         messages: List[Dict[str, Any]],
         schema: Dict[str, Any],
     ) -> str:
+        self.fallback_reasons = []
         if not self._api_key:
             raise base.ProviderError(
                 "Gemini provider requires an API key. "
@@ -145,6 +147,7 @@ class GeminiProvider:
         """Try ``self.model``, then each fallback model on overload, quota or timeout errors."""
         primary = self.model
         candidates = [primary, *self._fallback_models]
+        self.fallback_reasons = []
         try:
             for i, model in enumerate(candidates):
                 self.model = model
@@ -154,6 +157,13 @@ class GeminiProvider:
                 except base.ProviderError as err:
                     retryable = err.status in _FALLBACK_STATUSES or err.timed_out
                     if retryable and i < len(candidates) - 1:
+                        reason = (
+                            f"HTTP {err.status}" if err.status
+                            else "timeout" if err.timed_out
+                            else "connection error"
+                        )
+                        if reason not in self.fallback_reasons:
+                            self.fallback_reasons.append(reason)
                         jobs.report("llm", f"{model} {_failure(err)}, trying {candidates[i + 1]}")
                         continue
                     raise

@@ -1,311 +1,93 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1980" height="1185" viewBox="0 0 1980 1185" style="background:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" style="background:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <defs>
-<filter id="cardShadow" x="-4%" y="-4%" width="108%" height="110%"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#0F172A" flood-opacity="0.08"/></filter>
-<marker id="arrow_059669" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#059669"/></marker>
-<marker id="arrow_0D9488" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#0D9488"/></marker>
-<marker id="arrow_0F172A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#0F172A"/></marker>
-<marker id="arrow_2563EB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#2563EB"/></marker>
-<marker id="arrow_334155" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#334155"/></marker>
-<marker id="arrow_4F46E5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#4F46E5"/></marker>
-<marker id="arrow_64748B" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#64748B"/></marker>
-<marker id="arrow_7C3AED" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#7C3AED"/></marker>
-<marker id="arrow_D97706" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#D97706"/></marker>
-<marker id="arrow_E11D48" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#E11D48"/></marker>
+<filter id="cardShadow" x="-4%" y="-4%" width="108%" height="112%"><feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#0F172A" flood-opacity="0.08"/></filter>
+<marker id="arrow_059669" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#059669"/></marker>
+<marker id="arrow_0D9488" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#0D9488"/></marker>
+<marker id="arrow_0F172A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#0F172A"/></marker>
+<marker id="arrow_334155" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#334155"/></marker>
+<marker id="arrow_4F46E5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#4F46E5"/></marker>
+<marker id="arrow_7C3AED" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#7C3AED"/></marker>
+<marker id="arrow_E11D48" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#E11D48"/></marker>
 </defs>
-<rect x="0" y="0" width="1980" height="1185" fill="#FFFFFF"/>
-<text x="32" y="38" font-size="22" font-weight="700" fill="#0F172A">GLDtk: End-to-End 11-Stage Neuro-Symbolic Level Generation DAG</text>
-<text x="32" y="60" font-size="13" fill="#475569">Deterministic verification, repair, comfort, complexity, and LDtk 1.5.3 export (pipeline/level.py::build_level)</text>
-<rect x="1846" y="20" width="96" height="24" rx="12" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.4"/>
-<text x="1894.0" y="36" font-size="11" font-weight="600" text-anchor="middle" fill="#0F172A">LDtk Export</text>
-<rect x="1714" y="20" width="124" height="24" rx="12" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.4"/>
-<text x="1776.0" y="36" font-size="11" font-weight="600" text-anchor="middle" fill="#0F172A">Repair / Errors</text>
-<rect x="1582" y="20" width="124" height="24" rx="12" fill="#ECFDF5" stroke="#059669" stroke-width="1.4"/>
-<text x="1644.0" y="36" font-size="11" font-weight="600" text-anchor="middle" fill="#0F172A">System 2 Verify</text>
-<rect x="1423" y="20" width="151" height="24" rx="12" fill="#FFFBEB" stroke="#D97706" stroke-width="1.4"/>
-<text x="1498.5" y="36" font-size="11" font-weight="600" text-anchor="middle" fill="#0F172A">Symbolic Patch/Fill</text>
-<rect x="1278" y="20" width="137" height="24" rx="12" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.4"/>
-<text x="1346.5" y="36" font-size="11" font-weight="600" text-anchor="middle" fill="#0F172A">Neural / System 1</text>
-<rect x="1140" y="20" width="130" height="24" rx="12" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.4"/>
-<text x="1205.0" y="36" font-size="11" font-weight="600" text-anchor="middle" fill="#0F172A">Inputs / Context</text>
-<rect x="30" y="88" width="340" height="1020" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.8"/>
-<path d="M 30,134 L 30,98 Q 30,88 40,88 L 360,88 Q 370,88 370,98 L 370,134 Z" fill="#C7D2FE" stroke="#4F46E5" stroke-width="1.2"/>
-<text x="44" y="109" font-size="13.0" font-weight="700" fill="#0F172A">Inputs &amp; Context Assembly</text>
-<text x="44" y="126" font-size="11.0" fill="#334155">User intent, physics profile, RAG &amp; memory</text>
-<rect x="425" y="88" width="520" height="1020" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.8"/>
-<path d="M 425,134 L 425,98 Q 425,88 435,88 L 935,88 Q 945,88 945,98 L 945,134 Z" fill="#DDD6FE" stroke="#7C3AED" stroke-width="1.2"/>
-<text x="439" y="109" font-size="13.0" font-weight="700" fill="#0F172A">Stages 1–4 · System 1 Neural Spec &amp; Mission</text>
-<text x="439" y="126" font-size="11.0" fill="#334155">Schema-enforced LLM + symbolic patching &amp; Dormans grammar</text>
-<rect x="1005" y="88" width="530" height="1020" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="1.8"/>
-<path d="M 1005,134 L 1005,98 Q 1005,88 1015,88 L 1525,88 Q 1535,88 1535,98 L 1535,134 Z" fill="#A7F3D0" stroke="#059669" stroke-width="1.2"/>
-<text x="1019" y="109" font-size="13.0" font-weight="700" fill="#0F172A">Stages 5–8 · System 2 Terrain, Physics &amp; Soft-Lock Proofs</text>
-<text x="1019" y="126" font-size="11.0" fill="#334155">Swept-hitbox physics oracle, Tarjan SCC &amp; complexity control</text>
-<rect x="1595" y="88" width="355" height="1020" rx="10" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.8"/>
-<path d="M 1595,134 L 1595,98 Q 1595,88 1605,88 L 1940,88 Q 1950,88 1950,98 L 1950,134 Z" fill="#BFDBFE" stroke="#2563EB" stroke-width="1.2"/>
-<text x="1609" y="109" font-size="13.0" font-weight="700" fill="#0F172A">Stages 9–11 · Noise, Art &amp; LDtk Export</text>
-<text x="1609" y="126" font-size="11.0" fill="#334155">Schema-exact LDtk 1.5.3 JSON + sidebar</text>
-<rect x="50" y="152" width="300" height="104" rx="8" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="50" y="152" width="6" height="104" rx="3" fill="#4F46E5"/>
-<rect x="179.0" y="168.5" width="46" height="15" rx="7.5" fill="#C7D2FE" stroke="#4F46E5" stroke-width="0.9"/>
-<text x="202.0" y="179.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338CA">INPUT</text>
-<text x="202.0" y="196.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">User Prompt &amp; Generation Params</text>
-<text x="202.0" y="211.0" text-anchor="middle" font-size="11.0" fill="#334155">Natural language description + seed</text>
-<text x="202.0" y="226.0" text-anchor="middle" font-size="11.0" fill="#334155">complexity (0..1), rock fill, levels (1..8)</text>
-<text x="202.0" y="241.0" text-anchor="middle" font-size="11.0" fill="#334155">Target level / section / region scope</text>
-<rect x="50" y="286" width="300" height="118" rx="8" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="50" y="286" width="6" height="118" rx="3" fill="#4F46E5"/>
-<rect x="173.0" y="302.0" width="58" height="15" rx="7.5" fill="#C7D2FE" stroke="#4F46E5" stroke-width="0.9"/>
-<text x="202.0" y="313.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338CA">PHYSICS</text>
-<text x="202.0" y="329.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">GameProfile (game/profile.py)</text>
-<text x="202.0" y="344.5" text-anchor="middle" font-size="11.0" fill="#334155">File: gldtk.game.json beside .ldtk</text>
-<text x="202.0" y="359.5" text-anchor="middle" font-size="11.0" fill="#334155">Physics: g=1800, jump_v=500, run=220 px/s</text>
-<text x="202.0" y="374.5" text-anchor="middle" font-size="11.0" fill="#334155">Abilities: double_jump, dash, wall_jump</text>
-<text x="202.0" y="389.5" text-anchor="middle" font-size="11.0" fill="#334155">Comfort: hop&lt;=4, rise&lt;=3, drop&lt;=6 tiles</text>
-<rect x="50" y="434" width="300" height="118" rx="8" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="50" y="434" width="6" height="118" rx="3" fill="#4F46E5"/>
-<rect x="179.0" y="450.0" width="46" height="15" rx="7.5" fill="#C7D2FE" stroke="#4F46E5" stroke-width="0.9"/>
-<text x="202.0" y="461.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338CA">RAG</text>
-<text x="202.0" y="477.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">RAG Pattern Library (patterns/)</text>
-<text x="202.0" y="492.5" text-anchor="middle" font-size="11.0" fill="#334155">index.json: 3,577 indexed records</text>
-<text x="202.0" y="507.5" text-anchor="middle" font-size="11.0" fill="#334155">3,336 verified windows (SuperTux/OpenSurge)</text>
-<text x="202.0" y="522.5" text-anchor="middle" font-size="11.0" fill="#334155">768-dim cosine retrieval (nomic-embed-text)</text>
-<text x="202.0" y="537.5" text-anchor="middle" font-size="11.0" fill="#334155">Vision-checked labels (patterns/vision.py)</text>
-<rect x="50" y="582" width="300" height="114" rx="8" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="50" y="582" width="6" height="114" rx="3" fill="#4F46E5"/>
-<rect x="176.0" y="596.0" width="52" height="15" rx="7.5" fill="#C7D2FE" stroke="#4F46E5" stroke-width="0.9"/>
-<text x="202.0" y="607.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338CA">MEMORY</text>
-<text x="202.0" y="623.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">Design Memory (memory/)</text>
-<text x="202.0" y="638.5" text-anchor="middle" font-size="11.0" fill="#334155">Local cross-project log (events.jsonl)</text>
-<text x="202.0" y="653.5" text-anchor="middle" font-size="11.0" fill="#334155">Diffs hand edits, undos &amp; accepted builds</text>
-<text x="202.0" y="668.5" text-anchor="middle" font-size="11.0" fill="#334155">preferences.json distilled designer rules</text>
-<text x="202.0" y="683.5" text-anchor="middle" font-size="11.0" fill="#334155">App Support/GLDtk/memory/ (toggleable)</text>
-<rect x="50" y="726" width="300" height="104" rx="8" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="50" y="726" width="6" height="104" rx="3" fill="#4F46E5"/>
-<rect x="176.0" y="742.5" width="52" height="15" rx="7.5" fill="#C7D2FE" stroke="#4F46E5" stroke-width="0.9"/>
-<text x="202.0" y="753.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#4338CA">ASSETS</text>
-<text x="202.0" y="770.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">Curated CC0 Asset Library</text>
-<text x="202.0" y="785.0" text-anchor="middle" font-size="11.0" fill="#334155">8 autotile themes (80x64 14-role sheets)</text>
-<text x="202.0" y="800.0" text-anchor="middle" font-size="11.0" fill="#334155">25 entity sprites (Kenney CC0 1.0)</text>
-<text x="202.0" y="815.0" text-anchor="middle" font-size="11.0" fill="#334155">Optional Gemini AI art (/art/theme, /sprite)</text>
-<rect x="50" y="862" width="300" height="150" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="164.5" y="886.5" width="71" height="15" rx="7.5" fill="#334155" stroke="#334155" stroke-width="0.9"/>
-<text x="200.0" y="897.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#60A5FA">INVARIANT</text>
-<text x="200.0" y="914.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#F8FAFC">Core Safety Guarantee</text>
-<text x="200.0" y="929.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">Unverified levels are NEVER written to disk.</text>
-<text x="200.0" y="944.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">Every exported level proves:</text>
-<text x="200.0" y="959.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">1. Swept 12x24 hitbox Start-&gt;Exit path</text>
-<text x="200.0" y="974.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">2. 0 SCC traps &amp; 0 item-state soft-locks</text>
-<text x="200.0" y="989.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">3. Validated LDtk 1.5.3 JSON schema</text>
-<rect x="475" y="152" width="420" height="134" rx="8" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="475" y="152" width="6" height="134" rx="3" fill="#7C3AED"/>
-<rect x="658.0" y="168.5" width="58" height="15" rx="7.5" fill="#DDD6FE" stroke="#7C3AED" stroke-width="0.9"/>
-<text x="687.0" y="179.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6D28D9">STAGE 1</text>
-<text x="687.0" y="196.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">1. LLMController &amp; Provider Cascade</text>
-<text x="687.0" y="211.0" text-anchor="middle" font-size="11.0" fill="#334155">llm/validator.py + llm/providers/registry.py</text>
-<text x="687.0" y="226.0" text-anchor="middle" font-size="11.0" fill="#334155">Primary: gemini-3.8-flash -&gt; 3.1-flash-lite (503 backoff)</text>
-<text x="687.0" y="241.0" text-anchor="middle" font-size="11.0" fill="#334155">Auto Fallback: ollama:qwen2.5:14b (900s local timeout)</text>
-<text x="687.0" y="256.0" text-anchor="middle" font-size="11.0" fill="#334155">Also supports Claude (cached), OpenAI, DeepSeek</text>
-<text x="687.0" y="271.0" text-anchor="middle" font-size="11.0" fill="#334155">Schema-enforced JSON output: LevelSpec.json_schema()</text>
-<rect x="475" y="330" width="420" height="134" rx="8" fill="#FFFBEB" stroke="#D97706" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="475" y="330" width="6" height="134" rx="3" fill="#D97706"/>
-<rect x="658.0" y="346.5" width="58" height="15" rx="7.5" fill="#FDE68A" stroke="#D97706" stroke-width="0.9"/>
-<text x="687.0" y="357.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#B45309">STAGE 2</text>
-<text x="687.0" y="374.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">2. Spec Validator &amp; SymbolicPatcher</text>
-<text x="687.0" y="389.0" text-anchor="middle" font-size="11.0" fill="#334155">spec/level_spec.py + llm/patcher.py</text>
-<text x="687.0" y="404.0" text-anchor="middle" font-size="11.0" fill="#334155">SpecNormalizePatch: clamp bounds, scale complexity</text>
-<text x="687.0" y="419.0" text-anchor="middle" font-size="11.0" fill="#334155">EdgeReclassifyPatch: steep Walk -&gt; Jump / Fall</text>
-<text x="687.0" y="434.0" text-anchor="middle" font-size="11.0" fill="#334155">VelocityPatch, AbilityAssignPatch, SteppingStonePatch</text>
-<text x="687.0" y="449.0" text-anchor="middle" font-size="11.0" fill="#334155">Fixes Qwen/LLM drift without extra LLM calls</text>
-<rect x="475" y="512" width="420" height="134" rx="8" fill="#FFFBEB" stroke="#D97706" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="475" y="512" width="6" height="134" rx="3" fill="#D97706"/>
-<rect x="658.0" y="528.5" width="58" height="15" rx="7.5" fill="#FDE68A" stroke="#D97706" stroke-width="0.9"/>
-<text x="687.0" y="539.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#B45309">STAGE 3</text>
-<text x="687.0" y="556.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">3. Completeness &amp; Fidelity Fill</text>
-<text x="687.0" y="571.0" text-anchor="middle" font-size="11.0" fill="#334155">pipeline/completeness.py + fidelity/{checker,fill}.py</text>
-<text x="687.0" y="586.0" text-anchor="middle" font-size="11.0" fill="#334155">Extracts explicit &amp; implicit prompt requirements</text>
-<text x="687.0" y="601.0" text-anchor="middle" font-size="11.0" fill="#334155">Deterministically injects missing entities, start_item,</text>
-<text x="687.0" y="616.0" text-anchor="middle" font-size="11.0" fill="#334155">section P_&lt;type&gt; structures, and lock_key_cycle</text>
-<text x="687.0" y="631.0" text-anchor="middle" font-size="11.0" fill="#334155">At most 1 complete_spec() LLM re-prompt if still short</text>
-<rect x="475" y="694" width="420" height="136" rx="8" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="475" y="694" width="6" height="136" rx="3" fill="#7C3AED"/>
-<rect x="658.0" y="711.5" width="58" height="15" rx="7.5" fill="#DDD6FE" stroke="#7C3AED" stroke-width="0.9"/>
-<text x="687.0" y="722.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6D28D9">STAGE 4</text>
-<text x="687.0" y="739.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">4. Mission Grammar &amp; Space Embedding</text>
-<text x="687.0" y="754.0" text-anchor="middle" font-size="11.0" fill="#334155">mission/{grammar,graph,space,verify}.py</text>
-<text x="687.0" y="769.0" text-anchor="middle" font-size="11.0" fill="#334155">Dormans graph rewriting productions:</text>
-<text x="687.0" y="784.0" text-anchor="middle" font-size="11.0" fill="#334155">lock_key_cycle · ability_gate · shortcut_loop</text>
-<text x="687.0" y="799.0" text-anchor="middle" font-size="11.0" fill="#334155">treasure_branch · boss_before_exit</text>
-<text x="687.0" y="814.0" text-anchor="middle" font-size="11.0" fill="#334155">Counterfactual verify: unbypassable &amp; solvable locks</text>
-<rect x="475" y="875" width="420" height="145" rx="8" fill="#F8FAFC" stroke="#64748B" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="475" y="875" width="6" height="145" rx="3" fill="#64748B"/>
-<rect x="661.0" y="897.0" width="52" height="15" rx="7.5" fill="#E2E8F0" stroke="#64748B" stroke-width="0.9"/>
-<text x="687.0" y="908.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#475569">WORLDS</text>
-<text x="687.0" y="924.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">Multi-Level Worlds &amp; Endless Chunks</text>
-<text x="687.0" y="939.5" text-anchor="middle" font-size="11.0" fill="#334155">pipeline/world.py &amp; pipeline/chunks.py</text>
-<text x="687.0" y="954.5" text-anchor="middle" font-size="11.0" fill="#334155">WorldOutline -&gt; 1..8 linked levels (Exit -&gt; next Start)</text>
-<text x="687.0" y="969.5" text-anchor="middle" font-size="11.0" fill="#334155">Regenerate single level while keeping sibling levels</text>
-<text x="687.0" y="984.5" text-anchor="middle" font-size="11.0" fill="#334155">POST /chunks appends deterministic seeded chunks</text>
-<text x="687.0" y="999.5" text-anchor="middle" font-size="11.0" fill="#334155">Joined via fixed border port seams &amp; verified per chunk</text>
-<rect x="1065" y="152" width="420" height="140" rx="8" fill="#F0FDFA" stroke="#0D9488" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1065" y="152" width="6" height="140" rx="3" fill="#0D9488"/>
-<rect x="1248.0" y="171.5" width="58" height="15" rx="7.5" fill="#99F6E4" stroke="#0D9488" stroke-width="0.9"/>
-<text x="1277.0" y="182.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0F766E">STAGE 5</text>
-<text x="1277.0" y="199.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">5. Terrain Carving &amp; RAG Pattern Stamping</text>
-<text x="1277.0" y="214.0" text-anchor="middle" font-size="11.0" fill="#334155">layout/terrain/ + pipeline/stamps.py (StampFinder)</text>
-<text x="1277.0" y="229.0" text-anchor="middle" font-size="11.0" fill="#334155">7 rock carvers: corridor · parkour · labyrinth ·</text>
-<text x="1277.0" y="244.0" text-anchor="middle" font-size="11.0" fill="#334155">arena · shaft (zigzag) · hub · open</text>
-<text x="1277.0" y="259.0" text-anchor="middle" font-size="11.0" fill="#334155">Matches RAG windows by geometry class &amp; height;</text>
-<text x="1277.0" y="274.0" text-anchor="middle" font-size="11.0" fill="#334155">rock padding &amp; vertical stacking + level_route check</text>
-<rect x="1065" y="344" width="420" height="156" rx="8" fill="#ECFDF5" stroke="#059669" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1065" y="344" width="6" height="156" rx="3" fill="#059669"/>
-<rect x="1248.0" y="364.0" width="58" height="15" rx="7.5" fill="#A7F3D0" stroke="#059669" stroke-width="0.9"/>
-<text x="1277.0" y="375.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#047857">STAGE 6</text>
-<text x="1277.0" y="391.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">6. Grid Extraction, Physics &amp; Soft-Lock Verify</text>
-<text x="1277.0" y="406.5" text-anchor="middle" font-size="11.0" fill="#334155">symbolic/{extractor,physics,walljump,gravity}.py</text>
-<text x="1277.0" y="421.5" text-anchor="middle" font-size="11.0" fill="#334155">layout/verify.py + layout/softlock.py</text>
-<text x="1277.0" y="436.5" text-anchor="middle" font-size="11.0" fill="#334155">Swept 12x24 px AABB hitbox (ds &lt;= 6 px), headroom &gt;= 2</text>
-<text x="1277.0" y="451.5" text-anchor="middle" font-size="11.0" fill="#334155">Checks single/double jump (tau*), dash, wall kick, g(x)</text>
-<text x="1277.0" y="466.5" text-anchor="middle" font-size="11.0" fill="#334155">Tarjan SCC traps + Item-State Product Graph V x P(K)</text>
-<text x="1277.0" y="481.5" text-anchor="middle" font-size="11.0" fill="#334155">Counterfactual check: no key placed behind its door</text>
-<rect x="1065" y="558" width="420" height="124" rx="8" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1065" y="558" width="6" height="124" rx="3" fill="#E11D48"/>
-<rect x="1251.0" y="577.0" width="52" height="15" rx="7.5" fill="#FECDD3" stroke="#E11D48" stroke-width="0.9"/>
-<text x="1277.0" y="588.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#BE123C">REPAIR</text>
-<text x="1277.0" y="604.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">Deterministic Grid &amp; Soft-Lock Repair</text>
-<text x="1277.0" y="619.5" text-anchor="middle" font-size="11.0" fill="#334155">layout/repair.py + layout/softlock_repair.py</text>
-<text x="1277.0" y="634.5" text-anchor="middle" font-size="11.0" fill="#334155">Retry failing terrain section seeds (&lt;= TERRAIN_ATTEMPTS)</text>
-<text x="1277.0" y="649.5" text-anchor="middle" font-size="11.0" fill="#334155">Synthesize stepping stones, raise low ceilings, relocate keys</text>
-<text x="1277.0" y="664.5" text-anchor="middle" font-size="11.0" fill="#334155">Last resort: controller.repair_spec() (&lt;= 2 LLM retries)</text>
-<rect x="1065" y="736" width="420" height="128" rx="8" fill="#F0FDFA" stroke="#0D9488" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1065" y="736" width="6" height="128" rx="3" fill="#0D9488"/>
-<rect x="1248.0" y="749.5" width="58" height="15" rx="7.5" fill="#99F6E4" stroke="#0D9488" stroke-width="0.9"/>
-<text x="1277.0" y="760.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#0F766E">STAGE 7</text>
-<text x="1277.0" y="777.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">7. Comfort Pass &amp; Chebyshev Densification</text>
-<text x="1277.0" y="792.0" text-anchor="middle" font-size="11.0" fill="#334155">layout/comfort.py + layout/densify.py</text>
-<text x="1277.0" y="807.0" text-anchor="middle" font-size="11.0" fill="#334155">Effort-cost A* (walk=1.0, super-linear jump cost)</text>
-<text x="1277.0" y="822.0" text-anchor="middle" font-size="11.0" fill="#334155">Adds hop_N ledges for comfort limits (outside parkour)</text>
-<text x="1277.0" y="837.0" text-anchor="middle" font-size="11.0" fill="#334155">2D Chebyshev distance transform void platform infill</text>
-<text x="1277.0" y="852.0" text-anchor="middle" font-size="11.0" fill="#334155">Discards any fill platform obstructing golden arcs</text>
-<rect x="1065" y="916" width="420" height="126" rx="8" fill="#ECFDF5" stroke="#059669" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1065" y="916" width="6" height="126" rx="3" fill="#059669"/>
-<rect x="1248.0" y="936.0" width="58" height="15" rx="7.5" fill="#A7F3D0" stroke="#059669" stroke-width="0.9"/>
-<text x="1277.0" y="947.0" text-anchor="middle" font-size="9.5" font-weight="700" fill="#047857">STAGE 8</text>
-<text x="1277.0" y="963.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">8. Closed-Loop Complexity Controller</text>
-<text x="1277.0" y="978.5" text-anchor="middle" font-size="11.0" fill="#334155">pipeline/complexity.py + fidelity/difficulty.py</text>
-<text x="1277.0" y="993.5" text-anchor="middle" font-size="11.0" fill="#334155">5-factor score: jumps, enemies, hazards, ledges, relief</text>
-<text x="1277.0" y="1008.5" text-anchor="middle" font-size="11.0" fill="#334155">Iteratively adjusts gaps &amp; density toward target (1..10)</text>
-<text x="1277.0" y="1023.5" text-anchor="middle" font-size="11.0" fill="#334155">Re-lays out &amp; re-verifies each round (&lt;= MAX_ROUNDS)</text>
-<rect x="1620" y="165" width="305" height="132" rx="8" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1620" y="165" width="6" height="132" rx="3" fill="#2563EB"/>
-<rect x="1745.5" y="180.5" width="58" height="15" rx="7.5" fill="#BFDBFE" stroke="#2563EB" stroke-width="0.9"/>
-<text x="1774.5" y="191.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1D4ED8">STAGE 9</text>
-<text x="1774.5" y="208.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">9. Noise Cavern Rock Fill</text>
-<text x="1774.5" y="223.0" text-anchor="middle" font-size="11.0" fill="#334155">layout/fill.py + layout/noise.py</text>
-<text x="1774.5" y="238.0" text-anchor="middle" font-size="11.0" fill="#334155">Domain-warped fBm simplex noise</text>
-<text x="1774.5" y="253.0" text-anchor="middle" font-size="11.0" fill="#334155">4–5 Cellular Automata smoothing passes</text>
-<text x="1774.5" y="268.0" text-anchor="middle" font-size="11.0" fill="#334155">Decorative Background IntGrid layer</text>
-<text x="1774.5" y="283.0" text-anchor="middle" font-size="11.0" fill="#334155">Strictly avoids protected route envelope</text>
-<rect x="1620" y="358" width="305" height="134" rx="8" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1620" y="358" width="6" height="134" rx="3" fill="#2563EB"/>
-<rect x="1742.0" y="374.5" width="65" height="15" rx="7.5" fill="#BFDBFE" stroke="#2563EB" stroke-width="0.9"/>
-<text x="1774.5" y="385.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1D4ED8">STAGE 10</text>
-<text x="1774.5" y="402.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">10. Aesthetic Autotiling</text>
-<text x="1774.5" y="417.0" text-anchor="middle" font-size="11.0" fill="#334155">aesthetic/{library,autotile,themes}.py</text>
-<text x="1774.5" y="432.0" text-anchor="middle" font-size="11.0" fill="#334155">Per-section theme Tiles layers</text>
-<text x="1774.5" y="447.0" text-anchor="middle" font-size="11.0" fill="#334155">14-role bitmask autotiler + variants</text>
-<text x="1774.5" y="462.0" text-anchor="middle" font-size="11.0" fill="#334155">Packs 25 entity icons into sprites.png</text>
-<text x="1774.5" y="477.0" text-anchor="middle" font-size="11.0" fill="#334155">Copies assets to &lt;dir&gt;/gldtk_assets/</text>
-<rect x="1620" y="554" width="305" height="142" rx="8" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1620" y="554" width="6" height="142" rx="3" fill="#2563EB"/>
-<rect x="1742.0" y="574.5" width="65" height="15" rx="7.5" fill="#BFDBFE" stroke="#2563EB" stroke-width="0.9"/>
-<text x="1774.5" y="585.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1D4ED8">STAGE 11</text>
-<text x="1774.5" y="602.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F172A">11. LDtk 1.5.3 JSON Export</text>
-<text x="1774.5" y="617.0" text-anchor="middle" font-size="11.0" fill="#334155">layout/ldtk_adapter.py</text>
-<text x="1774.5" y="632.0" text-anchor="middle" font-size="10.3" fill="#334155">Strict layer order: Entities -&gt; Tiles -&gt; Collisions</text>
-<text x="1774.5" y="647.0" text-anchor="middle" font-size="11.0" fill="#334155">Pre-populates cachedPixelData &amp; __smartColor</text>
-<text x="1774.5" y="662.0" text-anchor="middle" font-size="11.0" fill="#334155">Stores gldtk_prompt/sections/spec fields</text>
-<text x="1774.5" y="677.0" text-anchor="middle" font-size="11.0" fill="#334155">Validated against LDtk JSON_SCHEMA.json</text>
-<rect x="1620" y="760" width="305" height="158" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1.7" filter="url(#cardShadow)"/>
-<rect x="1746.5" y="788.5" width="52" height="15" rx="7.5" fill="#334155" stroke="#334155" stroke-width="0.9"/>
-<text x="1772.5" y="799.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#60A5FA">EDITOR</text>
-<text x="1772.5" y="816.0" text-anchor="middle" font-size="12.5" font-weight="700" fill="#F8FAFC">Native LDtk Sidebar Reload</text>
-<text x="1772.5" y="831.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">ldtk-src/.../ui/GldtkSidebar.hx</text>
-<text x="1772.5" y="846.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">ProjectLoader + editor.selectProject() swap</text>
-<text x="1772.5" y="861.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">Renders Fidelity Report &amp; Difficulty Curve</text>
-<text x="1772.5" y="876.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">Canvas Route Overlay + red soft-lock spans</text>
-<text x="1772.5" y="891.0" text-anchor="middle" font-size="11.0" fill="#CBD5E1">60 Hz Play Mode modal + 30-step Undo stack</text>
-<path d="M 350.0,198.8 L 391.7,199.0 Q 398.0,199.0 398.0,192.7 L 398.0,191.3 Q 398.0,185.0 404.3,185.0 L 475.0,185.5" fill="none" stroke="#4F46E5" stroke-width="1.7" marker-end="url(#arrow_4F46E5)"/>
-<rect x="354.8" y="163.0" width="86.4" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="398.0" y="174.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#4F46E5">prompt + cfg</text>
-<path d="M 350.0,315.5 L 377.0,315.1 Q 386.0,315.0 386.0,306.0 L 386.0,228.0 Q 386.0,219.0 395.0,219.0 L 475.0,219.0" fill="none" stroke="#4F46E5" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_4F46E5)"/>
-<rect x="364.1" y="257.0" width="67.8" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="398.0" y="268.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#4F46E5">abilities</text>
-<path d="M 350.0,463.5 L 391.0,463.1 Q 400.0,463.0 400.0,454.0 L 400.0,257.0 Q 400.0,248.0 409.0,248.1 L 475.0,248.5" fill="none" stroke="#4F46E5" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_4F46E5)"/>
-<rect x="354.8" y="356.0" width="86.4" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="398.0" y="367.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#4F46E5">few-shot RAG</text>
-<path d="M 350.0,616.2 L 403.0,616.0 Q 412.0,616.0 412.0,607.0 L 412.0,282.0 Q 412.0,273.0 421.0,272.9 L 475.0,272.6" fill="none" stroke="#4F46E5" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_4F46E5)"/>
-<rect x="376.5" y="521.0" width="43.0" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="398.0" y="532.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#4F46E5">rules</text>
-<path d="M 200.0,404.0 L 366.0,419.2 Q 375.0,420.0 375.0,429.0 L 375.0,1059.0 Q 375.0,1068.0 384.0,1068.0 L 963.0,1068.0 Q 972.0,1068.0 972.0,1059.0 L 972.0,478.0 Q 972.0,469.0 981.0,469.0 L 1065.0,468.8" fill="none" stroke="#4F46E5" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_4F46E5)"/>
-<rect x="620.6" y="1059.0" width="98.8" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="670.0" y="1070.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#4F46E5">physics bounds</text>
-<path d="M 350.0,516.6 L 377.0,516.9 Q 386.0,517.0 386.0,526.0 L 386.0,1085.0 Q 386.0,1094.0 395.0,1094.0 L 977.0,1094.0 Q 986.0,1094.0 986.0,1085.0 L 986.0,266.0 Q 986.0,257.0 995.0,257.0 L 1065.0,257.0" fill="none" stroke="#0D9488" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_0D9488)"/>
-<rect x="623.7" y="1085.0" width="92.6" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#0D9488" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="670.0" y="1096.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#0D9488">stamp windows</text>
-<path d="M 350.0,778.0 L 389.0,778.0 Q 398.0,778.0 398.0,787.0 L 398.0,1111.0 Q 398.0,1120.0 407.0,1120.0 L 1556.0,1120.0 Q 1565.0,1120.0 1565.0,1111.0 L 1565.0,454.0 Q 1565.0,445.0 1574.0,445.0 L 1620.0,445.1" fill="none" stroke="#2563EB" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_2563EB)"/>
-<rect x="924.4" y="1111.0" width="111.2" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#2563EB" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="980.0" y="1122.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#2563EB">themes + sprites</text>
-<path d="M 685.0,286.0 L 685.0,330.0" fill="none" stroke="#7C3AED" stroke-width="2.3" marker-end="url(#arrow_7C3AED)"/>
-<rect x="635.6" y="298.0" width="98.8" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#7C3AED" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="685.0" y="309.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#7C3AED">LevelSpec JSON</text>
-<path d="M 895.0,376.9 L 911.0,377.0 Q 920.0,377.0 920.0,368.0 L 920.0,248.0 Q 920.0,239.0 911.0,239.0 L 895.0,239.1" fill="none" stroke="#D97706" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_D97706)"/>
-<rect x="867.5" y="299.0" width="105.0" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#D97706" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="920.0" y="310.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#D97706">re-prompt (&lt;=2)</text>
-<path d="M 685.0,464.0 L 685.0,512.0" fill="none" stroke="#D97706" stroke-width="2.3" marker-end="url(#arrow_D97706)"/>
-<rect x="648.0" y="479.0" width="74.0" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#D97706" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="685.0" y="490.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#D97706">valid spec</text>
-<path d="M 475.0,558.9 L 457.0,559.0 Q 448.0,559.0 448.0,550.0 L 448.0,244.0 Q 448.0,235.0 457.0,235.0 L 475.0,235.1" fill="none" stroke="#D97706" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_D97706)"/>
-<rect x="389.3" y="403.0" width="117.4" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#D97706" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="448.0" y="414.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#D97706">&lt;=1 complete_spec</text>
-<path d="M 685.0,646.0 L 685.0,694.0" fill="none" stroke="#7C3AED" stroke-width="2.3" marker-end="url(#arrow_7C3AED)"/>
-<rect x="638.7" y="661.0" width="92.6" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#7C3AED" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="685.0" y="672.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#7C3AED">complete spec</text>
-<path d="M 895.0,755.2 L 951.0,755.0 Q 960.0,755.0 960.0,746.0 L 960.0,210.0 Q 960.0,201.0 969.0,201.0 L 1065.0,201.0" fill="none" stroke="#0D9488" stroke-width="2.3" marker-end="url(#arrow_0D9488)"/>
-<rect x="887.7" y="556.0" width="154.6" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#0D9488" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="965.0" y="567.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#0D9488">sections + mission plan</text>
-<path d="M 1275.0,292.0 L 1275.0,344.0" fill="none" stroke="#059669" stroke-width="2.3" marker-end="url(#arrow_059669)"/>
-<rect x="1231.8" y="308.0" width="86.4" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#059669" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1275.0" y="319.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#059669">IRLevel grid</text>
-<path d="M 1199.4,500.0 L 1199.4,558.0" fill="none" stroke="#E11D48" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_E11D48)"/>
-<rect x="1149.6" y="520.0" width="98.8" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#E11D48" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1199.0" y="531.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#E11D48">errors / traps</text>
-<path d="M 1350.6,558.0 L 1350.6,500.0" fill="none" stroke="#059669" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_059669)"/>
-<rect x="1317.1" y="520.0" width="67.8" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#059669" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1351.0" y="531.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#059669">re-verify</text>
-<path d="M 1065.0,620.0 L 1005.0,620.0 Q 996.0,620.0 996.0,611.0 L 996.0,275.0 Q 996.0,266.0 987.0,266.0 L 895.0,265.9" fill="none" stroke="#E11D48" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_E11D48)"/>
-<rect x="915.1" y="376.0" width="129.8" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#E11D48" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="980.0" y="387.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#E11D48">repair_spec() (&lt;=2)</text>
-<path d="M 1485.0,445.4 L 1501.0,445.1 Q 1510.0,445.0 1510.0,454.0 L 1510.0,771.0 Q 1510.0,780.0 1501.0,780.3 L 1485.0,780.8" fill="none" stroke="#059669" stroke-width="2.3" marker-end="url(#arrow_059669)"/>
-<rect x="1469.9" y="551.0" width="80.2" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#059669" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1510.0" y="562.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#059669">verified ok</text>
-<path d="M 1275.0,864.0 L 1275.0,916.0" fill="none" stroke="#059669" stroke-width="2.3" marker-end="url(#arrow_059669)"/>
-<rect x="1207.0" y="881.0" width="136.0" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#059669" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1275.0" y="892.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#059669">comfort + dense grid</text>
-<path d="M 1065.0,979.0 L 1041.0,979.0 Q 1032.0,979.0 1032.0,970.0 L 1032.0,238.0 Q 1032.0,229.0 1041.0,229.0 L 1065.0,229.0" fill="none" stroke="#0D9488" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_0D9488)"/>
-<rect x="957.8" y="806.0" width="148.4" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#0D9488" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1032.0" y="817.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#0D9488">re-tune (&lt;=MAX_ROUNDS)</text>
-<path d="M 1485.0,979.0 L 1549.0,979.0 Q 1558.0,979.0 1558.0,970.0 L 1558.0,240.0 Q 1558.0,231.0 1567.0,231.0 L 1620.0,231.0" fill="none" stroke="#2563EB" stroke-width="2.3" marker-end="url(#arrow_2563EB)"/>
-<rect x="1505.5" y="691.0" width="105.0" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#2563EB" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1558.0" y="702.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#2563EB">converged level</text>
-<path d="M 1772.5,297.0 L 1772.5,358.0" fill="none" stroke="#2563EB" stroke-width="2.3" marker-end="url(#arrow_2563EB)"/>
-<rect x="1713.3" y="318.0" width="117.4" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#2563EB" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1772.0" y="329.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#2563EB">grid + background</text>
-<path d="M 1772.5,492.0 L 1772.5,554.0" fill="none" stroke="#2563EB" stroke-width="2.3" marker-end="url(#arrow_2563EB)"/>
-<rect x="1716.4" y="513.0" width="111.2" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#2563EB" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1772.0" y="524.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#2563EB">autotiled layers</text>
-<path d="M 1772.5,696.0 L 1772.5,760.0" fill="none" stroke="#0F172A" stroke-width="2.3" marker-end="url(#arrow_0F172A)"/>
-<rect x="1694.7" y="719.0" width="154.6" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#0F172A" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="1772.0" y="730.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#0F172A">.ldtk written -&gt; reload</text>
-<path d="M 1772.5,918.0 L 1772.0,1137.0 Q 1772.0,1146.0 1763.0,1146.0 L 209.0,1146.0 Q 200.0,1146.0 200.0,1137.0 L 200.0,696.0 L 200.0,696.0" fill="none" stroke="#64748B" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#arrow_64748B)"/>
-<rect x="902.7" y="1137.0" width="154.6" height="16" rx="4" fill="#FFFFFF" fill-opacity="0.96" stroke="#64748B" stroke-opacity="0.4" stroke-width="0.9"/>
-<text x="980.0" y="1148.5" text-anchor="middle" font-size="10.2" font-weight="600" fill="#64748B">hand-edit / undo events</text>
+<rect x="0" y="0" width="1500" height="820" fill="#FFFFFF"/>
+<text x="36" y="42" font-size="24" font-weight="700" fill="#0F172A">GLDtk: High-Level Neuro-Symbolic Pipeline DAG</text>
+<text x="36" y="66" font-size="14" fill="#475569">From natural-language prompt to statically verified, playable LDtk levels</text>
+<rect x="1351" y="22" width="103" height="26" rx="13" fill="#1E293B" stroke="#334155" stroke-width="1.5"/>
+<text x="1402.5" y="39" font-size="11.5" font-weight="600" text-anchor="middle" fill="#F8FAFC">LDtk Output</text>
+<rect x="1238" y="22" width="103" height="26" rx="13" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.5"/>
+<text x="1289.5" y="39" font-size="11.5" font-weight="600" text-anchor="middle" fill="#0F172A">Auto-Repair</text>
+<rect x="1089" y="22" width="139" height="26" rx="13" fill="#ECFDF5" stroke="#059669" stroke-width="1.5"/>
+<text x="1158.5" y="39" font-size="11.5" font-weight="600" text-anchor="middle" fill="#0F172A">Carving / Verify</text>
+<rect x="955" y="22" width="124" height="26" rx="13" fill="#FFFBEB" stroke="#D97706" stroke-width="1.5"/>
+<text x="1017.0" y="39" font-size="11.5" font-weight="600" text-anchor="middle" fill="#0F172A">Mission / Fill</text>
+<rect x="849" y="22" width="96" height="26" rx="13" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="897.0" y="39" font-size="11.5" font-weight="600" text-anchor="middle" fill="#0F172A">Neural LLM</text>
+<rect x="747" y="22" width="92" height="26" rx="13" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.5"/>
+<text x="793.0" y="39" font-size="11.5" font-weight="600" text-anchor="middle" fill="#0F172A">Inputs</text>
+<rect x="36" y="96" width="340" height="680" rx="12" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.8"/>
+<path d="M 36,132 L 36,108 Q 36,96 48,96 L 364,96 Q 376,96 376,108 L 376,132 Z" fill="#C7D2FE" stroke="#4F46E5" stroke-width="1.2"/>
+<text x="52" y="119" font-size="14.0" font-weight="700" fill="#0F172A">Inputs</text>
+<rect x="436" y="96" width="1028" height="680" rx="12" fill="#ECFDF5" stroke="#059669" stroke-width="1.8"/>
+<path d="M 436,132 L 436,108 Q 436,96 448,96 L 1452,96 Q 1464,96 1464,108 L 1464,132 Z" fill="#A7F3D0" stroke="#059669" stroke-width="1.2"/>
+<text x="452" y="119" font-size="14.0" font-weight="700" fill="#0F172A">Neuro-Symbolic Generation Pipeline</text>
+<rect x="66" y="170" width="280" height="96" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="66" y="170" width="7" height="96" rx="3.5" fill="#4F46E5"/>
+<text x="208.5" y="212.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">Text Prompt</text>
+<text x="208.5" y="233.0" text-anchor="middle" font-size="12.0" fill="#475569">Natural-language level description</text>
+<rect x="66" y="360" width="280" height="96" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="66" y="360" width="7" height="96" rx="3.5" fill="#4F46E5"/>
+<text x="208.5" y="402.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">Game Profile</text>
+<text x="208.5" y="423.0" text-anchor="middle" font-size="12.0" fill="#475569">Physics &amp; player abilities</text>
+<rect x="66" y="550" width="280" height="96" rx="10" fill="#EEF2FF" stroke="#4F46E5" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="66" y="550" width="7" height="96" rx="3.5" fill="#4F46E5"/>
+<text x="208.5" y="592.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">RAG &amp; Design Memory</text>
+<text x="208.5" y="613.0" text-anchor="middle" font-size="12.0" fill="#475569">Real level patterns &amp; user preferences</text>
+<rect x="476" y="170" width="400" height="104" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="476" y="170" width="7" height="104" rx="3.5" fill="#7C3AED"/>
+<text x="678.5" y="216.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">1. LLM Spec &amp; Symbolic Patcher</text>
+<text x="678.5" y="237.0" text-anchor="middle" font-size="12.0" fill="#475569">Cloud / Local LLM → validated LevelSpec</text>
+<rect x="476" y="355" width="400" height="104" rx="10" fill="#FFFBEB" stroke="#D97706" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="476" y="355" width="7" height="104" rx="3.5" fill="#D97706"/>
+<text x="678.5" y="401.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">2. Completeness &amp; Mission Graph</text>
+<text x="678.5" y="422.0" text-anchor="middle" font-size="12.0" fill="#475569">Auto-fill missing items &amp; key-lock loops</text>
+<rect x="476" y="540" width="400" height="104" rx="10" fill="#F0FDFA" stroke="#0D9488" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="476" y="540" width="7" height="104" rx="3.5" fill="#0D9488"/>
+<text x="678.5" y="586.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">3. Terrain Carving &amp; RAG Stamps</text>
+<text x="678.5" y="607.0" text-anchor="middle" font-size="12.0" fill="#475569">Carve 7 room types from rock + stamp patterns</text>
+<rect x="1016" y="170" width="410" height="104" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="1016" y="170" width="7" height="104" rx="3.5" fill="#059669"/>
+<text x="1223.5" y="216.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">4. Physics &amp; Soft-Lock Verification</text>
+<text x="1223.5" y="237.0" text-anchor="middle" font-size="12.0" fill="#475569">Swept-hitbox jump oracle + Tarjan SCC proof</text>
+<rect x="1016" y="355" width="410" height="104" rx="10" fill="#FFF1F2" stroke="#E11D48" stroke-width="1.8" filter="url(#cardShadow)"/>
+<rect x="1016" y="355" width="7" height="104" rx="3.5" fill="#E11D48"/>
+<text x="1223.5" y="401.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#0F172A">Auto-Repair Loop</text>
+<text x="1223.5" y="422.0" text-anchor="middle" font-size="12.0" fill="#475569">Add stepping stones, raise ceilings, move keys</text>
+<rect x="1016" y="540" width="410" height="104" rx="10" fill="#1E293B" stroke="#334155" stroke-width="1.8" filter="url(#cardShadow)"/>
+<text x="1221.0" y="586.0" text-anchor="middle" font-size="15.0" font-weight="700" fill="#F8FAFC">5. Comfort, Autotile &amp; LDtk Export</text>
+<text x="1221.0" y="607.0" text-anchor="middle" font-size="12.0" fill="#CBD5E1">Short hops → CC0 autotiling → reload in LDtk</text>
+<path d="M 346.0,218.0 L 409.2,218.0 Q 411.0,218.0 411.0,219.8 L 411.0,220.2 Q 411.0,222.0 412.8,222.0 L 476.0,222.0" fill="none" stroke="#4F46E5" stroke-width="2.4" marker-end="url(#arrow_4F46E5)"/>
+<path d="M 346.0,408.0 L 396.0,408.0 Q 406.0,408.0 406.0,418.0 L 406.0,715.0 Q 406.0,725.0 416.0,725.0 L 935.0,725.0 Q 945.0,725.0 945.0,715.0 L 945.0,258.0 Q 945.0,248.0 955.0,248.0 L 1016.0,248.0" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrow_4F46E5)"/>
+<rect x="624.4" y="715.0" width="111.2" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.45" stroke-width="1"/>
+<text x="680.0" y="728.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4F46E5">physics bounds</text>
+<path d="M 346.0,598.0 L 408.3,598.0 Q 411.0,598.0 411.0,595.3 L 411.0,594.7 Q 411.0,592.0 413.7,592.0 L 476.0,592.0" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrow_4F46E5)"/>
+<rect x="343.6" y="588.0" width="124.8" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#4F46E5" stroke-opacity="0.45" stroke-width="1"/>
+<text x="406.0" y="601.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4F46E5">patterns &amp; prefs</text>
+<path d="M 676.0,274.0 L 676.0,355.0" fill="none" stroke="#7C3AED" stroke-width="2.4" marker-end="url(#arrow_7C3AED)"/>
+<rect x="637.4" y="304.0" width="77.2" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#7C3AED" stroke-opacity="0.45" stroke-width="1"/>
+<text x="676.0" y="317.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#7C3AED">LevelSpec</text>
+<path d="M 676.0,459.0 L 676.0,540.0" fill="none" stroke="#0D9488" stroke-width="2.4" marker-end="url(#arrow_0D9488)"/>
+<rect x="627.2" y="488.0" width="97.6" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#0D9488" stroke-opacity="0.45" stroke-width="1"/>
+<text x="676.0" y="501.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0D9488">mission plan</text>
+<path d="M 876.0,576.4 L 935.0,576.1 Q 945.0,576.0 945.0,566.0 L 945.0,232.0 Q 945.0,222.0 955.0,222.0 L 1016.0,222.0" fill="none" stroke="#059669" stroke-width="2.4" marker-end="url(#arrow_059669)"/>
+<rect x="906.4" y="398.0" width="77.2" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#059669" stroke-opacity="0.45" stroke-width="1"/>
+<text x="945.0" y="411.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#059669">tile grid</text>
+<path d="M 1159.5,274.0 L 1159.5,355.0" fill="none" stroke="#E11D48" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#arrow_E11D48)"/>
+<rect x="1117.0" y="304.0" width="84.0" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#E11D48" stroke-opacity="0.45" stroke-width="1"/>
+<text x="1159.0" y="317.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#E11D48">if invalid</text>
+<path d="M 1282.5,355.0 L 1282.5,274.0" fill="none" stroke="#059669" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#arrow_059669)"/>
+<rect x="1244.4" y="304.0" width="77.2" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#059669" stroke-opacity="0.45" stroke-width="1"/>
+<text x="1283.0" y="317.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#059669">re-verify</text>
+<path d="M 1426.0,222.0 L 1437.0,222.0 Q 1446.0,222.0 1446.0,231.0 L 1446.0,583.0 Q 1446.0,592.0 1437.0,592.0 L 1426.0,592.0" fill="none" stroke="#0F172A" stroke-width="2.4" marker-end="url(#arrow_0F172A)"/>
+<rect x="1410.8" y="398.0" width="70.4" height="19" rx="5" fill="#FFFFFF" fill-opacity="0.96" stroke="#0F172A" stroke-opacity="0.45" stroke-width="1"/>
+<text x="1446.0" y="411.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0F172A">verified</text>
 </svg>

@@ -1,0 +1,246 @@
+{
+  "title": "Abandoned Mansion",
+  "size": {
+    "width_tiles": 60,
+    "height_tiles": 20
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "mansion",
+      "name": "Abandoned Mansion",
+      "theme": "haunted mansion",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "Connected dilapidated mansion rooms with a hidden side chamber containing the key to the exit.",
+      "order": 0,
+      "style": "walk",
+      "structure": "hub",
+      "params": {
+        "ceiling_height": 5,
+        "corridor_width": 4,
+        "complexity": 0.5,
+        "branches": 1,
+        "pits": 0,
+        "vertical": null
+      },
+      "complexity": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start_node",
+      "type": "Start",
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 16,
+      "section": "mansion"
+    },
+    {
+      "id": "hall_1",
+      "type": "Platform",
+      "x": 160,
+      "y": 64,
+      "w": 80,
+      "h": 16,
+      "section": "mansion"
+    },
+    {
+      "id": "side_room",
+      "type": "Platform",
+      "x": 272,
+      "y": 64,
+      "w": 64,
+      "h": 16,
+      "section": "mansion"
+    },
+    {
+      "id": "hall_2",
+      "type": "Platform",
+      "x": 368,
+      "y": 64,
+      "w": 80,
+      "h": 16,
+      "section": "mansion"
+    },
+    {
+      "id": "exit_node",
+      "type": "Exit",
+      "x": 480,
+      "y": 64,
+      "w": 64,
+      "h": 16,
+      "section": "mansion"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_node",
+      "to": "hall_1",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "hall_1",
+      "to": "side_room",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "side_room",
+      "to": "hall_2",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    },
+    {
+      "from": "hall_2",
+      "to": "exit_node",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0,
+      "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player_spawn",
+      "kind": "Start",
+      "anchor": "start_node",
+      "section": "mansion",
+      "description": "player spawn in the mansion foyer",
+      "sprite": "hero",
+      "place": "entry",
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null,
+      "requires_key": null,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    },
+    {
+      "id": "exit_door",
+      "kind": "Exit",
+      "anchor": "exit_node",
+      "section": "mansion",
+      "description": "locked exit door",
+      "sprite": "locked door",
+      "place": "exit",
+      "position": null,
+      "facing": null,
+      "starting_items": null,
+      "starting_weapon": null,
+      "requires_key": true,
+      "archetype": null,
+      "health": null,
+      "damage": null,
+      "patrol_range": null,
+      "attack": null,
+      "pickup_kind": null,
+      "value": null,
+      "weapon_kind": null,
+      "range": null,
+      "interactive_kind": null,
+      "linked_to": null,
+      "contents": null,
+      "name": null,
+      "dialogue": null,
+      "opens": null,
+      "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "The mansion is built of connected rooms with hub layout.",
+      "category": "layout",
+      "check": {
+        "type": "structure",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": null,
+        "section": "mansion",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": "hub",
+        "target_difficulty": null,
+        "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "There is a key in a side room opening a lock cycle.",
+      "category": "other",
+      "check": {
+        "type": "mission",
+        "entity_kind": null,
+        "subkind": "lock",
+        "min_count": 1,
+        "section": "mansion",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": "mansion"
+      }
+    },
+    {
+      "id": "R3",
+      "text": "The exit door requires a key.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Exit",
+        "subkind": null,
+        "min_count": 1,
+        "section": "mansion",
+        "ability": null,
+        "min_width_tiles": null,
+        "min_height_tiles": null,
+        "gravity_scale": null,
+        "structure": null,
+        "target_difficulty": null,
+        "target_section": null
+      }
+    }
+  ],
+  "complexity": null,
+  "mission": {
+    "rules": [
+      "lock_key_cycle"
+    ],
+    "keys": 1,
+    "ability": null,
+    "locks": [
+      {
+        "key_section": "mansion",
+        "lock_section": "mansion"
+      }
+    ]
+  }
+}

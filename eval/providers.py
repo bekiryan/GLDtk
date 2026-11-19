@@ -48,6 +48,7 @@ class CountingProvider:
         self.calls = 0  # calls made through this wrapper (one prompt)
         self.models_used: List[str] = []  # models that answered (Gemini may fall back)
         self.answered_by: List[str] = []  # provider/model labels that answered
+        self.fallback_reasons: List[str] = []
         self.name = getattr(inner, "name", "unknown")
 
     def complete_json(self, system: str, messages: List[Dict[str, Any]], schema: Dict[str, Any]) -> str:
@@ -60,7 +61,13 @@ class CountingProvider:
             b.slept += b.sleep
         b.total += 1  # a failed call (429) still spends quota
         self.calls += 1
-        raw = self._inner.complete_json(system, messages, schema)
+        try:
+            raw = self._inner.complete_json(system, messages, schema)
+        finally:
+            reasons = getattr(self._inner, "fallback_reasons", None) or ()
+            for r in reasons:
+                if r not in self.fallback_reasons:
+                    self.fallback_reasons.append(r)
         used = getattr(self._inner, "model_used", None)
         if used and used not in self.models_used:
             self.models_used.append(used)
@@ -86,6 +93,10 @@ class RecordingProvider:
     @property
     def model_used(self) -> Optional[str]:
         return getattr(self._inner, "model_used", None)
+
+    @property
+    def fallback_reasons(self) -> List[str]:
+        return list(getattr(self._inner, "fallback_reasons", None) or [])
 
     def complete_json(self, system: str, messages: List[Dict[str, Any]], schema: Dict[str, Any]) -> str:
         raw = self._inner.complete_json(system, messages, schema)

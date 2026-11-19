@@ -17,7 +17,7 @@ from tests.test_edit import base_level, level  # noqa: F401 (fixtures)
 from patterns.build import default_samples_dir
 from patterns.embed import HashEmbedder, make_embedder, sync_vectors
 from patterns.ingest import add_path, ingest_grid, ingest_samples
-from patterns.label import label_pending
+from patterns.label import label_pending, label_from_features
 from patterns.prompt import crop, examples_block
 from patterns.retrieve import EXTRA_CHECKS, Filters, accept, retrieve
 from patterns.store import PatternStore, patterns_dir
@@ -281,3 +281,121 @@ def test_softlocked_patterns_are_not_accepted():
     ok = {"features": {"route": {"ok": True, "softlocks": 0}}}
     trapped = {"features": {"route": {"ok": True, "softlocks": 2}}}
     assert accept(ok) and not accept(trapped)
+
+
+def test_label_from_features():
+    from patterns.label import PatternLabel, is_example_title
+
+    rec = {
+        "features": {
+            "width": 16,
+            "height": 30,
+            "platforms": 10,
+            "max_gap": 5,
+            "hazards": 2,
+            "enemies": 1,
+            "route": {"jumps": 4},
+            "geometry": {"rise": 8},
+            "structure_geo": {"type": "parkour", "confidence": 0.9}
+        },
+        "source": "supertux"
+    }
+    lbl = label_from_features(rec)
+    assert isinstance(lbl, PatternLabel)
+    assert not is_example_title(lbl.title)
+    assert lbl.structure_type == "parkour"
+    assert lbl.difficulty == 5
+    assert "jump" in lbl.mechanics
+    assert "hazard dodge" in lbl.mechanics
+    assert lbl.mood == "tense hazardous"
+    assert "Tall" in lbl.title
+    assert "supertux" in lbl.tags
+    assert 3 <= len(lbl.tags) <= 6
+    assert all(t == t.lower() for t in lbl.tags)
+
+
+def test_label_from_features_edge_cases():
+    from patterns.label import PatternLabel, is_example_title
+
+    # Empty record falls back cleanly to a valid PatternLabel
+    empty_lbl = label_from_features({})
+    assert isinstance(empty_lbl, PatternLabel)
+    assert not is_example_title(empty_lbl.title)
+    assert empty_lbl.structure_type == "parkour"
+    assert empty_lbl.difficulty == 5
+    assert "walk" in empty_lbl.mechanics and "jump" in empty_lbl.mechanics
+    assert 3 <= len(empty_lbl.tags) <= 6
+
+    # Difficulty 0 clamps to 1, >10 clamps to 10; gap overrides low-confidence geo
+    lbl = label_from_features({
+        "features": {
+            "width": 20, "height": 20, "platforms": 4, "pickups": 2, "enemies": 3,
+            "difficulty": 0,
+            "gap": "arena",
+            "structure": "corridor",
+            "structure_geo": {"type": "labyrinth", "confidence": 0.5},
+            "geometry": {"rise": 2, "cycles": 1},
+        },
+        "source": "OpenSurge",
+    })
+    assert lbl.structure_type == "arena"
+    assert lbl.difficulty == 1
+    assert lbl.mood == "combative"
+    assert "combat" in lbl.mechanics and "collect" in lbl.mechanics and "exploration" in lbl.mechanics
+    assert "opensurge" in lbl.tags
+
+    hard_lbl = label_from_features({"features": {"difficulty": 14, "structure": "invalid"}})
+    assert hard_lbl.difficulty == 10
+    assert hard_lbl.structure_type == "parkour"
+
+
+def test_label_pending_geometry_provider(small_store):
+    for r in small_store:
+        r["label"] = None
+    ids = sorted(small_store.patterns)
+    # Budget stops early when more todo items remain
+    rep = label_pending(small_store, "geometry", budget=1)
+    assert rep.labelled == 1
+    assert rep.stopped
+    assert rep.pending == 1
+    assert rep.calls == 0
+
+    # `only` restricts labelling to the requested pattern id
+    for r in small_store:
+        r["label"] = None
+    rep_only = label_pending(small_store, "geometry", budget=5, only=[ids[0]])
+    assert rep_only.labelled == 1
+    assert not rep_only.stopped
+    assert rep_only.pending == 1
+    assert rep_only.calls == 0
+    assert small_store.patterns[ids[0]]["label"] is not None
+    assert small_store.patterns[ids[1]].get("label") is None
+
+    rep2 = label_pending(small_store, "geometry", budget=5)
+    assert rep2.labelled == 1
+    assert not rep2.stopped
+    assert rep2.pending == 0
+    assert rep2.calls == 0
+
+    rep3 = label_pending(small_store, "geometry", budget=5)
+    assert rep3.labelled == 0
+    assert rep3.calls == 0
+
+
+def test_build_cli_geometry_provider(small_store, tmp_path, monkeypatch):
+    import patterns.build as pbuild
+
+    for r in small_store:
+        r["label"] = None
+    small_store.save()
+    empty_samples = tmp_path / "no_samples"
+    empty_samples.mkdir()
+    monkeypatch.setattr(pbuild, "demo_files", lambda: [])
+    rc = pbuild.main(["--samples", str(empty_samples), "--provider", "geometry", "--embedder", "hash",
+                      "--label-budget", "10"])
+    assert rc == 0
+    reloaded = PatternStore()
+    assert all(r.get("label") for r in reloaded)
+    assert reloaded.stats()["labelled"] == 2
+
+

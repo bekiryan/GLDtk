@@ -1,250 +1,102 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mxfile host="app.diagrams.net" agent="GLDtk Architecture Generator" version="24.7.17" pages="1">
   <diagram id="system_arch" name="2 - System Architecture">
-    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1950" pageHeight="1145" math="0" shadow="0">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="820" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="system_arch_title" value="&lt;font style='font-size:20px' color='#0F172A'&gt;&lt;b&gt;GLDtk: Client-Server &amp;amp; Subsystem Component Architecture&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Native LDtk 1.5.3 Electron/Haxe sidebar communicating with FastAPI neuro-symbolic backend on 127.0.0.1:8765&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingTop=2;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-          <mxGeometry x="30" y="14" width="1890" height="52" as="geometry" />
+        <mxCell id="system_arch_title" value="&lt;font style='font-size:22px' color='#0F172A'&gt;&lt;b&gt;GLDtk: High-Level System Architecture&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:13px' color='#475569'&gt;Native LDtk 1.5.3 Haxe UI bridged to the local FastAPI neuro-symbolic engine&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingTop=2;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="32" y="18" width="1436" height="54" as="geometry" />
         </mxCell>
-        <mxCell id="g_fe" value="&lt;b&gt;LDtk 1.5.3 Native Desktop App (Electron + Haxe 4.3)&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;Compiled Haxe/JS renderer (ldtk-src/) + Electron process&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.8;swimlaneFillColor=#EEF2FF;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
-          <mxGeometry x="30" y="88" width="415" height="990" as="geometry" />
+        <mxCell id="g_ed" value="&lt;b&gt;LDtk 1.5.3 Editor · Haxe UI&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=36;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.8;swimlaneFillColor=#EEF2FF;fontColor=#0F172A;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="36" y="96" width="430" height="680" as="geometry" />
         </mxCell>
-        <mxCell id="g_api" value="&lt;b&gt;HTTP/JSON Bridge (127.0.0.1:8765)&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;js.html.XMLHttpRequest (CSP-allowed)&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.8;swimlaneFillColor=#FFFBEB;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
-          <mxGeometry x="510" y="88" width="290" height="990" as="geometry" />
+        <mxCell id="g_be" value="&lt;b&gt;FastAPI Backend · 127.0.0.1:8765&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=36;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.8;swimlaneFillColor=#ECFDF5;fontColor=#0F172A;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="535" y="96" width="430" height="680" as="geometry" />
         </mxCell>
-        <mxCell id="g_be" value="&lt;b&gt;GLDtk Python Backend Engine (server.py · FastAPI / Uvicorn)&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;Packaged via PyInstaller (gldtk-server) or run in .venv&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.8;swimlaneFillColor=#ECFDF5;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
-          <mxGeometry x="865" y="88" width="635" height="990" as="geometry" />
+        <mxCell id="g_ext" value="&lt;b&gt;AI Providers &amp;amp; Local Storage&lt;/b&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=36;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.8;swimlaneFillColor=#F8FAFC;fontColor=#0F172A;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1034" y="96" width="430" height="680" as="geometry" />
         </mxCell>
-        <mxCell id="g_ext" value="&lt;b&gt;External Models &amp;amp; Persistent Storage&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;Cloud LLM APIs, Local Ollama, Project &amp;amp; App Data&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.8;swimlaneFillColor=#F8FAFC;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
-          <mxGeometry x="1565" y="88" width="355" height="990" as="geometry" />
+        <mxCell id="ed_side" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;GLDtk Sidebar&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Prompt, Fidelity Report &amp;amp; Difficulty chart&lt;/font&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="66" y="175" width="370" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="fe_sidebar" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[UI]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;GldtkSidebar.hx (Native Haxe Panel)&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Prompt box, provider/model picker, sliders&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Fidelity Report tree (satisfied / approx / missing)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Section dropdown + &amp;#x27;Make this section a...&amp;#x27; (no LLM)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Difficulty Curve SVG (hover flashes section)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Design Memory viewer, Settings &amp;amp; API key form&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="152" width="375" height="142" as="geometry" />
+        <mxCell id="ed_edit" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;Regional Edit &amp;amp; Undo&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Area lasso, Section edit &amp;amp; 30-step Undo&lt;/font&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="66" y="375" width="370" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="fe_lasso" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[EDIT TOOL]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;GldtkAreaTool.hx &amp;amp; Edit Modes&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Canvas rectangle lasso tool (h2d.Graphics)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;4 Co-creative edit modes: Region · Section ·&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Entities · Describe &amp;amp; Locate highlight preview&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Undo stack button (.gldtk_history snapshots)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="326" width="375" height="120" as="geometry" />
+        <mxCell id="ed_play" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;Route Overlay &amp;amp; Play Mode&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Canvas golden path &amp;amp; 60 Hz playable modal&lt;/font&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="66" y="575" width="370" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="fe_route" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[OVERLAY]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Live Canvas Route Overlay&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Draws verified Start-&amp;gt;Exit path on LDtk canvas&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Color-coded walks, hops, drops &amp;amp; abilities used&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Highlights soft-lock trap spans in red&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Auto-refreshes via POST /route after edits&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="478" width="375" height="114" as="geometry" />
+        <mxCell id="be_gen" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;Generation &amp;amp; Edit Engine&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Level, World, Chunk &amp;amp; Seam-Locked Edit pipelines&lt;/font&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="565" y="240" width="370" height="145" as="geometry" />
         </mxCell>
-        <mxCell id="fe_play" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[PLAY MODE]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;In-Editor 60 Hz Play Mode Modal&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;HTML5 Canvas platformer (built into LDtk)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Runs active GameProfile physics (~1 px accuracy)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Simulates keys, doors, checkpoints, pickups, mobs&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Draws verified route ghost &amp;amp; soft-lock warnings&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="624" width="375" height="120" as="geometry" />
+        <mxCell id="be_ver" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;Symbolic Verifier &amp;amp; Oracle&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Kinematics, Soft-Lock SCC solver &amp;amp; Fidelity checker&lt;/font&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="565" y="480" width="370" height="145" as="geometry" />
         </mxCell>
-        <mxCell id="fe_loader" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[LIFECYCLE]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;ProjectLoader &amp;amp; Electron Lifecycle&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;In-place swap: editor.selectProject() + flush&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Ignores unchanged image watcher (no false &amp;#x27;*&amp;#x27;)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Read-only guard on LDtk bundled sample levels&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Electron spawns &amp;amp; terminates gldtk-server&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="776" width="375" height="124" as="geometry" />
+        <mxCell id="ext_llm" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;Cloud &amp;amp; Local LLMs&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Gemini / Claude with automatic Ollama Qwen fallback&lt;/font&gt;" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="1064" y="175" width="370" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="fe_build" value="&lt;font style='font-size:10px' color='#60A5FA'&gt;&lt;b&gt;[PACKAGING]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#F8FAFC'&gt;&lt;b&gt;Desktop Distribution&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;macOS Apple Silicon: GLDtk.app (322 MB) / .dmg&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;Windows NSIS build &amp;amp; smoke tests (feat/windows-build)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;scripts/build_mac_app.sh + release.yml CI&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#1E293B;strokeColor=#334155;strokeWidth=1.6;fontColor=#F8FAFC;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="50" y="932" width="375" height="114" as="geometry" />
+        <mxCell id="ext_rag" value="&lt;font style='font-size:15px' color='#0F172A'&gt;&lt;b&gt;Pattern RAG &amp;amp; Memory Store&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;3,577 open-licensed patterns &amp;amp; learned user rules&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.8;fontColor=#0F172A;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="1064" y="375" width="370" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="api_gen" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[HTTP]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Generation &amp;amp; Async Jobs&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /generate (level / world)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /chunks (endless chunks)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET /progress (live job steps)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /cancel (aborts retries)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="530" y="158" width="250" height="126" as="geometry" />
+        <mxCell id="ext_disk" value="&lt;font style='font-size:15px' color='#F8FAFC'&gt;&lt;b&gt;LDtk Project Files&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#CBD5E1'&gt;*.ldtk · gldtk.game.json · CC0 tilesets &amp;amp; sprites&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#1E293B;strokeColor=#334155;strokeWidth=1.8;fontColor=#F8FAFC;align=center;verticalAlign=middle;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="1064" y="575" width="370" height="120" as="geometry" />
         </mxCell>
-        <mxCell id="api_edit" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[HTTP]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Co-Creative Editing &amp;amp; Undo&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /edit/region&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /edit/section&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /edit/entities&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /edit/locate&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /undo  ·  GET /history&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="530" y="324" width="250" height="146" as="geometry" />
-        </mxCell>
-        <mxCell id="api_analysis" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[HTTP]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Verification &amp;amp; Analytics&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET /route  ·  POST /route&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET /difficulty&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET /profile  ·  PUT /profile&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET /themes  ·  GET /providers&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="530" y="508" width="250" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="api_mem" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[HTTP]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Memory, Settings &amp;amp; Art&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET|PUT|DELETE /memory&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /memory/scan&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET|POST /settings&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /art/theme · /art/sprite&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GET /art/library · GET /health&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="530" y="666" width="250" height="140" as="geometry" />
-        </mxCell>
-        <mxCell id="api_models" value="&lt;font style='font-size:10px' color='#475569'&gt;&lt;b&gt;[CONTRACTS]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;API Contracts (api/models.py)&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GenerateRequest, EditRequest&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;RouteModel, DifficultyModel&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;api/jobs.py async job manager&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;api/samples.py write guard&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="530" y="846" width="250" height="118" as="geometry" />
-        </mxCell>
-        <mxCell id="be_llm" value="&lt;font style='font-size:10px' color='#6D28D9'&gt;&lt;b&gt;[LLM]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;llm/ · Neural Orchestration&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;LLMController, prompt.py (cached)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;validator.py + SymbolicPatcher&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;providers/: gemini, anthropic,&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;ollama, openai_compat, fallback&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="890" y="152" width="275" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="be_spec" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[SPEC]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;spec/ &amp;amp; fidelity/&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;LevelSpec, SpecNode, SpecEdge&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;9-kind typed EntityCatalog&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;checker.py + fill.py (auto items)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;difficulty.py (5-factor model)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1205" y="152" width="275" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="be_pipe" value="&lt;font style='font-size:10px' color='#047857'&gt;&lt;b&gt;[PIPELINE]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;pipeline/ · Orchestrator&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;level.py (build_level 11 stages)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;completeness.py + complexity.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;world.py (multi-level worlds)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;chunks.py + stamps.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="890" y="326" width="275" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="be_mission" value="&lt;font style='font-size:10px' color='#6D28D9'&gt;&lt;b&gt;[MISSION]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;mission/ · Dormans Grammars&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;grammar.py: 5 rewrite rules&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;graph.py + space.py embedding&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;verify.py counterfactual solver&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Locks, keys, gates &amp;amp; boss arenas&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1205" y="326" width="275" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="be_terrain" value="&lt;font style='font-size:10px' color='#0F766E'&gt;&lt;b&gt;[LAYOUT]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;layout/ &amp;amp; layout/terrain/&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;7 rock carvers: corridor, parkour,&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;labyrinth, arena, shaft, hub, open&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;stamp.py (rock pad + stack)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;comfort.py, densify.py, fill.py,&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;noise.py, ldtk_adapter/reader.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="890" y="498" width="275" height="148" as="geometry" />
-        </mxCell>
-        <mxCell id="be_sym" value="&lt;font style='font-size:10px' color='#047857'&gt;&lt;b&gt;[ORACLE]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;symbolic/ &amp;amp; game/&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;physics.py (single/double/dash)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;walljump.py + gravity.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;extractor.py (grid -&amp;gt; digraph)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;softlock.py (Tarjan SCC + V x P(K))&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;GameProfile (gldtk.game.json)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1205" y="498" width="275" height="148" as="geometry" />
-        </mxCell>
-        <mxCell id="be_edit" value="&lt;font style='font-size:10px' color='#0F766E'&gt;&lt;b&gt;[EDIT]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;edit/ · Regional Splicing&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;context.py (lock crossing seams)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;region.py / entities.py / locate.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;stitch.py (1-tile margin autotile)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;history.py (&amp;lt;=30 snapshots)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="890" y="684" width="275" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="be_rag" value="&lt;font style='font-size:10px' color='#1D4ED8'&gt;&lt;b&gt;[RAG]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;patterns/ · RAG Index&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;store.py (index.json + vectors)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;ingest.py + gaps.py (+641 wins)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;classify.py (cycle rank, dead ends)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;vision.py (rendered PNG audit)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1205" y="684" width="275" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="be_mem" value="&lt;font style='font-size:10px' color='#1D4ED8'&gt;&lt;b&gt;[MEMORY]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;memory/ · Design Memory&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;handedit.py (snapshot vs edit diff)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;approve.py + hooks.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;analyze.py -&amp;gt; preference rules&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;store.py (events.jsonl + prefs)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="890" y="856" width="275" height="128" as="geometry" />
-        </mxCell>
-        <mxCell id="be_aes" value="&lt;font style='font-size:10px' color='#1D4ED8'&gt;&lt;b&gt;[AESTHETIC]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;aesthetic/ &amp;amp; art/&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;library.py (assets/manifest.json)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;autotile.py (14-role bitmasks)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;themes.py (8 CC0 themes)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;art/ (AI image + quantization)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1205" y="856" width="275" height="128" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_cloud" value="&lt;font style='font-size:10px' color='#6D28D9'&gt;&lt;b&gt;[CLOUD AI]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Cloud LLM &amp;amp; Vision Providers&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Google Gemini: 3.8-flash, 3.1-flash-lite,&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;3.5-flash-lite (vision), 3.1-flash-image&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Anthropic Claude: sonnet-5-5 (cached)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;OpenAI gpt-4o-mini · DeepSeek chat&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1585" y="152" width="315" height="134" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_ollama" value="&lt;font style='font-size:10px' color='#6D28D9'&gt;&lt;b&gt;[LOCAL AI]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Local Ollama Runtime (:11434)&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;qwen2.5:14b (automatic fallback)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;llama3.1 (alternative local LLM)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;qwen2.5vl:7b (local pattern vision)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;nomic-embed-text (768-dim vectors)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1585" y="326" width="315" height="132" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_proj" value="&lt;font style='font-size:10px' color='#475569'&gt;&lt;b&gt;[PROJECT DISK]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Project Files on Disk&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;&amp;lt;project&amp;gt;.ldtk (LDtk 1.5.3 JSON)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;gldtk.game.json (GameProfile)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;gldtk_assets/themes/*.png&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;gldtk_assets/sprites.png&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;.gldtk_history/&amp;lt;stem&amp;gt;/ (undo snapshots)&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1585" y="498" width="315" height="166" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_appdata" value="&lt;font style='font-size:10px' color='#475569'&gt;&lt;b&gt;[APP DATA]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;User App Support Directory&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;~/Library/Application Support/GLDtk/&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;(%APPDATA%\GLDtk on Windows)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;.env (per-provider API keys)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;patterns/index.json (3,577 records)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;memory/{events.jsonl, preferences.json}&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1585" y="704" width="315" height="166" as="geometry" />
-        </mxCell>
-        <mxCell id="ext_eval" value="&lt;font style='font-size:10px' color='#60A5FA'&gt;&lt;b&gt;[QA &amp;amp; EVAL]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#F8FAFC'&gt;&lt;b&gt;Offline Eval &amp;amp; Test Suite&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;tests/: 737 offline tests (FakeProvider)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;eval/: 35-prompt benchmark + replay traces&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;demo/: Playwright CDP side-by-side harness&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#1E293B;strokeColor=#334155;strokeWidth=1.6;fontColor=#F8FAFC;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
-          <mxGeometry x="1585" y="908" width="315" height="132" as="geometry" />
-        </mxCell>
-        <mxCell id="e_fe1" value="POST /generate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.35;exitDx=0;exitDy=0;entryX=0.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="fe_sidebar" target="api_gen">
+        <mxCell id="e_s_g" value="POST /generate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2.4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ed_side" target="be_gen">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="477" y="202" />
-              <mxPoint x="477" y="202" />
+              <mxPoint x="500" y="235" />
+              <mxPoint x="500" y="290" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e_fe2" value="POST /edit/*" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="fe_lasso" target="api_edit">
+        <mxCell id="e_e_g" value="POST /edit/* · /undo" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.75;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=2.4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ed_edit" target="be_gen">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="435" />
+              <mxPoint x="500" y="349" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_p_v" value="GET /route · /difficulty" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.6;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ed_play" target="be_ver">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="635" />
+              <mxPoint x="500" y="567" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_g_v" value="verify &amp;amp; repair" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.4;startArrow=classic;startFill=1;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_gen" target="be_ver">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_fe3" value="/route" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.45;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="fe_route" target="api_analysis">
+        <mxCell id="e_g_llm" value="LevelSpec JSON" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.3;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=2.4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_gen" target="ext_llm">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="477" y="535" />
-              <mxPoint x="477" y="562" />
+              <mxPoint x="1000" y="283" />
+              <mxPoint x="1000" y="235" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e_fe4" value="/memory &amp;amp; cfg" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.8;exitDx=0;exitDy=0;entryX=0.0;entryY=0.45;entryDx=0;entryDy=0;strokeColor=#64748B;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#64748B;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="fe_sidebar" target="api_mem">
+        <mxCell id="e_g_rag" value="retrieve &amp;amp; learn" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.7;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=1.8;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_gen" target="ext_rag">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="468" y="266" />
-              <mxPoint x="468" y="729" />
+              <mxPoint x="1000" y="341" />
+              <mxPoint x="1000" y="435" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e_api_pipe" value="build_level" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="api_gen" target="be_pipe">
+        <mxCell id="e_v_disk" value="verified write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#0F172A;strokeWidth=2.4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#0F172A;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_ver" target="ext_disk">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="832" y="221" />
-              <mxPoint x="832" y="373" />
+              <mxPoint x="1000" y="552" />
+              <mxPoint x="1000" y="617" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e_api_edit" value="seam edit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.45;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="api_edit" target="be_edit">
+        <mxCell id="e_disk_ed" value="hot-reload" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=1.0;entryDx=0;entryDy=0;strokeColor=#334155;strokeWidth=1.8;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11.5;fontColor=#334155;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ext_disk" target="ed_play">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="822" y="397" />
-              <mxPoint x="822" y="744" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_api_ana" value="route &amp;amp; difficulty" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="api_analysis" target="be_sym">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="842" y="568" />
-              <mxPoint x="842" y="662" />
-              <mxPoint x="1186" y="662" />
-              <mxPoint x="1186" y="550" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_api_mem" value="prefs &amp;amp; scan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.35;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="api_mem" target="be_mem">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="836" y="715" />
-              <mxPoint x="836" y="920" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_be_lp" value="generate_spec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.0;exitDx=0;exitDy=0;entryX=0.5;entryY=1.0;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=1.6;startArrow=classic;startFill=1;endArrow=classic;endFill=1;fontSize=11;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_pipe" target="be_llm">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_be_ps" value="validate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#D97706;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_llm" target="be_spec">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_be_pm" value="rewrite" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_pipe" target="be_mission">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_be_pt" value="carve/stamp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_pipe" target="be_terrain">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_be_ts" value="verify &amp;amp; repair" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=1.6;startArrow=classic;startFill=1;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_terrain" target="be_sym">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e_be_es" value="re-verify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.3;exitDx=0;exitDy=0;entryX=0.0;entryY=0.8;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_edit" target="be_sym">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1186" y="724" />
-              <mxPoint x="1186" y="616" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_be_tr" value="StampFinder" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.85;exitDx=0;exitDy=0;entryX=0.0;entryY=0.25;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_terrain" target="be_rag">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1186" y="624" />
-              <mxPoint x="1186" y="718" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_ext_cloud" value="HTTPS API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.25;exitDx=0;exitDy=0;entryX=0.0;entryY=0.45;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_llm" target="ext_cloud">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1185" y="185" />
-              <mxPoint x="1185" y="128" />
-              <mxPoint x="1532" y="128" />
-              <mxPoint x="1532" y="212" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_ext_ol" value="local fallback" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.7;exitDx=0;exitDy=0;entryX=0.0;entryY=0.45;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_llm" target="ext_ollama">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1178" y="246" />
-              <mxPoint x="1178" y="306" />
-              <mxPoint x="1532" y="306" />
-              <mxPoint x="1532" y="385" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_ext_proj" value="export .ldtk" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.7;exitDx=0;exitDy=0;entryX=0.0;entryY=0.4;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_terrain" target="ext_proj">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1178" y="602" />
-              <mxPoint x="1178" y="662" />
-              <mxPoint x="1532" y="662" />
-              <mxPoint x="1532" y="564" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_ext_app" value="index.json" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.45;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_rag" target="ext_appdata">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1532" y="751" />
-              <mxPoint x="1532" y="779" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_ext_mem" value="events.jsonl" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.6;exitDx=0;exitDy=0;entryX=0.0;entryY=0.8;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="be_mem" target="ext_appdata">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1185" y="933" />
-              <mxPoint x="1185" y="1005" />
-              <mxPoint x="1532" y="1005" />
-              <mxPoint x="1532" y="837" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e_fe_load" value="reads .ldtk &amp;amp; sprites" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.8;exitDx=0;exitDy=0;entryX=0.0;entryY=0.78;entryDx=0;entryDy=0;strokeColor=#334155;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#334155;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="fe_loader" target="ext_proj">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="450" y="875" />
-              <mxPoint x="450" y="1102" />
-              <mxPoint x="1548" y="1102" />
-              <mxPoint x="1548" y="628" />
+              <mxPoint x="1249" y="735" />
+              <mxPoint x="251" y="735" />
             </Array>
           </mxGeometry>
         </mxCell>

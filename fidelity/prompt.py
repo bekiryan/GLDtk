@@ -48,6 +48,13 @@ _KEY_RE = re.compile(r"\bkeys?\b", re.IGNORECASE)
 _LOCK_RE = re.compile(r"\b(?:locked|locks?|unlocks?|doors?|gates?)\b", re.IGNORECASE)
 _LOCK_WORD_RE = re.compile(r"\b(?:locked|locks?)\b", re.IGNORECASE)
 _DOOR_RE = re.compile(r"\b(?:doors?|gates?)\b", re.IGNORECASE)
+_MULTI_SECTION_RE = re.compile(
+    r"\b(?:two|three|four|five|six|2|3|4|5|6|several|multiple)\s+(?:sections?|areas?|parts?|floors?|rooms?|stages?|zones?)\b"
+    r"|\b(?:first|second|third|fourth)\s+(?:section|area|part|floor)\b"
+    r"|\b(?:then|followed\s+by|finally)\b",
+    re.IGNORECASE,
+)
+_TOWER_RE = re.compile(r"\btowers?\b", re.IGNORECASE)
 
 
 @dataclass
@@ -149,6 +156,43 @@ def _add_structures(spec: LevelSpec, prompt: str, out: PromptResult) -> List[Req
     return reqs
 
 
+def _collapse_unrequested_tower_sections(
+    spec: LevelSpec, prompt: str, out: PromptResult,
+) -> LevelSpec:
+    """Merge homogeneous extra sections in a single-tower vertical prompt into one."""
+    if (
+        len(spec.sections) <= 1
+        or spec.layout_orientation != "vertical"
+        or not _TOWER_RE.search(prompt or "")
+    ):
+        return spec
+    if (
+        len(prompt_structures(prompt)) > 1
+        or _MULTI_SECTION_RE.search(prompt or "")
+        or prompt_wants_lock(prompt)
+    ):
+        return spec
+    if any(
+        r.check is not None and (r.check.section is not None or r.check.type in ("section", "structure"))
+        for r in spec.requirements
+    ):
+        return spec
+    if spec.mission is not None and (spec.mission.locks or (spec.mission.keys or 0) > 0):
+        return spec
+    signatures = {
+        ((s.theme or "").strip().lower(), s.structure or "open", round(float(s.gravity_scale), 3))
+        for s in spec.sections
+    }
+    if len(signatures) != 1:
+        return spec
+    keep = sorted(spec.sections, key=lambda s: s.order)[0].model_copy(update={"order": 0})
+    nodes = [n.model_copy(update={"section": keep.id}) for n in spec.nodes]
+    entities = [e.model_copy(update={"section": keep.id}) for e in spec.entities]
+    out.added.append("P_single_tower")
+    out.notes.append("completeness: merged unrequested extra tower sections into one")
+    return spec.model_copy(update={"sections": [keep], "nodes": nodes, "entities": entities})
+
+
 def from_prompt(spec: LevelSpec, prompt: Optional[str]) -> PromptResult:
     """*spec* with the requirements *prompt* states outright (see the module doc)."""
     out = PromptResult(spec=spec)
@@ -177,8 +221,10 @@ def from_prompt(spec: LevelSpec, prompt: Optional[str]) -> PromptResult:
         out.added.append(rid)
         out.notes.append(f"completeness: added a key and lock ({rid}: key in "
                          f"{key_sec or 'any section'}, lock in {lock_sec or 'any section'})")
+    updated = spec.model_copy(update={"requirements": reqs, "mission": mission}) if out.added else spec
+    collapsed = _collapse_unrequested_tower_sections(updated, prompt, out)
     if out.added:
-        out.spec = spec.model_copy(update={"requirements": reqs, "mission": mission})
+        out.spec = collapsed
     return out
 
 

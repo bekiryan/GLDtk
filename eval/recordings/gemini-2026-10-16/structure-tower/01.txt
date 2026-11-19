@@ -1,0 +1,517 @@
+{
+  "title": "Tall Bell Tower",
+  "size": {
+    "width_tiles": 60,
+    "height_tiles": 15
+  },
+  "orientation": null,
+  "sections": [
+    {
+      "id": "stairs",
+      "name": "Stairs Entrance",
+      "theme": "castle",
+      "difficulty": "easy",
+      "gravity_scale": 1.0,
+      "description": "Stairs guarded by rats.",
+      "order": 0,
+      "style": "walk",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "climbing_shaft",
+      "name": "Climbing Shaft",
+      "theme": "castle",
+      "difficulty": "medium",
+      "gravity_scale": 1.0,
+      "description": "A climbing shaft.",
+      "order": 1,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "storerooms",
+      "name": "Storeroom Maze",
+      "theme": "castle",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A maze of storerooms.",
+      "order": 2,
+      "style": "mixed",
+      "structure": "labyrinth",
+      "params": null
+    ,
+    "complexity": 1
+    },
+    {
+      "id": "belfry",
+      "name": "Belfry",
+      "theme": "castle",
+      "difficulty": "hard",
+      "gravity_scale": 1.0,
+      "description": "A gargoyle boss in the belfry.",
+      "order": 3,
+      "style": "mixed",
+      "structure": "corridor",
+      "params": null
+    ,
+    "complexity": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "x": 0,
+      "y": 32,
+      "w": 48,
+      "h": 16,
+      "section": "stairs"
+    },
+    {
+      "id": "p1",
+      "type": "Platform",
+      "x": 96,
+      "y": 64,
+      "w": 48,
+      "h": 16,
+      "section": "climbing_shaft"
+    },
+    {
+      "id": "p2",
+      "type": "Platform",
+      "x": 192,
+      "y": 96,
+      "w": 48,
+      "h": 16,
+      "section": "storerooms"
+    },
+    {
+      "id": "boss_platform",
+      "type": "Platform",
+      "x": 352,
+      "y": 128,
+      "w": 48,
+      "h": 16,
+      "section": "belfry"
+    },
+    {
+      "id": "exit",
+      "type": "Exit",
+      "x": 448,
+      "y": 160,
+      "w": 48,
+      "h": 16,
+      "section": "belfry"
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "p1",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    },
+    {
+      "from": "p1",
+      "to": "p2",
+      "type": "Fall",
+      "vx": 600,
+      "vy": 0
+    ,
+    "ability": null
+    },
+    {
+      "from": "p2",
+      "to": "boss_platform",
+      "type": "Jump",
+      "vx": 200,
+      "vy": 400
+    ,
+    "ability": null
+    },
+    {
+      "from": "boss_platform",
+      "to": "exit",
+      "type": "Walk",
+      "vx": 200,
+      "vy": 0
+    ,
+    "ability": null
+    }
+  ],
+  "entities": [
+    {
+      "id": "player",
+      "kind": "Start",
+      "anchor": "start",
+      "section": "stairs",
+      "description": "the player, starting with a sword",
+      "sprite": "knight",
+      "place": null,
+      "position": null,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": "sword"
+    ,
+    "requires_key": false
+    ,
+    "archetype": null
+    ,
+    "health": null
+    ,
+    "damage": null
+    ,
+    "patrol_range": null
+    ,
+    "attack": null
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "rat1",
+      "kind": "Enemy",
+      "anchor": "p1",
+      "section": "stairs",
+      "description": "a rat guard",
+      "sprite": "rat",
+      "place": "floor",
+      "position": 0.3,
+      "facing": "left",
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 1,
+    "damage": 1,
+    "patrol_range": 2,
+    "attack": "melee"
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "rat2",
+      "kind": "Enemy",
+      "anchor": "p1",
+      "section": "stairs",
+      "description": "a rat guard",
+      "sprite": "rat",
+      "place": "floor",
+      "position": 0.7,
+      "facing": "right",
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 1,
+    "damage": 1,
+    "patrol_range": 2,
+    "attack": "melee"
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    },
+    {
+      "id": "boss",
+      "kind": "Enemy",
+      "anchor": "boss_platform",
+      "section": "belfry",
+      "description": "a gargoyle boss",
+      "sprite": "gargoyle",
+      "place": "floor",
+      "position": 0.5,
+      "facing": "left",
+      "starting_items": [],
+      "starting_weapon": null
+    ,
+    "requires_key": false
+    ,
+    "archetype": "walker",
+    "health": 10,
+    "damage": 2,
+    "patrol_range": 5,
+    "attack": "melee"
+    ,
+    "pickup_kind": null
+    ,
+    "value": null
+    ,
+    "weapon_kind": null
+    ,
+    "range": null
+    ,
+    "interactive_kind": null
+    ,
+    "linked_to": null
+    ,
+    "contents": null
+    ,
+    "name": null
+    ,
+    "dialogue": null
+    ,
+    "opens": null
+    ,
+    "grants_ability": null
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "There is a stairs entrance section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "stairs"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R2",
+      "text": "There is a climbing shaft section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "climbing_shaft"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R3",
+      "text": "There is a storeroom maze section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "storerooms"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R4",
+      "text": "There is a belfry section.",
+      "category": "section",
+      "check": {
+        "type": "section",
+        "entity_kind": null,
+        "subkind": null,
+        "min_count": 1,
+        "section": "belfry"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R5",
+      "text": "The player starts with a sword.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Start",
+        "subkind": "sword",
+        "min_count": 1,
+        "section": null
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R6",
+      "text": "There are rat guards in the stairs section.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Enemy",
+        "subkind": "rat",
+        "min_count": 2,
+        "section": "stairs"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    },
+    {
+      "id": "R7",
+      "text": "There is a gargoyle boss in the belfry section.",
+      "category": "entity",
+      "check": {
+        "type": "entity_count",
+        "entity_kind": "Enemy",
+        "subkind": "gargoyle",
+        "min_count": 1,
+        "section": "belfry"
+      ,
+      "ability": null
+      ,
+      "min_width_tiles": null
+      ,
+      "min_height_tiles": null
+      ,
+      "gravity_scale": null
+      ,
+      "structure": null
+      ,
+      "target_difficulty": null
+      ,
+      "target_section": null
+      }
+    }
+  ]
+,
+  "complexity": 1
+,
+  "mission": null
+}

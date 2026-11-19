@@ -1,0 +1,4868 @@
+{
+  "generated_at": "2026-11-19T19:12:04Z",
+  "seed": 0,
+  "recordings_root": "/Users/bekiryan/Projects/GLDtk/eval/recordings",
+  "ablations": {
+    "A1": {
+      "id": "A1",
+      "name": "no-SymbolicPatcher",
+      "description": "Bypass LLMController._patch_spec and SymbolicPatcher.patch (no deterministic spec/graph first-aid).",
+      "recordings": [
+        "qwen-2026-10-16",
+        "gemini-2026-10-19c"
+      ],
+      "metrics": [
+        "verified",
+        "playable_share",
+        "fidelity_mean",
+        "patches_mean",
+        "failures"
+      ],
+      "baseline": {
+        "prompts": 12,
+        "fidelity_mean": 0.9306818181818183,
+        "fidelity_scored": 11,
+        "status_counts": {
+          "satisfied": 44,
+          "approximated": 7,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 13
+        },
+        "verified": 11,
+        "playable_share": 0.9166666666666666,
+        "failures": {
+          "replay_missing": 1
+        },
+        "wall_mean_s": 0.8371333333333334,
+        "wall_p95_s": 3.2064,
+        "llm_calls_total": 17,
+        "expect_failed": 2,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 7,
+            "mean": 4.542857142857143,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 15,
+            "mean": 3.56,
+            "min": 0.6,
+            "max": 8.3
+          },
+          "hard": {
+            "n": 13,
+            "mean": 6.107692307692308,
+            "min": 0.6,
+            "max": 8.5
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.0833333333333333,
+        "llm_calls_mean": 1.4166666666666667,
+        "patches_mean": 2.0833333333333335,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.08333333333333333,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.08333333333333333,
+        "terrain_retries_mean": 0.25
+      },
+      "ablated": {
+        "prompts": 12,
+        "fidelity_mean": 0.9375,
+        "fidelity_scored": 5,
+        "status_counts": {
+          "satisfied": 25,
+          "approximated": 3,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 0
+        },
+        "verified": 5,
+        "playable_share": 0.4166666666666667,
+        "failures": {
+          "MaxRetriesExceeded": 5,
+          "replay_missing": 2
+        },
+        "wall_mean_s": 0.20749166666666666,
+        "wall_p95_s": 2.2369,
+        "llm_calls_total": 25,
+        "expect_failed": 0,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 3,
+            "mean": 4.6000000000000005,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 7,
+            "mean": 2.6,
+            "min": 0.6,
+            "max": 5.4
+          },
+          "hard": {
+            "n": 3,
+            "mean": 6.8,
+            "min": 6.7,
+            "max": 7.0
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.75,
+        "llm_calls_mean": 2.0833333333333335,
+        "patches_mean": 0.0,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.0
+      },
+      "delta": {
+        "prompts": 0,
+        "fidelity_mean": 0.006818,
+        "fidelity_scored": -6,
+        "verified": -6,
+        "playable_share": -0.5,
+        "wall_mean_s": -0.629642,
+        "wall_p95_s": -0.9695,
+        "llm_calls_total": 8,
+        "expect_failed": -2,
+        "llm_attempts_mean": 0.666667,
+        "llm_calls_mean": 0.666667,
+        "patches_mean": -2.083333,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": -0.083333,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": -0.083333,
+        "terrain_retries_mean": -0.25,
+        "status_counts": {
+          "satisfied": -19,
+          "approximated": -4,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": -13
+        }
+      },
+      "by_recording": {
+        "qwen-2026-10-16": {
+          "baseline": {
+            "prompts": 6,
+            "fidelity_mean": 0.93,
+            "fidelity_scored": 5,
+            "status_counts": {
+              "satisfied": 15,
+              "approximated": 3,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 11
+            },
+            "verified": 5,
+            "playable_share": 0.8333333333333334,
+            "failures": {
+              "replay_missing": 1
+            },
+            "wall_mean_s": 0.99465,
+            "wall_p95_s": 3.2064,
+            "llm_calls_total": 10,
+            "expect_failed": 2,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 3,
+                "mean": 4.066666666666666,
+                "min": 2.1,
+                "max": 5.8
+              },
+              "medium": {
+                "n": 7,
+                "mean": 4.728571428571429,
+                "min": 2.1,
+                "max": 8.3
+              },
+              "hard": {
+                "n": 8,
+                "mean": 5.8375,
+                "min": 0.6,
+                "max": 8.5
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.6666666666666667,
+            "patches_mean": 3.3333333333333335,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.16666666666666666,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.16666666666666666,
+            "terrain_retries_mean": 0.3333333333333333
+          },
+          "ablated": {
+            "prompts": 6,
+            "fidelity_mean": null,
+            "fidelity_scored": 0,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "verified": 0,
+            "playable_share": 0.0,
+            "failures": {
+              "MaxRetriesExceeded": 5,
+              "replay_missing": 1
+            },
+            "wall_mean_s": 0.0009000000000000001,
+            "wall_p95_s": 0.0019,
+            "llm_calls_total": 17,
+            "expect_failed": 0,
+            "difficulty_by_label": {},
+            "fallback_reasons": {},
+            "llm_attempts_mean": 2.5,
+            "llm_calls_mean": 2.8333333333333335,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_scored": -5,
+            "verified": -5,
+            "playable_share": -0.833333,
+            "wall_mean_s": -0.99375,
+            "wall_p95_s": -3.2045,
+            "llm_calls_total": 7,
+            "expect_failed": -2,
+            "llm_attempts_mean": 1.5,
+            "llm_calls_mean": 1.166667,
+            "patches_mean": -3.333333,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": -0.166667,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": -0.166667,
+            "terrain_retries_mean": -0.333333,
+            "status_counts": {
+              "satisfied": -15,
+              "approximated": -3,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": -11
+            }
+          }
+        },
+        "gemini-2026-10-19c": {
+          "baseline": {
+            "prompts": 6,
+            "fidelity_mean": 0.93125,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 29,
+              "approximated": 4,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.6796166666666666,
+            "wall_p95_s": 2.36,
+            "llm_calls_total": 7,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.9,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.5375,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.540000000000001,
+                "min": 3.9,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.16666666666666666
+          },
+          "ablated": {
+            "prompts": 6,
+            "fidelity_mean": 0.9375,
+            "fidelity_scored": 5,
+            "status_counts": {
+              "satisfied": 25,
+              "approximated": 3,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "verified": 5,
+            "playable_share": 0.8333333333333334,
+            "failures": {
+              "replay_missing": 1
+            },
+            "wall_mean_s": 0.4140833333333333,
+            "wall_p95_s": 2.2369,
+            "llm_calls_total": 8,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 3,
+                "mean": 4.6000000000000005,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 7,
+                "mean": 2.6,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 3,
+                "mean": 6.8,
+                "min": 6.7,
+                "max": 7.0
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.3333333333333333,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.00625,
+            "fidelity_scored": -1,
+            "verified": -1,
+            "playable_share": -0.166667,
+            "wall_mean_s": -0.265533,
+            "wall_p95_s": -0.1231,
+            "llm_calls_total": 1,
+            "expect_failed": 0,
+            "llm_attempts_mean": -0.166667,
+            "llm_calls_mean": 0.166667,
+            "patches_mean": -0.833333,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": -0.166667,
+            "status_counts": {
+              "satisfied": -4,
+              "approximated": -1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": -2
+            }
+          }
+        }
+      },
+      "per_prompt": [
+        {
+          "id": "structure-crypt",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [
+              "no Interactive entity"
+            ],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3711
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "MaxRetriesExceeded",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0019
+          }
+        },
+        {
+          "id": "structure-labyrinth",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": false,
+            "failure": "replay_missing",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 3.2064
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "MaxRetriesExceeded",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0006
+          }
+        },
+        {
+          "id": "structure-tower",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.1,
+            "complexity_rounds": null,
+            "wall_time_s": 0.6306
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "MaxRetriesExceeded",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.001
+          }
+        },
+        {
+          "id": "structure-hub-key",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 3
+            },
+            "expect_failures": [
+              "no hub section"
+            ],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.068
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "MaxRetriesExceeded",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0009
+          }
+        },
+        {
+          "id": "structure-mixed-outdoor",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 1,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.2349
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "replay_missing",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0003
+          }
+        },
+        {
+          "id": "v4-mission-metroidvania",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 1.4569
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "MaxRetriesExceeded",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0007
+          }
+        },
+        {
+          "id": "structure-crypt",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 0.116
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 0.116
+          }
+        },
+        {
+          "id": "structure-labyrinth",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0728
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0721
+          }
+        },
+        {
+          "id": "structure-tower",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.36
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.2369
+          }
+        },
+        {
+          "id": "structure-hub-key",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.029
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0275
+          }
+        },
+        {
+          "id": "structure-mixed-outdoor",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0329
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0317
+          }
+        },
+        {
+          "id": "v4-mission-metroidvania",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 1.467
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "replay_missing",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0003
+          }
+        }
+      ]
+    },
+    "A2": {
+      "id": "A2",
+      "name": "no-CompletenessFill",
+      "description": "Bypass pipeline.level.ensure_complete and fill_missing (no prompt-derived requirements, section retyping, or entity filling).",
+      "recordings": [
+        "gemini-2026-10-19c",
+        "gemini-2026-10-15"
+      ],
+      "metrics": [
+        "verified",
+        "playable_share",
+        "fidelity_mean",
+        "status_counts",
+        "expect_failed",
+        "entities_filled_mean"
+      ],
+      "baseline": {
+        "prompts": 14,
+        "fidelity_mean": 0.9586309523809524,
+        "fidelity_scored": 14,
+        "status_counts": {
+          "satisfied": 56,
+          "approximated": 4,
+          "impossible": 0,
+          "missing": 1,
+          "unchecked": 4
+        },
+        "verified": 14,
+        "playable_share": 1.0,
+        "failures": {},
+        "wall_mean_s": 0.7529714285714286,
+        "wall_p95_s": 2.2808,
+        "llm_calls_total": 16,
+        "expect_failed": 0,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 8,
+            "mean": 3.4125,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 14,
+            "mean": 2.492857142857143,
+            "min": 0.6,
+            "max": 5.4
+          },
+          "hard": {
+            "n": 7,
+            "mean": 5.971428571428572,
+            "min": 3.9,
+            "max": 8.4
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.1428571428571428,
+        "llm_calls_mean": 1.1428571428571428,
+        "patches_mean": 1.4285714285714286,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.14285714285714285
+      },
+      "ablated": {
+        "prompts": 14,
+        "fidelity_mean": 0.9807692307692307,
+        "fidelity_scored": 13,
+        "status_counts": {
+          "satisfied": 53,
+          "approximated": 2,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 4
+        },
+        "verified": 14,
+        "playable_share": 1.0,
+        "failures": {},
+        "wall_mean_s": 0.6853071428571429,
+        "wall_p95_s": 2.372,
+        "llm_calls_total": 16,
+        "expect_failed": 2,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 8,
+            "mean": 3.0625,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 15,
+            "mean": 2.493333333333333,
+            "min": 0.6,
+            "max": 5.4
+          },
+          "hard": {
+            "n": 7,
+            "mean": 6.014285714285714,
+            "min": 4.4,
+            "max": 7.6
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.1428571428571428,
+        "llm_calls_mean": 1.1428571428571428,
+        "patches_mean": 1.4285714285714286,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.0
+      },
+      "delta": {
+        "prompts": 0,
+        "fidelity_mean": 0.022138,
+        "fidelity_scored": -1,
+        "verified": 0,
+        "playable_share": 0.0,
+        "wall_mean_s": -0.067664,
+        "wall_p95_s": 0.0912,
+        "llm_calls_total": 0,
+        "expect_failed": 2,
+        "llm_attempts_mean": 0.0,
+        "llm_calls_mean": 0.0,
+        "patches_mean": 0.0,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": -0.142857,
+        "status_counts": {
+          "satisfied": -3,
+          "approximated": -2,
+          "impossible": 0,
+          "missing": -1,
+          "unchecked": 0
+        }
+      },
+      "by_recording": {
+        "gemini-2026-10-19c": {
+          "baseline": {
+            "prompts": 6,
+            "fidelity_mean": 0.93125,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 29,
+              "approximated": 4,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.6607500000000001,
+            "wall_p95_s": 2.2808,
+            "llm_calls_total": 7,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.9,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.5375,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.540000000000001,
+                "min": 3.9,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.16666666666666666
+          },
+          "ablated": {
+            "prompts": 6,
+            "fidelity_mean": 0.95,
+            "fidelity_scored": 5,
+            "status_counts": {
+              "satisfied": 26,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.7201333333333334,
+            "wall_p95_s": 2.372,
+            "llm_calls_total": 7,
+            "expect_failed": 2,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.175,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.625,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.6,
+                "min": 5.0,
+                "max": 7.6
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.01875,
+            "fidelity_scored": -1,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": 0.059383,
+            "wall_p95_s": 0.0912,
+            "llm_calls_total": 0,
+            "expect_failed": 2,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": -0.166667,
+            "status_counts": {
+              "satisfied": -3,
+              "approximated": -2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            }
+          }
+        },
+        "gemini-2026-10-15": {
+          "baseline": {
+            "prompts": 8,
+            "fidelity_mean": 0.9791666666666666,
+            "fidelity_scored": 8,
+            "status_counts": {
+              "satisfied": 27,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 2
+            },
+            "verified": 8,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.8221375000000001,
+            "wall_p95_s": 2.0575,
+            "llm_calls_total": 9,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 1.9249999999999998,
+                "min": 1.4,
+                "max": 2.4
+              },
+              "medium": {
+                "n": 6,
+                "mean": 2.433333333333333,
+                "min": 1.0,
+                "max": 3.7
+              },
+              "hard": {
+                "n": 2,
+                "mean": 4.550000000000001,
+                "min": 4.4,
+                "max": 4.7
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.125,
+            "llm_calls_mean": 1.125,
+            "patches_mean": 1.875,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.125
+          },
+          "ablated": {
+            "prompts": 8,
+            "fidelity_mean": 1.0,
+            "fidelity_scored": 8,
+            "status_counts": {
+              "satisfied": 27,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 8,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.6591875,
+            "wall_p95_s": 2.0189,
+            "llm_calls_total": 9,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 1.95,
+                "min": 1.4,
+                "max": 2.5
+              },
+              "medium": {
+                "n": 7,
+                "mean": 2.3428571428571425,
+                "min": 1.0,
+                "max": 3.7
+              },
+              "hard": {
+                "n": 2,
+                "mean": 4.550000000000001,
+                "min": 4.4,
+                "max": 4.7
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.125,
+            "llm_calls_mean": 1.125,
+            "patches_mean": 1.875,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.020833,
+            "fidelity_scored": 0,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": -0.16295,
+            "wall_p95_s": -0.0386,
+            "llm_calls_total": 0,
+            "expect_failed": 0,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": -0.125,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": -1,
+              "unchecked": 0
+            }
+          }
+        }
+      },
+      "per_prompt": [
+        {
+          "id": "structure-crypt",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 0.117
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 8,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [
+              "no parkour section"
+            ],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1442
+          }
+        },
+        {
+          "id": "structure-labyrinth",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0727
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0763
+          }
+        },
+        {
+          "id": "structure-tower",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.2808
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.372
+          }
+        },
+        {
+          "id": "structure-hub-key",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0277
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0281
+          }
+        },
+        {
+          "id": "structure-mixed-outdoor",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0319
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.032
+          }
+        },
+        {
+          "id": "v4-mission-metroidvania",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 1.4344
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": null,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [
+              "no Key entity",
+              "no hub section"
+            ],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.0,
+            "complexity_rounds": null,
+            "wall_time_s": 1.6682
+          }
+        },
+        {
+          "id": "single-forest",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.086
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.083
+          }
+        },
+        {
+          "id": "single-cave-hazards",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.0,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0822
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.0,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0773
+          }
+        },
+        {
+          "id": "two-sections",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1084
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1085
+          }
+        },
+        {
+          "id": "three-sections",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 1.5658
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 1.594
+          }
+        },
+        {
+          "id": "vertical-tower",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0499
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.0,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0189
+          }
+        },
+        {
+          "id": "vertical-shaft-multi",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.8333333333333334,
+            "status_counts": {
+              "satisfied": 5,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.8,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0575
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 5,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.8,
+            "complexity_rounds": null,
+            "wall_time_s": 0.7856
+          }
+        },
+        {
+          "id": "enemy-walker",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.2531
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.2449
+          }
+        },
+        {
+          "id": "enemy-flyer-turret",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3742
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3613
+          }
+        }
+      ]
+    },
+    "A3": {
+      "id": "A3",
+      "name": "no-GridAndSoftlockRepair",
+      "description": "Bypass layout.repair.repair_grid (stepping-stone/ceiling/softlock repair) and set TERRAIN_ATTEMPTS = 1.",
+      "recordings": [
+        "gemini-2026-10-15",
+        "gemini-2026-10-19c",
+        "qwen-2026-10-16"
+      ],
+      "metrics": [
+        "verified",
+        "playable_share",
+        "grid_repairs_mean",
+        "failures"
+      ],
+      "baseline": {
+        "prompts": 22,
+        "fidelity_mean": 0.9450396825396826,
+        "fidelity_scored": 21,
+        "status_counts": {
+          "satisfied": 78,
+          "approximated": 9,
+          "impossible": 0,
+          "missing": 1,
+          "unchecked": 15
+        },
+        "verified": 21,
+        "playable_share": 0.9545454545454546,
+        "failures": {
+          "replay_missing": 1
+        },
+        "wall_mean_s": 0.7616454545454545,
+        "wall_p95_s": 2.3232,
+        "llm_calls_total": 28,
+        "expect_failed": 2,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 12,
+            "mean": 3.658333333333333,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 23,
+            "mean": 3.356521739130435,
+            "min": 0.6,
+            "max": 8.3
+          },
+          "hard": {
+            "n": 18,
+            "mean": 5.933333333333334,
+            "min": 0.6,
+            "max": 8.5
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.0909090909090908,
+        "llm_calls_mean": 1.2727272727272727,
+        "patches_mean": 2.0454545454545454,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.13636363636363635,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.045454545454545456,
+        "terrain_retries_mean": 0.18181818181818182
+      },
+      "ablated": {
+        "prompts": 22,
+        "fidelity_mean": 0.9322916666666666,
+        "fidelity_scored": 20,
+        "status_counts": {
+          "satisfied": 75,
+          "approximated": 7,
+          "impossible": 0,
+          "missing": 3,
+          "unchecked": 13
+        },
+        "verified": 20,
+        "playable_share": 0.9090909090909091,
+        "failures": {
+          "replay_missing": 2
+        },
+        "wall_mean_s": 0.7405999999999999,
+        "wall_p95_s": 2.5067,
+        "llm_calls_total": 29,
+        "expect_failed": 4,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 11,
+            "mean": 3.1,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 22,
+            "mean": 3.3000000000000003,
+            "min": 0.6,
+            "max": 8.3
+          },
+          "hard": {
+            "n": 17,
+            "mean": 5.4941176470588236,
+            "min": 0.6,
+            "max": 8.4
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.0454545454545454,
+        "llm_calls_mean": 1.3181818181818181,
+        "patches_mean": 1.8636363636363635,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.13636363636363635,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.0
+      },
+      "delta": {
+        "prompts": 0,
+        "fidelity_mean": -0.012748,
+        "fidelity_scored": -1,
+        "verified": -1,
+        "playable_share": -0.045455,
+        "wall_mean_s": -0.021045,
+        "wall_p95_s": 0.1835,
+        "llm_calls_total": 1,
+        "expect_failed": 2,
+        "llm_attempts_mean": -0.045455,
+        "llm_calls_mean": 0.045455,
+        "patches_mean": -0.181818,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": -0.045455,
+        "terrain_retries_mean": -0.181818,
+        "status_counts": {
+          "satisfied": -3,
+          "approximated": -2,
+          "impossible": 0,
+          "missing": 2,
+          "unchecked": -2
+        }
+      },
+      "by_recording": {
+        "gemini-2026-10-15": {
+          "baseline": {
+            "prompts": 8,
+            "fidelity_mean": 0.9791666666666666,
+            "fidelity_scored": 8,
+            "status_counts": {
+              "satisfied": 27,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 2
+            },
+            "verified": 8,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.808575,
+            "wall_p95_s": 2.0017,
+            "llm_calls_total": 9,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 1.9249999999999998,
+                "min": 1.4,
+                "max": 2.4
+              },
+              "medium": {
+                "n": 6,
+                "mean": 2.433333333333333,
+                "min": 1.0,
+                "max": 3.7
+              },
+              "hard": {
+                "n": 2,
+                "mean": 4.550000000000001,
+                "min": 4.4,
+                "max": 4.7
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.125,
+            "llm_calls_mean": 1.125,
+            "patches_mean": 1.875,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.125
+          },
+          "ablated": {
+            "prompts": 8,
+            "fidelity_mean": 0.9791666666666666,
+            "fidelity_scored": 8,
+            "status_counts": {
+              "satisfied": 27,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 2
+            },
+            "verified": 8,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.7405875,
+            "wall_p95_s": 2.017,
+            "llm_calls_total": 9,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 1.9249999999999998,
+                "min": 1.4,
+                "max": 2.4
+              },
+              "medium": {
+                "n": 6,
+                "mean": 2.433333333333333,
+                "min": 1.0,
+                "max": 3.7
+              },
+              "hard": {
+                "n": 2,
+                "mean": 4.550000000000001,
+                "min": 4.4,
+                "max": 4.7
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.125,
+            "llm_calls_mean": 1.125,
+            "patches_mean": 1.875,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.0,
+            "fidelity_scored": 0,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": -0.067988,
+            "wall_p95_s": 0.0153,
+            "llm_calls_total": 0,
+            "expect_failed": 0,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": -0.125,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            }
+          }
+        },
+        "gemini-2026-10-19c": {
+          "baseline": {
+            "prompts": 6,
+            "fidelity_mean": 0.93125,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 29,
+              "approximated": 4,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.6715666666666666,
+            "wall_p95_s": 2.3232,
+            "llm_calls_total": 7,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.9,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.5375,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.540000000000001,
+                "min": 3.9,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.16666666666666666
+          },
+          "ablated": {
+            "prompts": 6,
+            "fidelity_mean": 0.9145833333333333,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 29,
+              "approximated": 3,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.8509833333333333,
+            "wall_p95_s": 2.5076,
+            "llm_calls_total": 7,
+            "expect_failed": 1,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 3.75,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.5375,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.540000000000001,
+                "min": 3.9,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": -0.016667,
+            "fidelity_scored": 0,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": 0.179417,
+            "wall_p95_s": 0.1844,
+            "llm_calls_total": 0,
+            "expect_failed": 1,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": -0.166667,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": -1,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 0
+            }
+          }
+        },
+        "qwen-2026-10-16": {
+          "baseline": {
+            "prompts": 8,
+            "fidelity_mean": 0.9178571428571428,
+            "fidelity_scored": 7,
+            "status_counts": {
+              "satisfied": 22,
+              "approximated": 5,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 11
+            },
+            "verified": 7,
+            "playable_share": 0.875,
+            "failures": {
+              "replay_missing": 1
+            },
+            "wall_mean_s": 0.782275,
+            "wall_p95_s": 3.1634,
+            "llm_calls_total": 12,
+            "expect_failed": 2,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.15,
+                "min": 2.1,
+                "max": 5.8
+              },
+              "medium": {
+                "n": 9,
+                "mean": 4.7,
+                "min": 2.1,
+                "max": 8.3
+              },
+              "hard": {
+                "n": 11,
+                "mean": 5.909090909090909,
+                "min": 0.6,
+                "max": 8.5
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.5,
+            "patches_mean": 3.125,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.375,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.125,
+            "terrain_retries_mean": 0.25
+          },
+          "ablated": {
+            "prompts": 8,
+            "fidelity_mean": 0.8875000000000001,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 19,
+              "approximated": 4,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 9
+            },
+            "verified": 6,
+            "playable_share": 0.75,
+            "failures": {
+              "replay_missing": 2
+            },
+            "wall_mean_s": 0.657825,
+            "wall_p95_s": 2.5067,
+            "llm_calls_total": 13,
+            "expect_failed": 3,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 3,
+                "mean": 3.8000000000000003,
+                "min": 1.2,
+                "max": 5.8
+              },
+              "medium": {
+                "n": 8,
+                "mean": 4.7125,
+                "min": 2.1,
+                "max": 8.3
+              },
+              "hard": {
+                "n": 10,
+                "mean": 5.16,
+                "min": 0.6,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 0.875,
+            "llm_calls_mean": 1.625,
+            "patches_mean": 2.625,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.375,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": -0.030357,
+            "fidelity_scored": -1,
+            "verified": -1,
+            "playable_share": -0.125,
+            "wall_mean_s": -0.12445,
+            "wall_p95_s": -0.6567,
+            "llm_calls_total": 1,
+            "expect_failed": 1,
+            "llm_attempts_mean": -0.125,
+            "llm_calls_mean": 0.125,
+            "patches_mean": -0.5,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": -0.125,
+            "terrain_retries_mean": -0.25,
+            "status_counts": {
+              "satisfied": -3,
+              "approximated": -1,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": -2
+            }
+          }
+        }
+      },
+      "per_prompt": [
+        {
+          "id": "single-forest",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0828
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0833
+          }
+        },
+        {
+          "id": "single-cave-hazards",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.0,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0762
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.0,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0772
+          }
+        },
+        {
+          "id": "two-sections",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1023
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1044
+          }
+        },
+        {
+          "id": "three-sections",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 1.5937
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 1.6135
+          }
+        },
+        {
+          "id": "vertical-tower",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0005
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 1
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 2.4,
+            "complexity_rounds": null,
+            "wall_time_s": 2.017
+          }
+        },
+        {
+          "id": "vertical-shaft-multi",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.8333333333333334,
+            "status_counts": {
+              "satisfied": 5,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.8,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0017
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.8333333333333334,
+            "status_counts": {
+              "satisfied": 5,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 1,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.8,
+            "complexity_rounds": null,
+            "wall_time_s": 1.4121
+          }
+        },
+        {
+          "id": "enemy-walker",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.2483
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 1,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.25
+          }
+        },
+        {
+          "id": "enemy-flyer-turret",
+          "recording": "gemini-2026-10-15",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3631
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3672
+          }
+        },
+        {
+          "id": "structure-crypt",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1199
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1205
+          }
+        },
+        {
+          "id": "structure-labyrinth",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0747
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0753
+          }
+        },
+        {
+          "id": "structure-tower",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.3232
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.3413
+          }
+        },
+        {
+          "id": "structure-hub-key",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0281
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0283
+          }
+        },
+        {
+          "id": "structure-mixed-outdoor",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0326
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0329
+          }
+        },
+        {
+          "id": "v4-mission-metroidvania",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 1.4509
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.8,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 2
+            },
+            "expect_failures": [
+              "no Key entity"
+            ],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.5,
+            "complexity_rounds": null,
+            "wall_time_s": 2.5076
+          }
+        },
+        {
+          "id": "structure-crypt",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [
+              "no Interactive entity"
+            ],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3495
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [
+              "no Interactive entity"
+            ],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.7,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3698
+          }
+        },
+        {
+          "id": "structure-labyrinth",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": false,
+            "failure": "replay_missing",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 3.1634
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "replay_missing",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 1.3901
+          }
+        },
+        {
+          "id": "structure-tower",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.1,
+            "complexity_rounds": null,
+            "wall_time_s": 0.6131
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3785
+          }
+        },
+        {
+          "id": "structure-hub-key",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 3
+            },
+            "expect_failures": [
+              "no hub section"
+            ],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0664
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 3
+            },
+            "expect_failures": [
+              "no hub section"
+            ],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.3,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0697
+          }
+        },
+        {
+          "id": "structure-mixed-outdoor",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 4,
+            "entities_filled": 0,
+            "grid_repairs": 1,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.2318
+          },
+          "ablated": {
+            "verified": false,
+            "failure": "replay_missing",
+            "fidelity_score": null,
+            "status_counts": null,
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": null,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1709
+          }
+        },
+        {
+          "id": "v4-mission-metroidvania",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 1.4595
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.8,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 1,
+              "unchecked": 2
+            },
+            "expect_failures": [
+              "no Key entity"
+            ],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 3.5,
+            "complexity_rounds": null,
+            "wall_time_s": 2.5067
+          }
+        },
+        {
+          "id": "v4-complexity-low",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": 0,
+            "wall_time_s": 0.1464
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": 0,
+            "wall_time_s": 0.1471
+          }
+        },
+        {
+          "id": "v4-complexity-high",
+          "recording": "qwen-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.875,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.7,
+            "complexity_rounds": 1,
+            "wall_time_s": 0.2281
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.875,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.7,
+            "complexity_rounds": 1,
+            "wall_time_s": 0.2298
+          }
+        }
+      ]
+    },
+    "A4": {
+      "id": "A4",
+      "name": "no-PatternStamping",
+      "description": "Compare StampFinder retrieval stamping vs. procedural carvers only (stamp_finder=None).",
+      "recordings": [
+        "gemini-2026-10-19c"
+      ],
+      "metrics": [
+        "stamped_sections_total",
+        "stamped_prompts",
+        "verified",
+        "playable_share",
+        "fidelity_mean"
+      ],
+      "baseline": {
+        "prompts": 6,
+        "fidelity_mean": 0.93125,
+        "fidelity_scored": 6,
+        "status_counts": {
+          "satisfied": 29,
+          "approximated": 4,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 2
+        },
+        "verified": 6,
+        "playable_share": 1.0,
+        "failures": {},
+        "wall_mean_s": 2.1578166666666667,
+        "wall_p95_s": 3.8369,
+        "llm_calls_total": 7,
+        "expect_failed": 0,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 4,
+            "mean": 4.9,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 8,
+            "mean": 2.5375,
+            "min": 1.8,
+            "max": 4.2
+          },
+          "hard": {
+            "n": 5,
+            "mean": 6.540000000000001,
+            "min": 3.9,
+            "max": 8.4
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.1666666666666667,
+        "llm_calls_mean": 1.1666666666666667,
+        "patches_mean": 0.8333333333333334,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.5,
+        "stamped_sections_total": 2,
+        "stamped_prompts": 2
+      },
+      "ablated": {
+        "prompts": 6,
+        "fidelity_mean": 0.93125,
+        "fidelity_scored": 6,
+        "status_counts": {
+          "satisfied": 29,
+          "approximated": 4,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 2
+        },
+        "verified": 6,
+        "playable_share": 1.0,
+        "failures": {},
+        "wall_mean_s": 0.69265,
+        "wall_p95_s": 2.3802,
+        "llm_calls_total": 7,
+        "expect_failed": 0,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 4,
+            "mean": 4.9,
+            "min": 0.6,
+            "max": 6.7
+          },
+          "medium": {
+            "n": 8,
+            "mean": 2.5375,
+            "min": 0.6,
+            "max": 5.4
+          },
+          "hard": {
+            "n": 5,
+            "mean": 6.540000000000001,
+            "min": 3.9,
+            "max": 8.4
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.1666666666666667,
+        "llm_calls_mean": 1.1666666666666667,
+        "patches_mean": 0.8333333333333334,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.16666666666666666,
+        "stamped_sections_total": 0,
+        "stamped_prompts": 0
+      },
+      "delta": {
+        "prompts": 0,
+        "fidelity_mean": 0.0,
+        "fidelity_scored": 0,
+        "verified": 0,
+        "playable_share": 0.0,
+        "wall_mean_s": -1.465167,
+        "wall_p95_s": -1.4567,
+        "llm_calls_total": 0,
+        "expect_failed": 0,
+        "llm_attempts_mean": 0.0,
+        "llm_calls_mean": 0.0,
+        "patches_mean": 0.0,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": -0.333333,
+        "stamped_sections_total": -2,
+        "stamped_prompts": -2,
+        "status_counts": {
+          "satisfied": 0,
+          "approximated": 0,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 0
+        }
+      },
+      "by_recording": {
+        "gemini-2026-10-19c": {
+          "baseline": {
+            "prompts": 6,
+            "fidelity_mean": 0.93125,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 29,
+              "approximated": 4,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 2.1578166666666667,
+            "wall_p95_s": 3.8369,
+            "llm_calls_total": 7,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.9,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.5375,
+                "min": 1.8,
+                "max": 4.2
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.540000000000001,
+                "min": 3.9,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.5,
+            "stamped_sections_total": 2,
+            "stamped_prompts": 2
+          },
+          "ablated": {
+            "prompts": 6,
+            "fidelity_mean": 0.93125,
+            "fidelity_scored": 6,
+            "status_counts": {
+              "satisfied": 29,
+              "approximated": 4,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "verified": 6,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.69265,
+            "wall_p95_s": 2.3802,
+            "llm_calls_total": 7,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 4,
+                "mean": 4.9,
+                "min": 0.6,
+                "max": 6.7
+              },
+              "medium": {
+                "n": 8,
+                "mean": 2.5375,
+                "min": 0.6,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 5,
+                "mean": 6.540000000000001,
+                "min": 3.9,
+                "max": 8.4
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.1666666666666667,
+            "llm_calls_mean": 1.1666666666666667,
+            "patches_mean": 0.8333333333333334,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.16666666666666666,
+            "stamped_sections_total": 0,
+            "stamped_prompts": 0
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.0,
+            "fidelity_scored": 0,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": -1.465167,
+            "wall_p95_s": -1.4567,
+            "llm_calls_total": 0,
+            "expect_failed": 0,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": -0.333333,
+            "stamped_sections_total": -2,
+            "stamped_prompts": -2,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            }
+          }
+        }
+      },
+      "per_prompt": [
+        {
+          "id": "structure-crypt",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 3.8369
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": null,
+            "wall_time_s": 0.1218
+          }
+        },
+        {
+          "id": "structure-labyrinth",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0346
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.75,
+            "status_counts": {
+              "satisfied": 2,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 1.9,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0759
+          }
+        },
+        {
+          "id": "structure-tower",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 3.5373
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.6,
+            "complexity_rounds": null,
+            "wall_time_s": 2.3802
+          }
+        },
+        {
+          "id": "structure-hub-key",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 1,
+            "patterns_stamped": [
+              "62b6330330d1"
+            ],
+            "overall_difficulty": 1.8,
+            "complexity_rounds": null,
+            "wall_time_s": 0.3489
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 0.6,
+            "complexity_rounds": null,
+            "wall_time_s": 0.0298
+          }
+        },
+        {
+          "id": "structure-mixed-outdoor",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 1,
+            "patterns_stamped": [
+              "239d60d9ba99"
+            ],
+            "overall_difficulty": 3.8,
+            "complexity_rounds": null,
+            "wall_time_s": 1.1157
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 1.0,
+            "status_counts": {
+              "satisfied": 6,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.2,
+            "complexity_rounds": null,
+            "wall_time_s": 0.034
+          }
+        },
+        {
+          "id": "v4-mission-metroidvania",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 2.0735
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 2
+            },
+            "expect_failures": [],
+            "patches": 5,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 1,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": null,
+            "wall_time_s": 1.5142
+          }
+        }
+      ]
+    },
+    "A5": {
+      "id": "A5",
+      "name": "no-ClosedLoopComplexity",
+      "description": "Bypass pipeline.level._close_loop deterministic difficulty adjustment against complexity targets.",
+      "recordings": [
+        "gemini-2026-10-16",
+        "gemini-2026-10-19c"
+      ],
+      "metrics": [
+        "mean_band_error",
+        "in_range_share",
+        "within_1_5",
+        "complexity_rounds_mean",
+        "verified"
+      ],
+      "baseline": {
+        "prompts": 3,
+        "fidelity_mean": 0.9041666666666667,
+        "fidelity_scored": 3,
+        "status_counts": {
+          "satisfied": 14,
+          "approximated": 3,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 0
+        },
+        "verified": 3,
+        "playable_share": 1.0,
+        "failures": {},
+        "wall_mean_s": 0.22363333333333335,
+        "wall_p95_s": 0.2891,
+        "llm_calls_total": 3,
+        "expect_failed": 0,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 2,
+            "mean": 5.45,
+            "min": 4.4,
+            "max": 6.5
+          },
+          "medium": {
+            "n": 4,
+            "mean": 4.6,
+            "min": 3.6,
+            "max": 5.6
+          },
+          "hard": {
+            "n": 4,
+            "mean": 6.25,
+            "min": 5.3,
+            "max": 6.7
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.0,
+        "llm_calls_mean": 1.0,
+        "patches_mean": 1.6666666666666667,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.6666666666666666,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.0,
+        "mean_band_error": 0.19999999999999998,
+        "in_range_share": 0.6666666666666666,
+        "within_1_5": 3,
+        "complexity_rounds_mean": 0.6666666666666666,
+        "complexity_rows": [
+          {
+            "id": "v4-complexity-low",
+            "recording": "gemini-2026-10-16",
+            "complexity": 0.3,
+            "target_min": 2.3,
+            "target_max": 4.3,
+            "measured_overall": 4.9,
+            "abs_band_error": 0.6,
+            "within_1_5": true,
+            "in_strict_band": false,
+            "complexity_rounds": 0,
+            "verified": true
+          },
+          {
+            "id": "v4-complexity-high",
+            "recording": "gemini-2026-10-16",
+            "complexity": 0.8,
+            "target_min": 5.3,
+            "target_max": 7.3,
+            "measured_overall": 5.7,
+            "abs_band_error": 0.0,
+            "within_1_5": true,
+            "in_strict_band": true,
+            "complexity_rounds": 1,
+            "verified": true
+          },
+          {
+            "id": "structure-crypt",
+            "recording": "gemini-2026-10-19c",
+            "complexity": 0.75,
+            "target_min": 5.0,
+            "target_max": 7.0,
+            "measured_overall": 5.6,
+            "abs_band_error": 0.0,
+            "within_1_5": true,
+            "in_strict_band": true,
+            "complexity_rounds": 1,
+            "verified": true
+          }
+        ]
+      },
+      "ablated": {
+        "prompts": 3,
+        "fidelity_mean": 0.9041666666666667,
+        "fidelity_scored": 3,
+        "status_counts": {
+          "satisfied": 14,
+          "approximated": 3,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 0
+        },
+        "verified": 3,
+        "playable_share": 1.0,
+        "failures": {},
+        "wall_mean_s": 0.11816666666666668,
+        "wall_p95_s": 0.1267,
+        "llm_calls_total": 3,
+        "expect_failed": 0,
+        "difficulty_by_label": {
+          "easy": {
+            "n": 2,
+            "mean": 5.45,
+            "min": 4.4,
+            "max": 6.5
+          },
+          "medium": {
+            "n": 4,
+            "mean": 3.725,
+            "min": 2.1,
+            "max": 5.4
+          },
+          "hard": {
+            "n": 4,
+            "mean": 5.875,
+            "min": 3.8,
+            "max": 6.7
+          }
+        },
+        "fallback_reasons": {},
+        "llm_attempts_mean": 1.0,
+        "llm_calls_mean": 1.0,
+        "patches_mean": 1.6666666666666667,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.6666666666666666,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.0,
+        "mean_band_error": 0.39999999999999997,
+        "in_range_share": 0.0,
+        "within_1_5": 3,
+        "complexity_rounds_mean": 0.0,
+        "complexity_rows": [
+          {
+            "id": "v4-complexity-low",
+            "recording": "gemini-2026-10-16",
+            "complexity": 0.3,
+            "target_min": 2.3,
+            "target_max": 4.3,
+            "measured_overall": 4.9,
+            "abs_band_error": 0.6,
+            "within_1_5": true,
+            "in_strict_band": false,
+            "complexity_rounds": 0,
+            "verified": true
+          },
+          {
+            "id": "v4-complexity-high",
+            "recording": "gemini-2026-10-16",
+            "complexity": 0.8,
+            "target_min": 5.3,
+            "target_max": 7.3,
+            "measured_overall": 5.2,
+            "abs_band_error": 0.1,
+            "within_1_5": true,
+            "in_strict_band": false,
+            "complexity_rounds": 0,
+            "verified": true
+          },
+          {
+            "id": "structure-crypt",
+            "recording": "gemini-2026-10-19c",
+            "complexity": 0.75,
+            "target_min": 5.0,
+            "target_max": 7.0,
+            "measured_overall": 4.5,
+            "abs_band_error": 0.5,
+            "within_1_5": true,
+            "in_strict_band": false,
+            "complexity_rounds": 0,
+            "verified": true
+          }
+        ]
+      },
+      "delta": {
+        "prompts": 0,
+        "fidelity_mean": 0.0,
+        "fidelity_scored": 0,
+        "verified": 0,
+        "playable_share": 0.0,
+        "wall_mean_s": -0.105467,
+        "wall_p95_s": -0.1624,
+        "llm_calls_total": 0,
+        "expect_failed": 0,
+        "llm_attempts_mean": 0.0,
+        "llm_calls_mean": 0.0,
+        "patches_mean": 0.0,
+        "completeness_reprompts_mean": 0.0,
+        "entities_filled_mean": 0.0,
+        "layout_retries_mean": 0.0,
+        "grid_repairs_mean": 0.0,
+        "terrain_retries_mean": 0.0,
+        "mean_band_error": 0.2,
+        "in_range_share": -0.666667,
+        "within_1_5": 0,
+        "complexity_rounds_mean": -0.666667,
+        "status_counts": {
+          "satisfied": 0,
+          "approximated": 0,
+          "impossible": 0,
+          "missing": 0,
+          "unchecked": 0
+        }
+      },
+      "by_recording": {
+        "gemini-2026-10-16": {
+          "baseline": {
+            "prompts": 2,
+            "fidelity_mean": 0.8875,
+            "fidelity_scored": 2,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "verified": 2,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.19090000000000001,
+            "wall_p95_s": 0.2294,
+            "llm_calls_total": 2,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 1,
+                "mean": 4.4,
+                "min": 4.4,
+                "max": 4.4
+              },
+              "medium": {
+                "n": 2,
+                "mean": 4.6,
+                "min": 3.8,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 3,
+                "mean": 6.1000000000000005,
+                "min": 5.3,
+                "max": 6.5
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.0,
+            "patches_mean": 2.5,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 1.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0,
+            "mean_band_error": 0.3,
+            "in_range_share": 0.5,
+            "within_1_5": 2,
+            "complexity_rounds_mean": 0.5,
+            "complexity_rows": [
+              {
+                "id": "v4-complexity-low",
+                "recording": "gemini-2026-10-16",
+                "complexity": 0.3,
+                "target_min": 2.3,
+                "target_max": 4.3,
+                "measured_overall": 4.9,
+                "abs_band_error": 0.6,
+                "within_1_5": true,
+                "in_strict_band": false,
+                "complexity_rounds": 0,
+                "verified": true
+              },
+              {
+                "id": "v4-complexity-high",
+                "recording": "gemini-2026-10-16",
+                "complexity": 0.8,
+                "target_min": 5.3,
+                "target_max": 7.3,
+                "measured_overall": 5.7,
+                "abs_band_error": 0.0,
+                "within_1_5": true,
+                "in_strict_band": true,
+                "complexity_rounds": 1,
+                "verified": true
+              }
+            ]
+          },
+          "ablated": {
+            "prompts": 2,
+            "fidelity_mean": 0.8875,
+            "fidelity_scored": 2,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 2,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "verified": 2,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.11595,
+            "wall_p95_s": 0.1267,
+            "llm_calls_total": 2,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 1,
+                "mean": 4.4,
+                "min": 4.4,
+                "max": 4.4
+              },
+              "medium": {
+                "n": 2,
+                "mean": 4.6,
+                "min": 3.8,
+                "max": 5.4
+              },
+              "hard": {
+                "n": 3,
+                "mean": 5.6000000000000005,
+                "min": 3.8,
+                "max": 6.5
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.0,
+            "patches_mean": 2.5,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 1.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0,
+            "mean_band_error": 0.35,
+            "in_range_share": 0.0,
+            "within_1_5": 2,
+            "complexity_rounds_mean": 0.0,
+            "complexity_rows": [
+              {
+                "id": "v4-complexity-low",
+                "recording": "gemini-2026-10-16",
+                "complexity": 0.3,
+                "target_min": 2.3,
+                "target_max": 4.3,
+                "measured_overall": 4.9,
+                "abs_band_error": 0.6,
+                "within_1_5": true,
+                "in_strict_band": false,
+                "complexity_rounds": 0,
+                "verified": true
+              },
+              {
+                "id": "v4-complexity-high",
+                "recording": "gemini-2026-10-16",
+                "complexity": 0.8,
+                "target_min": 5.3,
+                "target_max": 7.3,
+                "measured_overall": 5.2,
+                "abs_band_error": 0.1,
+                "within_1_5": true,
+                "in_strict_band": false,
+                "complexity_rounds": 0,
+                "verified": true
+              }
+            ]
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.0,
+            "fidelity_scored": 0,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": -0.07495,
+            "wall_p95_s": -0.1027,
+            "llm_calls_total": 0,
+            "expect_failed": 0,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0,
+            "mean_band_error": 0.05,
+            "in_range_share": -0.5,
+            "within_1_5": 0,
+            "complexity_rounds_mean": -0.5,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            }
+          }
+        },
+        "gemini-2026-10-19c": {
+          "baseline": {
+            "prompts": 1,
+            "fidelity_mean": 0.9375,
+            "fidelity_scored": 1,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "verified": 1,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.2891,
+            "wall_p95_s": 0.2891,
+            "llm_calls_total": 1,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 1,
+                "mean": 6.5,
+                "min": 6.5,
+                "max": 6.5
+              },
+              "medium": {
+                "n": 2,
+                "mean": 4.6,
+                "min": 3.6,
+                "max": 5.6
+              },
+              "hard": {
+                "n": 1,
+                "mean": 6.7,
+                "min": 6.7,
+                "max": 6.7
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0,
+            "mean_band_error": 0.0,
+            "in_range_share": 1.0,
+            "within_1_5": 1,
+            "complexity_rounds_mean": 1.0,
+            "complexity_rows": [
+              {
+                "id": "structure-crypt",
+                "recording": "gemini-2026-10-19c",
+                "complexity": 0.75,
+                "target_min": 5.0,
+                "target_max": 7.0,
+                "measured_overall": 5.6,
+                "abs_band_error": 0.0,
+                "within_1_5": true,
+                "in_strict_band": true,
+                "complexity_rounds": 1,
+                "verified": true
+              }
+            ]
+          },
+          "ablated": {
+            "prompts": 1,
+            "fidelity_mean": 0.9375,
+            "fidelity_scored": 1,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "verified": 1,
+            "playable_share": 1.0,
+            "failures": {},
+            "wall_mean_s": 0.1226,
+            "wall_p95_s": 0.1226,
+            "llm_calls_total": 1,
+            "expect_failed": 0,
+            "difficulty_by_label": {
+              "easy": {
+                "n": 1,
+                "mean": 6.5,
+                "min": 6.5,
+                "max": 6.5
+              },
+              "medium": {
+                "n": 2,
+                "mean": 2.85,
+                "min": 2.1,
+                "max": 3.6
+              },
+              "hard": {
+                "n": 1,
+                "mean": 6.7,
+                "min": 6.7,
+                "max": 6.7
+              }
+            },
+            "fallback_reasons": {},
+            "llm_attempts_mean": 1.0,
+            "llm_calls_mean": 1.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0,
+            "mean_band_error": 0.5,
+            "in_range_share": 0.0,
+            "within_1_5": 1,
+            "complexity_rounds_mean": 0.0,
+            "complexity_rows": [
+              {
+                "id": "structure-crypt",
+                "recording": "gemini-2026-10-19c",
+                "complexity": 0.75,
+                "target_min": 5.0,
+                "target_max": 7.0,
+                "measured_overall": 4.5,
+                "abs_band_error": 0.5,
+                "within_1_5": true,
+                "in_strict_band": false,
+                "complexity_rounds": 0,
+                "verified": true
+              }
+            ]
+          },
+          "delta": {
+            "prompts": 0,
+            "fidelity_mean": 0.0,
+            "fidelity_scored": 0,
+            "verified": 0,
+            "playable_share": 0.0,
+            "wall_mean_s": -0.1665,
+            "wall_p95_s": -0.1665,
+            "llm_calls_total": 0,
+            "expect_failed": 0,
+            "llm_attempts_mean": 0.0,
+            "llm_calls_mean": 0.0,
+            "patches_mean": 0.0,
+            "completeness_reprompts_mean": 0.0,
+            "entities_filled_mean": 0.0,
+            "layout_retries_mean": 0.0,
+            "grid_repairs_mean": 0.0,
+            "terrain_retries_mean": 0.0,
+            "mean_band_error": 0.5,
+            "in_range_share": -1.0,
+            "within_1_5": 0,
+            "complexity_rounds_mean": -1.0,
+            "status_counts": {
+              "satisfied": 0,
+              "approximated": 0,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            }
+          }
+        }
+      },
+      "per_prompt": [
+        {
+          "id": "v4-complexity-low",
+          "recording": "gemini-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": 0,
+            "wall_time_s": 0.1524
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9,
+            "status_counts": {
+              "satisfied": 4,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 3,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.9,
+            "complexity_rounds": 0,
+            "wall_time_s": 0.1267
+          }
+        },
+        {
+          "id": "v4-complexity-high",
+          "recording": "gemini-2026-10-16",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.875,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.7,
+            "complexity_rounds": 1,
+            "wall_time_s": 0.2294
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.875,
+            "status_counts": {
+              "satisfied": 3,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 2,
+            "entities_filled": 1,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.2,
+            "complexity_rounds": 0,
+            "wall_time_s": 0.1052
+          }
+        },
+        {
+          "id": "structure-crypt",
+          "recording": "gemini-2026-10-19c",
+          "baseline": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 5.6,
+            "complexity_rounds": 1,
+            "wall_time_s": 0.2891
+          },
+          "ablated": {
+            "verified": true,
+            "failure": null,
+            "fidelity_score": 0.9375,
+            "status_counts": {
+              "satisfied": 7,
+              "approximated": 1,
+              "impossible": 0,
+              "missing": 0,
+              "unchecked": 0
+            },
+            "expect_failures": [],
+            "patches": 0,
+            "entities_filled": 0,
+            "grid_repairs": 0,
+            "terrain_retries": 0,
+            "stamped_sections": 0,
+            "patterns_stamped": [],
+            "overall_difficulty": 4.5,
+            "complexity_rounds": 0,
+            "wall_time_s": 0.1226
+          }
+        }
+      ]
+    }
+  }
+}

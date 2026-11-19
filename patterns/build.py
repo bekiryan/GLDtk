@@ -77,7 +77,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--samples", type=Path, default=None, help="folder of sample .ldtk files")
     ap.add_argument("--add", type=Path, action="append", default=[], help="an extra .ldtk to ingest")
     ap.add_argument("--embedder", default="hash", help="hash | gemini | ollama")
-    ap.add_argument("--provider", default=None, help="label with this LLM provider (omit: no labelling)")
+    ap.add_argument("--provider", default=None,
+                    help="label with this provider: gemini | ollama | geometry (omit: no labelling)")
     ap.add_argument("--model", default=None)
     ap.add_argument("--max-calls", type=int, default=None, help="cap on labelling LLM calls")
     ap.add_argument("--dry-run", action="store_true", help="ingest and count, no LLM call, nothing saved")
@@ -164,9 +165,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.provider or args.dry_run:
         provider = None
         if args.provider and not args.dry_run:
-            from llm.providers import make_provider
+            if args.provider.lower() == "geometry":
+                provider = "geometry"
+            else:
+                from llm.providers import make_provider
 
-            provider = make_provider(args.provider, model=args.model)
+                provider = make_provider(args.provider, model=args.model)
         lrep = label_pending(store, provider, max_calls=args.max_calls, dry_run=args.dry_run,
                              budget=args.label_budget, only=added_ids)
         print(f"label: {lrep.labelled} new, {lrep.cached} cached, {lrep.pending} pending, "

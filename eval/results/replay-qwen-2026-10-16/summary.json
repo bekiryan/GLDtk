@@ -1,0 +1,51 @@
+{
+  "ollama/qwen2.5:14b": {
+    "prompts": 6,
+    "fidelity_mean": 0.93,
+    "fidelity_scored": 5,
+    "status_counts": {
+      "satisfied": 15,
+      "approximated": 3,
+      "impossible": 0,
+      "missing": 0,
+      "unchecked": 11
+    },
+    "verified": 5,
+    "playable_share": 0.8333333333333334,
+    "failures": {
+      "replay_missing": 1
+    },
+    "wall_mean_s": 0.9861166666666666,
+    "wall_p95_s": 3.1723,
+    "llm_calls_total": 10,
+    "expect_failed": 2,
+    "difficulty_by_label": {
+      "easy": {
+        "n": 3,
+        "mean": 4.066666666666666,
+        "min": 2.1,
+        "max": 5.8
+      },
+      "medium": {
+        "n": 7,
+        "mean": 4.728571428571429,
+        "min": 2.1,
+        "max": 8.3
+      },
+      "hard": {
+        "n": 8,
+        "mean": 5.8375,
+        "min": 0.6,
+        "max": 8.5
+      }
+    },
+    "fallback_reasons": {},
+    "llm_attempts_mean": 1.0,
+    "llm_calls_mean": 1.6666666666666667,
+    "patches_mean": 3.3333333333333335,
+    "completeness_reprompts_mean": 0.0,
+    "entities_filled_mean": 0.16666666666666666,
+    "layout_retries_mean": 0.0,
+    "grid_repairs_mean": 0.16666666666666666
+  }
+}
