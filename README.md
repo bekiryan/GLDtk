@@ -8,25 +8,27 @@ GLDtk turns a text prompt into a **playable, statically verified 2D platformer l
 
 **GLDtk is packaged as 1 combined macOS app (`GLDtk.app`)** containing both the LDtk editor and the compiled Python backend (`Contents/Resources/gldtk-server/gldtk-server`) — **no Python, Node.js, npm, or Haxe installation is needed on another Mac**.
 
-### Option 1 — Pull Repo & Run `./start.sh` (Zero Dependencies)
+### Option 1 — 1-Line Launch Without Browser Quarantine (Zero Dependencies)
 
 ```bash
-git clone https://github.com/bekiryan/GLDtk.git
-cd GLDtk
-./start.sh
+curl -fsSL https://raw.githubusercontent.com/bekiryan/GLDtk/main/start.sh | bash
+# or clone the repo:
+git clone https://github.com/bekiryan/GLDtk.git && cd GLDtk && ./start.sh
 ```
 
-On macOS, `./start.sh` automatically downloads the combined `GLDtk.app` (on first run), clears Gatekeeper quarantine (`xattr -dr com.apple.quarantine`), and opens **GLDtk.app** (which starts its embedded backend on `:8765` and stops it when you quit). Enter your free [Gemini API key](https://aistudio.google.com/apikey) (or local [Ollama](https://ollama.com)) in the sidebar's **Settings** fold.
+On macOS, `start.sh` automatically downloads the combined `GLDtk.app` (on first run), clears Gatekeeper quarantine (`xattr -dr com.apple.quarantine`), and opens **GLDtk.app** with no Gatekeeper warning (starts its embedded backend on `:8765` and stops it when you quit). Enter your free [Gemini API key](https://aistudio.google.com/apikey) (or local [Ollama](https://ollama.com)) in the sidebar's **Settings** fold.
 
 ### Option 2 — Direct 1-App Downloads ([GitHub Release `v1.5.3`](https://github.com/bekiryan/GLDtk/releases/tag/v1.5.3))
 
 - **[`GLDtk-macos-arm64.app.zip`](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-macos-arm64.app.zip)** — unzip with Finder/Archive Utility and open **GLDtk.app** directly (no `.dmg` mount needed)
 - **[`GLDtk-1.5.3-arm64.dmg`](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-1.5.3-arm64.dmg)** — macOS Apple Silicon disk image (drag **GLDtk** to **Applications**; local copy at [`ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg`](ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg))
 
-> **Note for browser downloads:** Web browsers tag downloaded files with macOS Gatekeeper quarantine (`com.apple.quarantine`), which can cause an unsigned/ad-hoc app on another Mac to show *"“GLDtk” is damaged and can’t be opened"*. If you download via a browser instead of `./start.sh`, clear only quarantine once in Terminal (preserving the ad-hoc signature):
-> ```bash
-> xattr -dr com.apple.quarantine /Applications/GLDtk.app   # or: xattr -dr com.apple.quarantine ~/Downloads/GLDtk.app
-> ```
+> **Note for browser downloads:** Web browsers tag downloaded files with `com.apple.quarantine`, and because this open-source app is ad-hoc signed without a paid Apple Developer notarization certificate, macOS shows *"Apple could not verify “GLDtk” is free of malware that may harm your Mac or compromise your privacy."* on first launch. To open it (once only):
+> - **macOS UI (no Terminal):** Click **Done** on the popup → **System Settings → Privacy & Security** → scroll down and click **Open Anyway**.
+> - **Or via Terminal:**
+>   ```bash
+>   xattr -dr com.apple.quarantine /Applications/GLDtk.app   # or ~/Downloads/GLDtk.app
+>   ```
 
 ### Developer Source Mode & Tests
 
