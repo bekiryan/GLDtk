@@ -22,6 +22,7 @@ On macOS, `start.sh` automatically downloads the combined `GLDtk.app` (on first 
 
 - **[`GLDtk-macos-arm64.app.zip`](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-macos-arm64.app.zip)** — unzip with Finder/Archive Utility and open **GLDtk.app** directly (no `.dmg` mount needed)
 - **[`GLDtk-1.5.3-arm64.dmg`](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-1.5.3-arm64.dmg)** — macOS Apple Silicon disk image (drag **GLDtk** to **Applications**; local copy at [`ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg`](ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg))
+- [**`GLDtk-1.5.3-x64.exe`**](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-1.5.3-x64.exe) — Windows x64 NSIS installer (unsigned; if SmartScreen warns, click **More info → Run anyway**)
 
 > **Note for browser downloads:** Web browsers tag downloaded files with `com.apple.quarantine`, and because this open-source app is ad-hoc signed without a paid Apple Developer notarization certificate, macOS shows *"Apple could not verify “GLDtk” is free of malware that may harm your Mac or compromise your privacy."* on first launch. To open it (once only):
 > - **macOS UI (no Terminal):** Click **Done** on the popup → **System Settings → Privacy & Security** → scroll down and click **Open Anyway**.

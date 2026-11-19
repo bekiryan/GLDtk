@@ -1,5 +1,5 @@
-# Builds the GLDtk macOS app (.dmg, Apple Silicon, unsigned); on v* tags also attaches it to a
-# draft GitHub Release. The LDtk fork comes from bekiryan/ldtk.
+# Builds the GLDtk desktop apps (macOS .dmg Apple Silicon, Windows .exe x64, unsigned); on v* tags
+# also attaches them to a draft GitHub Release. The LDtk fork comes from bekiryan/ldtk.
 name: release
 
 on:
@@ -76,4 +76,68 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ldtk-src/app/redist/*.dmg
+          draft: true
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: bekiryan/ldtk
+          ref: ${{ inputs.ldtk_ref || 'master' }}
+          path: ldtk-src
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.7
+
+      - name: Haxe libraries (pinned)
+        shell: bash
+        run: |
+          haxelib setup "$HOME/haxelib"
+          scripts/setup_haxelibs.sh
+
+      - name: Python dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[server]" pillow pyinstaller
+
+      - name: npm install  # bekiryan/ldtk does not track package-lock.json
+        working-directory: ldtk-src/app
+        run: npm install
+
+      - name: Build
+        shell: pwsh
+        env:
+          PYTHON: python
+        run: scripts/build_windows_app.ps1
+
+      - name: Smoke test (packaged backend)
+        shell: bash
+        run: python scripts/smoke_test_app.py ldtk-src/app/redist/win-unpacked/resources/gldtk-server/gldtk-server.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GLDtk-windows-x64
+          path: ldtk-src/app/redist/*.exe
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ldtk-src/app/redist/*.exe
           draft: true
