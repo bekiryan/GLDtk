@@ -16,17 +16,42 @@ the first run, every sidebar function, example prompts and troubleshooting.
 
 ## Contents
 
-1. [Quick start](#quick-start)
-2. [Using the GLDtk sidebar](#using-the-gldtk-sidebar)
-3. [LLM providers and the local fallback](#llm-providers-and-the-local-fallback)
-4. [How it works](#how-it-works)
-5. [Level structure, missions and patterns](#level-structure-missions-and-patterns)
-6. [Repository layout](#repository-layout)
-7. [Without the app: Python and HTTP](#without-the-app-python-and-http)
-8. [Evaluation](#evaluation)
-9. [Tests](#tests)
-10. [Troubleshooting](#troubleshooting)
-11. [Build the Mac app](#build-the-mac-app)
+1. [Demo Video, Architecture & Thesis Paper](#demo-video-architecture--thesis-paper)
+2. [Quick start](#quick-start)
+3. [Using the GLDtk sidebar](#using-the-gldtk-sidebar)
+4. [LLM providers and the local fallback](#llm-providers-and-the-local-fallback)
+5. [How it works](#how-it-works)
+6. [Level structure, missions and patterns](#level-structure-missions-and-patterns)
+7. [Repository layout](#repository-layout)
+8. [Without the app: Python and HTTP](#without-the-app-python-and-http)
+9. [Evaluation](#evaluation)
+10. [Tests](#tests)
+11. [Troubleshooting](#troubleshooting)
+12. [Build the Mac app](#build-the-mac-app)
+
+---
+
+## Demo Video, Architecture & Thesis Paper
+
+### Side-by-Side Demo Video (`docs/demo/`)
+[![Manual vs GLDtk Side-by-Side Demo](docs/demo/poster.png)](docs/demo/comparison.mp4)
+
+- **Side-by-side comparison (Manual 5m 57s / 311 steps vs. GLDtk AI 1m 13s / 172 steps — 4.89× speedup):** [`docs/demo/comparison.mp4`](docs/demo/comparison.mp4)
+- **Full 1× recordings & metrics:** [`docs/demo/ai_full.mp4`](docs/demo/ai_full.mp4) · [`docs/demo/manual_full.mp4`](docs/demo/manual_full.mp4) · [`docs/demo/stats.json`](docs/demo/stats.json) · [`docs/demo/SPEC.md`](docs/demo/SPEC.md)
+
+### Architecture Diagrams & DAGs (`docs/architecture/`)
+![End-to-End 11-Stage Neuro-Symbolic Pipeline DAG](docs/architecture/01_pipeline_dag.png)
+
+- **All-in-one 3-tab Draw.io workbook:** [`docs/architecture/gldtk_architecture_master.drawio`](docs/architecture/gldtk_architecture_master.drawio) ([index & previews](docs/architecture/README.md))
+- **11-Stage Pipeline DAG:** [`01_pipeline_dag.drawio`](docs/architecture/01_pipeline_dag.drawio) ([SVG](docs/architecture/01_pipeline_dag.svg) · [PNG](docs/architecture/01_pipeline_dag.png))
+- **Client-Server & Subsystem Architecture:** [`02_system_architecture.drawio`](docs/architecture/02_system_architecture.drawio) ([SVG](docs/architecture/02_system_architecture.svg) · [PNG](docs/architecture/02_system_architecture.png))
+- **Verification, Soft-Lock SCC/Automaton, Mission & Edit DAGs:** [`03_verification_and_mission_dags.drawio`](docs/architecture/03_verification_and_mission_dags.drawio) ([SVG](docs/architecture/03_verification_and_mission_dags.svg) · [PNG](docs/architecture/03_verification_and_mission_dags.png))
+
+### Thesis Paper & Academic Documentation (`docs/thesis/`)
+- **Compiled v4 Thesis Paper (PDF):** [`docs/thesis/GLDtk_Thesis_Paper.pdf`](docs/thesis/GLDtk_Thesis_Paper.pdf) ([Markdown source](docs/thesis/THESIS_PAPER.md))
+- **LaTeX Dissertation & Overleaf Bundle:** [`docs/thesis/latex/main.tex`](docs/thesis/latex/main.tex) · [`docs/thesis/gldtk_thesis_overleaf.zip`](docs/thesis/gldtk_thesis_overleaf.zip)
+- **Engineering Status & Literature Review:** [`docs/thesis/PROJECT_STATUS_AND_ROADMAP.md`](docs/thesis/PROJECT_STATUS_AND_ROADMAP.md) · [`docs/thesis/LITERATURE_AND_SOURCES.md`](docs/thesis/LITERATURE_AND_SOURCES.md)
+- **Initial v1 Proposal (PDF):** [`Generative-Level-Design-Toolkit.pdf`](Generative-Level-Design-Toolkit.pdf)
 
 ---
 

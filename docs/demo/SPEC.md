@@ -107,13 +107,17 @@ target.ldtk`, outside the recorded time) and the end card says so.
   - a `poster.png` frame.
 
 ## Where things go
-- **Scripts** are committed under `demo/` on branch `feat/demo-video`, with a README on how
-  to re-run them:
+- **Scripts** are committed under `demo/`, with a README on how to re-run them:
   - `demo/record_ai.js`
   - `demo/record_manual.js`
   - `demo/compose.py`
-- **Videos** go in `demo/out/` (AI run, 5-minute variant) and `demo/out_full/` (full build),
-  both git-ignored.
+- **Tracked deliverables for demo/presentation** are committed under `docs/demo/`:
+  - `docs/demo/comparison.mp4` (3.9 MB — side-by-side Manual 5:57 vs. GLDtk 1:13)
+  - `docs/demo/ai_full.mp4` (1.6 MB — full 1× GLDtk AI run)
+  - `docs/demo/manual_full.mp4` (8.3 MB — full 1× manual LDtk build)
+  - `docs/demo/poster.png` (poster frame)
+  - `docs/demo/stats.json` (measured timings, steps, and verification summary)
+- **Raw build directories** `demo/out/` (AI run, 5-minute variant) and `demo/out_full/` (full build intermediates, frames, logs) remain git-ignored.
 - **Projects:** never use `playground/` or `demo_*`. Work in fresh project copies under the
   scratchpad or in `demo/out/`.
 - **Port 8765:** check it is free first, and stop only the processes you started.

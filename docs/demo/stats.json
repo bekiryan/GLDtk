@@ -1,0 +1,122 @@
+{
+ "manual": {
+  "real_time_s": 356.6,
+  "steps": 311,
+  "click": 60,
+  "drag": 177,
+  "key": 74,
+  "verified": true,
+  "check": {
+   "file": "demo/out_full/manual/crypt.ldtk",
+   "playable": true,
+   "start_reaches_exit": true,
+   "softlock_spots": 0,
+   "unreachable_required": 0,
+   "route_moves": 27,
+   "rules_from": "demo/out/ai/target.ldtk"
+  },
+  "tiles_included": true,
+  "tiles_mode": "simple",
+  "tile_fills": 117,
+  "stopped_at_budget": false,
+  "progress": {
+   "coll": [
+    1290,
+    1290
+   ],
+   "tiles": [
+    117,
+    117
+   ],
+   "ents": [
+    8,
+    8
+   ],
+   "pct": 104.2
+  },
+  "estimate_full": {
+   "modeled_s": 268.6,
+   "steps": 293,
+   "click": 57,
+   "drag": 176,
+   "key": 60,
+   "phases": {
+    "setup": {
+     "s": 8.4,
+     "click": 3,
+     "drag": 1,
+     "key": 12
+    },
+    "collisions": {
+     "s": 78.6,
+     "click": 4,
+     "drag": 69,
+     "key": 0
+    },
+    "tiles": {
+     "s": 123.4,
+     "click": 17,
+     "drag": 106,
+     "key": 0
+    },
+    "entities": {
+     "s": 57.7,
+     "click": 33,
+     "drag": 0,
+     "key": 46
+    },
+    "save": {
+     "s": 0.5,
+     "click": 0,
+     "drag": 0,
+     "key": 2
+    }
+   },
+   "real_per_modeled": 1.274,
+   "full_real_s": 342
+  },
+  "matches_target": {
+   "size_match": true,
+   "collision_cells": [
+    2400,
+    2400
+   ],
+   "tile_cells": [
+    364,
+    1290
+   ],
+   "entities": [
+    8,
+    8
+   ],
+   "extra_entities": 0
+  },
+  "human_timing_s": {
+   "click": 0.6,
+   "choose": 1.2,
+   "perChar": 0.25,
+   "think": 1.5,
+   "drag": 1,
+   "look": 2
+  }
+ },
+ "ai": {
+  "real_time_s": 72.5,
+  "generate_s": 24.1,
+  "steps": 172,
+  "click": 2,
+  "drag": 0,
+  "key": 170,
+  "prompt_words": 33,
+  "verified": true,
+  "answered_by": "gemini (gemini-3.1-flash-lite)",
+  "edit_s": 2.9,
+  "undo_s": 0.8,
+  "edit": "Catacombs \u00b7 medium \u00b7 labyrinth -> arena",
+  "recording_s": 86.9
+ },
+ "video": {
+  "manual_speed": 4,
+  "length_s": 98.2
+ }
+}

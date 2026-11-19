@@ -1,0 +1,243 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="GLDtk Architecture Generator" version="24.7.17" pages="1">
+  <diagram id="pipeline_dag" name="1 - Pipeline DAG">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1980" pageHeight="1185" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="pipeline_dag_title" value="&lt;font style='font-size:20px' color='#0F172A'&gt;&lt;b&gt;GLDtk: End-to-End 11-Stage Neuro-Symbolic Level Generation DAG&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#475569'&gt;Deterministic verification, repair, comfort, complexity, and LDtk 1.5.3 export (pipeline/level.py::build_level)&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingTop=2;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="14" width="1920" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="g_inputs" value="&lt;b&gt;Inputs &amp;amp; Context Assembly&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;User intent, physics profile, RAG &amp;amp; memory&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.8;swimlaneFillColor=#EEF2FF;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="30" y="88" width="340" height="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="g_neural" value="&lt;b&gt;Stages 1–4 · System 1 Neural Spec &amp;amp; Mission&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;Schema-enforced LLM + symbolic patching &amp;amp; Dormans grammar&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.8;swimlaneFillColor=#F5F3FF;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="425" y="88" width="520" height="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="g_verify" value="&lt;b&gt;Stages 5–8 · System 2 Terrain, Physics &amp;amp; Soft-Lock Proofs&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;Swept-hitbox physics oracle, Tarjan SCC &amp;amp; complexity control&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.8;swimlaneFillColor=#ECFDF5;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="88" width="530" height="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="g_export" value="&lt;b&gt;Stages 9–11 · Noise, Art &amp;amp; LDtk Export&lt;/b&gt;&lt;br/&gt;&lt;font style='font-size:11px' color='#334155'&gt;Schema-exact LDtk 1.5.3 JSON + sidebar&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=8;startSize=46;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.8;swimlaneFillColor=#EFF6FF;fontColor=#0F172A;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1595" y="88" width="355" height="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="in_prompt" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[INPUT]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;User Prompt &amp;amp; Generation Params&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Natural language description + seed&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;complexity (0..1), rock fill, levels (1..8)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Target level / section / region scope&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="152" width="300" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="in_profile" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[PHYSICS]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;GameProfile (game/profile.py)&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;File: gldtk.game.json beside .ldtk&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Physics: g=1800, jump_v=500, run=220 px/s&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Abilities: double_jump, dash, wall_jump&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Comfort: hop&amp;lt;=4, rise&amp;lt;=3, drop&amp;lt;=6 tiles&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="286" width="300" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="in_patterns" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[RAG]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;RAG Pattern Library (patterns/)&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;index.json: 3,577 indexed records&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;3,336 verified windows (SuperTux/OpenSurge)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;768-dim cosine retrieval (nomic-embed-text)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Vision-checked labels (patterns/vision.py)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="434" width="300" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="in_memory" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[MEMORY]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Design Memory (memory/)&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Local cross-project log (events.jsonl)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Diffs hand edits, undos &amp;amp; accepted builds&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;preferences.json distilled designer rules&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;App Support/GLDtk/memory/ (toggleable)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="582" width="300" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="in_assets" value="&lt;font style='font-size:10px' color='#4338CA'&gt;&lt;b&gt;[ASSETS]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Curated CC0 Asset Library&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;8 autotile themes (80x64 14-role sheets)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;25 entity sprites (Kenney CC0 1.0)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Optional Gemini AI art (/art/theme, /sprite)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EEF2FF;strokeColor=#4F46E5;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="726" width="300" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="in_invariant" value="&lt;font style='font-size:10px' color='#60A5FA'&gt;&lt;b&gt;[INVARIANT]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#F8FAFC'&gt;&lt;b&gt;Core Safety Guarantee&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;Unverified levels are NEVER written to disk.&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;Every exported level proves:&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;1. Swept 12x24 hitbox Start-&amp;gt;Exit path&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;2. 0 SCC traps &amp;amp; 0 item-state soft-locks&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;3. Validated LDtk 1.5.3 JSON schema&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#1E293B;strokeColor=#334155;strokeWidth=1.6;fontColor=#F8FAFC;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="50" y="862" width="300" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="s1_llm" value="&lt;font style='font-size:10px' color='#6D28D9'&gt;&lt;b&gt;[STAGE 1]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;1. LLMController &amp;amp; Provider Cascade&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;llm/validator.py + llm/providers/registry.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Primary: gemini-3.8-flash -&amp;gt; 3.1-flash-lite (503 backoff)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Auto Fallback: ollama:qwen2.5:14b (900s local timeout)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Also supports Claude (cached), OpenAI, DeepSeek&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Schema-enforced JSON output: LevelSpec.json_schema()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="475" y="152" width="420" height="134" as="geometry" />
+        </mxCell>
+        <mxCell id="s2_patch" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[STAGE 2]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;2. Spec Validator &amp;amp; SymbolicPatcher&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;spec/level_spec.py + llm/patcher.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;SpecNormalizePatch: clamp bounds, scale complexity&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;EdgeReclassifyPatch: steep Walk -&amp;gt; Jump / Fall&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;VelocityPatch, AbilityAssignPatch, SteppingStonePatch&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Fixes Qwen/LLM drift without extra LLM calls&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="475" y="330" width="420" height="134" as="geometry" />
+        </mxCell>
+        <mxCell id="s3_comp" value="&lt;font style='font-size:10px' color='#B45309'&gt;&lt;b&gt;[STAGE 3]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;3. Completeness &amp;amp; Fidelity Fill&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;pipeline/completeness.py + fidelity/{checker,fill}.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Extracts explicit &amp;amp; implicit prompt requirements&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Deterministically injects missing entities, start_item,&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;section P_&amp;lt;type&amp;gt; structures, and lock_key_cycle&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;At most 1 complete_spec() LLM re-prompt if still short&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="475" y="512" width="420" height="134" as="geometry" />
+        </mxCell>
+        <mxCell id="s4_mission" value="&lt;font style='font-size:10px' color='#6D28D9'&gt;&lt;b&gt;[STAGE 4]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;4. Mission Grammar &amp;amp; Space Embedding&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;mission/{grammar,graph,space,verify}.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Dormans graph rewriting productions:&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;lock_key_cycle · ability_gate · shortcut_loop&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;treasure_branch · boss_before_exit&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Counterfactual verify: unbypassable &amp;amp; solvable locks&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="475" y="694" width="420" height="136" as="geometry" />
+        </mxCell>
+        <mxCell id="s_world" value="&lt;font style='font-size:10px' color='#475569'&gt;&lt;b&gt;[WORLDS]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Multi-Level Worlds &amp;amp; Endless Chunks&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;pipeline/world.py &amp;amp; pipeline/chunks.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;WorldOutline -&amp;gt; 1..8 linked levels (Exit -&amp;gt; next Start)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Regenerate single level while keeping sibling levels&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;POST /chunks appends deterministic seeded chunks&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Joined via fixed border port seams &amp;amp; verified per chunk&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="475" y="875" width="420" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="s5_terrain" value="&lt;font style='font-size:10px' color='#0F766E'&gt;&lt;b&gt;[STAGE 5]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;5. Terrain Carving &amp;amp; RAG Pattern Stamping&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;layout/terrain/ + pipeline/stamps.py (StampFinder)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;7 rock carvers: corridor · parkour · labyrinth ·&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;arena · shaft (zigzag) · hub · open&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Matches RAG windows by geometry class &amp;amp; height;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;rock padding &amp;amp; vertical stacking + level_route check&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="152" width="420" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="s6_verify" value="&lt;font style='font-size:10px' color='#047857'&gt;&lt;b&gt;[STAGE 6]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;6. Grid Extraction, Physics &amp;amp; Soft-Lock Verify&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;symbolic/{extractor,physics,walljump,gravity}.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;layout/verify.py + layout/softlock.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Swept 12x24 px AABB hitbox (ds &amp;lt;= 6 px), headroom &amp;gt;= 2&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Checks single/double jump (tau*), dash, wall kick, g(x)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Tarjan SCC traps + Item-State Product Graph V x P(K)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Counterfactual check: no key placed behind its door&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="344" width="420" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="s6_repair" value="&lt;font style='font-size:10px' color='#BE123C'&gt;&lt;b&gt;[REPAIR]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;Deterministic Grid &amp;amp; Soft-Lock Repair&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;layout/repair.py + layout/softlock_repair.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Retry failing terrain section seeds (&amp;lt;= TERRAIN_ATTEMPTS)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Synthesize stepping stones, raise low ceilings, relocate keys&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Last resort: controller.repair_spec() (&amp;lt;= 2 LLM retries)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#FFF1F2;strokeColor=#E11D48;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="558" width="420" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="s7_comfort" value="&lt;font style='font-size:10px' color='#0F766E'&gt;&lt;b&gt;[STAGE 7]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;7. Comfort Pass &amp;amp; Chebyshev Densification&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;layout/comfort.py + layout/densify.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Effort-cost A* (walk=1.0, super-linear jump cost)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Adds hop_N ledges for comfort limits (outside parkour)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;2D Chebyshev distance transform void platform infill&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Discards any fill platform obstructing golden arcs&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#F0FDFA;strokeColor=#0D9488;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="736" width="420" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="s8_complex" value="&lt;font style='font-size:10px' color='#047857'&gt;&lt;b&gt;[STAGE 8]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;8. Closed-Loop Complexity Controller&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;pipeline/complexity.py + fidelity/difficulty.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;5-factor score: jumps, enemies, hazards, ledges, relief&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Iteratively adjusts gaps &amp;amp; density toward target (1..10)&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Re-lays out &amp;amp; re-verifies each round (&amp;lt;= MAX_ROUNDS)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="916" width="420" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="s9_noise" value="&lt;font style='font-size:10px' color='#1D4ED8'&gt;&lt;b&gt;[STAGE 9]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;9. Noise Cavern Rock Fill&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;layout/fill.py + layout/noise.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Domain-warped fBm simplex noise&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;4–5 Cellular Automata smoothing passes&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Decorative Background IntGrid layer&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Strictly avoids protected route envelope&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="165" width="305" height="132" as="geometry" />
+        </mxCell>
+        <mxCell id="s10_aes" value="&lt;font style='font-size:10px' color='#1D4ED8'&gt;&lt;b&gt;[STAGE 10]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;10. Aesthetic Autotiling&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;aesthetic/{library,autotile,themes}.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Per-section theme Tiles layers&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;14-role bitmask autotiler + variants&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Packs 25 entity icons into sprites.png&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Copies assets to &amp;lt;dir&amp;gt;/gldtk_assets/&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="358" width="305" height="134" as="geometry" />
+        </mxCell>
+        <mxCell id="s11_export" value="&lt;font style='font-size:10px' color='#1D4ED8'&gt;&lt;b&gt;[STAGE 11]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#0F172A'&gt;&lt;b&gt;11. LDtk 1.5.3 JSON Export&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;layout/ldtk_adapter.py&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Strict layer order: Entities -&amp;gt; Tiles -&amp;gt; Collisions&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Pre-populates cachedPixelData &amp;amp; __smartColor&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Stores gldtk_prompt/sections/spec fields&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#334155'&gt;Validated against LDtk JSON_SCHEMA.json&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=1.6;fontColor=#0F172A;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="554" width="305" height="142" as="geometry" />
+        </mxCell>
+        <mxCell id="s11_ui" value="&lt;font style='font-size:10px' color='#60A5FA'&gt;&lt;b&gt;[EDITOR]&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:12px' color='#F8FAFC'&gt;&lt;b&gt;Native LDtk Sidebar Reload&lt;/b&gt;&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;ldtk-src/.../ui/GldtkSidebar.hx&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;ProjectLoader + editor.selectProject() swap&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;Renders Fidelity Report &amp;amp; Difficulty Curve&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;Canvas Route Overlay + red soft-lock spans&lt;/font&gt;&lt;br/&gt;&lt;font style='font-size:10.5px' color='#CBD5E1'&gt;60 Hz Play Mode modal + 30-step Undo stack&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#1E293B;strokeColor=#334155;strokeWidth=1.6;fontColor=#F8FAFC;fontSize=12;align=center;verticalAlign=middle;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="760" width="305" height="158" as="geometry" />
+        </mxCell>
+        <mxCell id="e_in1" value="prompt + cfg" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.45;exitDx=0;exitDy=0;entryX=0.0;entryY=0.25;entryDx=0;entryDy=0;strokeColor=#4F46E5;strokeWidth=1.6;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#4F46E5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_prompt" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="398" y="199" />
+              <mxPoint x="398" y="185" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_in2" value="abilities" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.25;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#4F46E5;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#4F46E5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_profile" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="386" y="315" />
+              <mxPoint x="386" y="219" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_in3" value="few-shot RAG" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.25;exitDx=0;exitDy=0;entryX=0.0;entryY=0.72;entryDx=0;entryDy=0;strokeColor=#4F46E5;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#4F46E5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_patterns" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="463" />
+              <mxPoint x="400" y="248" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_in4" value="rules" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.3;exitDx=0;exitDy=0;entryX=0.0;entryY=0.9;entryDx=0;entryDy=0;strokeColor=#4F46E5;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#4F46E5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_memory" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="412" y="616" />
+              <mxPoint x="412" y="273" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_in_prof_ver" value="physics bounds" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.0;entryY=0.8;entryDx=0;entryDy=0;strokeColor=#4F46E5;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#4F46E5;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_profile" target="s6_verify">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="375" y="420" />
+              <mxPoint x="375" y="1068" />
+              <mxPoint x="972" y="1068" />
+              <mxPoint x="972" y="469" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_in_pat_stamp" value="stamp windows" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.7;exitDx=0;exitDy=0;entryX=0.0;entryY=0.75;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_patterns" target="s5_terrain">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="386" y="517" />
+              <mxPoint x="386" y="1094" />
+              <mxPoint x="986" y="1094" />
+              <mxPoint x="986" y="257" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_in_aes" value="themes + sprites" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.65;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="in_assets" target="s10_aes">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="398" y="778" />
+              <mxPoint x="398" y="1120" />
+              <mxPoint x="1565" y="1120" />
+              <mxPoint x="1565" y="445" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_1_2" value="LevelSpec JSON" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s1_llm" target="s2_patch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_2_1" value="re-prompt (&amp;lt;=2)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.35;exitDx=0;exitDy=0;entryX=1.0;entryY=0.65;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#D97706;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s2_patch" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="377" />
+              <mxPoint x="920" y="239" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_2_3" value="valid spec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#D97706;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s2_patch" target="s3_comp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_3_1" value="&amp;lt;=1 complete_spec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.0;exitY=0.35;exitDx=0;exitDy=0;entryX=0.0;entryY=0.62;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#D97706;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s3_comp" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="448" y="559" />
+              <mxPoint x="448" y="235" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_3_4" value="complete spec" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#7C3AED;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#7C3AED;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s3_comp" target="s4_mission">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_4_5" value="sections + mission plan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.45;exitDx=0;exitDy=0;entryX=0.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s4_mission" target="s5_terrain">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="755" />
+              <mxPoint x="960" y="201" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_5_6" value="IRLevel grid" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s5_terrain" target="s6_verify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_6_rep" value="errors / traps" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.32;exitY=1.0;exitDx=0;exitDy=0;entryX=0.32;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#E11D48;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#E11D48;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s6_verify" target="s6_repair">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_rep_6" value="re-verify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.68;exitY=0.0;exitDx=0;exitDy=0;entryX=0.68;entryY=1.0;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s6_repair" target="s6_verify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_rep_llm" value="repair_spec() (&amp;lt;=2)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=1.0;entryY=0.85;entryDx=0;entryDy=0;strokeColor=#E11D48;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#E11D48;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s6_repair" target="s1_llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="996" y="620" />
+              <mxPoint x="996" y="266" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_6_7" value="verified ok" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.65;exitDx=0;exitDy=0;entryX=1.0;entryY=0.35;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s6_verify" target="s7_comfort">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1510" y="445" />
+              <mxPoint x="1510" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_7_8" value="comfort + dense grid" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#059669;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s7_comfort" target="s8_complex">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_8_5" value="re-tune (&amp;lt;=MAX_ROUNDS)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.55;entryDx=0;entryDy=0;strokeColor=#0D9488;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0D9488;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s8_complex" target="s5_terrain">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1032" y="979" />
+              <mxPoint x="1032" y="229" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_8_9" value="converged level" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s8_complex" target="s9_noise">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1558" y="979" />
+              <mxPoint x="1558" y="231" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_9_10" value="grid + background" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s9_noise" target="s10_aes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_10_11" value="autotiled layers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#2563EB;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s10_aes" target="s11_export">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_11_ui" value=".ldtk written -&amp;gt; reload" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;strokeColor=#0F172A;strokeWidth=2.2;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#0F172A;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s11_export" target="s11_ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ui_mem" value="hand-edit / undo events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;entryX=0.5;entryY=1.0;entryDx=0;entryDy=0;strokeColor=#64748B;strokeWidth=1.6;dashed=1;dashPattern=6 4;startArrow=none;endArrow=classic;endFill=1;fontSize=11;fontColor=#64748B;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="s11_ui" target="in_memory">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1772" y="1146" />
+              <mxPoint x="200" y="1146" />
+              <mxPoint x="200" y="696" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

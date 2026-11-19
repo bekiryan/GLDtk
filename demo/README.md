@@ -40,7 +40,7 @@ Dry runs of the manual script, without recording, on a few columns:
 node demo/record_manual.js demo/out/ai/target.ldtk /tmp/m --region=0,20 --no-record [--no-tiles]
 ```
 
-Everything is written to `demo/out/` and `demo/out_full/` (both git-ignored; the full build reads `demo/out/ai/`). Stop the server afterwards.
+Everything is written to `demo/out/` and `demo/out_full/` (both git-ignored; the full build reads `demo/out/ai/`). The rendered deliverables (`comparison.mp4`, `ai_full.mp4`, `manual_full.mp4`, `poster.png`, `stats.json`) are committed for quick playback and demoing in [`docs/demo/`](../docs/demo/). Stop the server afterwards.
 
 ## How it works, and what is honest about it
 
