@@ -6,7 +6,9 @@ GLDtk turns a text prompt into a **playable, statically verified 2D platformer l
 
 ## How to Run on Desktop
 
-### Fastest Way (1 Repo Clone + 1 Command, No Haxe Build)
+**GLDtk is packaged as 1 combined macOS app (`GLDtk.app`)** containing both the LDtk editor and the compiled Python backend (`Contents/Resources/gldtk-server/gldtk-server`) — **no Python, Node.js, npm, or Haxe installation is needed on another Mac**.
+
+### Option 1 — Pull Repo & Run `./start.sh` (Zero Dependencies)
 
 ```bash
 git clone https://github.com/bekiryan/GLDtk.git
@@ -14,25 +16,22 @@ cd GLDtk
 ./start.sh
 ```
 
-`start.sh` handles everything automatically on first launch — **you do not need to install Haxe or manually clone a second repo**:
-1. Pulls the precompiled frontend execution files (`main.js` & `renderer.js`, already built and pushed in [`bekiryan/ldtk`](https://github.com/bekiryan/ldtk)) into `ldtk-src/`.
-2. Creates `.venv` (`pip install -e ".[server]"`) and installs Electron packages (`npm install`) once.
-3. Starts the Python backend (`http://127.0.0.1:8765`) and opens the LDtk desktop app. Set your free [Gemini API key](https://aistudio.google.com/apikey) (or local [Ollama](https://ollama.com)) inside the sidebar's **Settings** fold.
+On macOS, `./start.sh` automatically downloads the combined `GLDtk.app` (on first run), clears Gatekeeper quarantine (`xattr -cr`), and opens **GLDtk.app** (which starts its embedded backend on `:8765` and stops it when you quit). Enter your free [Gemini API key](https://aistudio.google.com/apikey) (or local [Ollama](https://ollama.com)) in the sidebar's **Settings** fold.
 
-### Prebuilt Release Downloads (`v1.5.3`)
+### Option 2 — Direct 1-App Downloads ([GitHub Release `v1.5.3`](https://github.com/bekiryan/GLDtk/releases/tag/v1.5.3))
 
-- **[GitHub Release `v1.5.3`](https://github.com/bekiryan/GLDtk/releases/tag/v1.5.3)** — download either:
-  - **`gldtk-execution-bundle.zip`** (lightweight precompiled `main.js`, `renderer.js`, `release-notes.md`, and `start.sh` execution files only)
-  - **`GLDtk-1.5.3-arm64.dmg`** (standalone macOS Apple Silicon app; drag **GLDtk** to Applications, right-click → **Open** on first run — or open the local copy at [`ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg`](ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg))
-- Detailed install & manual Haxe rebuild steps (for editing LDtk UI itself): [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#2-installing)
+- **[`GLDtk-macos-arm64.app.zip`](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-macos-arm64.app.zip)** — unzip and open **GLDtk.app** directly (no `.dmg` mount needed; on first launch right-click → **Open** or run `xattr -cr GLDtk.app`)
+- **[`GLDtk-1.5.3-arm64.dmg`](https://github.com/bekiryan/GLDtk/releases/download/v1.5.3/GLDtk-1.5.3-arm64.dmg)** — macOS Apple Silicon disk image (drag **GLDtk** to **Applications**, right-click → **Open** on first launch; local copy at [`ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg`](ldtk-src/app/redist/GLDtk-1.5.3-arm64.dmg))
 
-### Run Tests & Offline Ablations
+### Developer Source Mode & Tests
 
 ```bash
-source .venv/bin/activate
-pytest -q                               # full offline test suite (750+ tests)
+./start.sh --dev                        # run server.py + ldtk-src/app Electron from source (auto-installs .venv & npm)
+source .venv/bin/activate && pytest -q  # full offline test suite (750+ tests)
 python -m eval.ablation                 # offline replay ablation suite (A1–A5)
 ```
+
+- Detailed Windows installer, Linux source setup, and manual Haxe rebuild steps: [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#2-installing)
 
 ---
 
